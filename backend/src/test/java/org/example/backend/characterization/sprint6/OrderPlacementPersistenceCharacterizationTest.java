@@ -65,7 +65,7 @@ class OrderPlacementPersistenceCharacterizationTest extends PostgresIntegrationS
                 () -> assertEquals("NEW", orderStatus("idem-success-1")),
                 () -> assertEquals("BUY", orderSide("idem-success-1")),
                 () -> assertEquals("LIMIT", orderPricingType("idem-success-1")),
-                () -> assertEquals(new BigDecimal("50.00"), orderPrice("idem-success-1")),
+                () -> assertEquals(0, new BigDecimal("50.00").compareTo(orderPrice("idem-success-1"))),
                 () -> assertEquals(100L, orderQuantity("idem-success-1")),
                 () -> assertEquals(1, orderAccountId("idem-success-1")),
                 () -> assertEquals(101, orderInstrumentId("idem-success-1")));
