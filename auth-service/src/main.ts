@@ -2,12 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { configuration } from './config/configuration';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 async function bootstrap() {
   // Load and validate configuration at startup
   const config = configuration();
 
   const app = await NestFactory.create(AppModule);
+
+  // Global exception filter (converts all exceptions to error envelope)
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Global validation pipe with class-validator
   app.useGlobalPipes(
@@ -19,6 +23,7 @@ async function bootstrap() {
         enableImplicitConversion: true,
       },
       stopAtFirstError: false, // Report all validation errors
+      errorHttpStatusCode: 400, // Will be converted to 422 by exception filter
     }),
   );
 

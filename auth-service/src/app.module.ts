@@ -5,6 +5,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { configuration } from './config/configuration';
 import { HealthController } from './health/health.controller';
+import { AuthModule } from './auth/auth.module';
+import { User } from './users/user.entity';
+import { RefreshToken } from './refresh-tokens/refresh-token.entity';
 
 @Module({
   imports: [
@@ -16,22 +19,16 @@ import { HealthController } from './health/health.controller';
     }),
 
     // Database connection configuration
-    TypeOrmModule.forRootAsync({
-      useFactory: () => {
-        const config = configuration();
-        return {
-          type: 'postgres',
-          host: config.database.host,
-          port: config.database.port,
-          username: config.database.username,
-          password: config.database.password,
-          database: config.database.name,
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          migrations: [__dirname + '/migrations/*{.ts,.js}'],
-          synchronize: process.env.NODE_ENV === 'development',
-          logging: process.env.NODE_ENV === 'development',
-        };
-      },
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DATABASE_HOST,
+      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      username: process.env.DATABASE_USER,
+      password: process.env.DATABASE_PASSWORD,
+      database: process.env.DATABASE_NAME,
+      entities: [User, RefreshToken],
+      synchronize: process.env.NODE_ENV === 'development',
+      logging: process.env.NODE_ENV === 'development',
     }),
 
     // JWT module for token signing
@@ -41,11 +38,15 @@ import { HealthController } from './health/health.controller';
       signOptions: {
         issuer: process.env.JWT_ISSUER || 'auth-service',
         algorithm: 'HS256',
+        expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '900', 10),
       },
     }),
 
     // Passport module for authentication strategies
     PassportModule.register({ defaultStrategy: 'jwt' }),
+
+    // Auth module with all endpoints
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [],
