@@ -20,7 +20,7 @@ This guide verifies the full flow now that both sides exist:
 
 - backend runs on Windows
 - trade_executor runs on Windows
-- Kafka runs on Linux VM at 10.8.78.105
+- Kafka runs on Linux VM at {LINUX_IP}
 
 This works only if the broker advertises a host that Windows clients can reach.
 
@@ -31,7 +31,7 @@ This works only if the broker advertises a host that Windows clients can reach.
 In VM repo root .env, set:
 
 ```bash
-KAFKA_EXTERNAL_HOST=10.8.78.105
+KAFKA_EXTERNAL_HOST={LINUX_IP}
 ```
 
 This is already supported by [docker-compose.yml](../docker-compose.yml) using KAFKA_ADVERTISED_LISTENERS.
@@ -55,7 +55,7 @@ docker-compose up -d --force-recreate kafka kafka-init
 Set this for both backend and trade_executor run configurations:
 
 ```text
-KAFKA_BOOTSTRAP_SERVERS=10.8.78.105:9092
+KAFKA_BOOTSTRAP_SERVERS={LINUX_IP}:9092
 ```
 
 Both apps read this in their application properties.
@@ -121,7 +121,7 @@ docker-compose exec kafka kafka-console-consumer \
 
 ### 3) Run backend and trade_executor on Windows
 
-Confirm both processes start with KAFKA_BOOTSTRAP_SERVERS=10.8.78.105:9092.
+Confirm both processes start with KAFKA_BOOTSTRAP_SERVERS={LINUX_IP}:9092.
 
 ### 4) Call POST /api/v1/orders from Bruno
 
@@ -139,19 +139,19 @@ Use a new idempotencyKey each call.
 
 Detection is Kafka metadata driven:
 
-1. Windows client connects to bootstrap server 10.8.78.105:9092.
+1. Windows client connects to bootstrap server {LINUX_IP}:9092.
 2. Broker returns cluster metadata, including advertised broker addresses.
 3. Client then talks to the advertised addresses for produce and consume traffic.
 
 If advertised address is localhost, Windows clients try to connect to themselves and fail.
-If advertised address is 10.8.78.105, Windows clients reach the VM correctly.
+If advertised address is {LINUX_IP}, Windows clients reach the VM correctly.
 
 ## Fast Troubleshooting
 
 ### No message on orders
 
 - backend API may have returned 4xx or 409 and produced nothing
-- backend may not have KAFKA_BOOTSTRAP_SERVERS set to 10.8.78.105:9092
+- backend may not have KAFKA_BOOTSTRAP_SERVERS set to {LINUX_IP}:9092
 - VM broker may still advertise localhost
 
 ### orders has data but trade-events is empty

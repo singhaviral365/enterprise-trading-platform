@@ -55,7 +55,7 @@ If status is `STARTING`, retry after a short wait.
 
 From Windows browser, open SonarQube at the Linux VM IP:
 
-- http://10.8.78.105:9000/
+- http://{LINUX_IP}:9000/
 
 Log in using default credentials:
 
@@ -96,7 +96,7 @@ Run the scan command and replace only `YOUR_TOKEN` with the token generated in S
 Use the Linux VM IP in `sonar.host.url`.
 
 ```powershell
-mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar "-Dsonar.host.url=http://10.8.78.105:9000" "-Dsonar.token=YOUR_TOKEN"
+mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar "-Dsonar.host.url=http://{LINUX_IP}:9000" "-Dsonar.token=YOUR_TOKEN"
 ```
 
 Expected output:
@@ -107,7 +107,7 @@ Expected output:
 
 Open:
 
-- http://10.8.78.105:9000/
+- http://{LINUX_IP}:9000/
 
 Then navigate:
 
@@ -119,7 +119,7 @@ Then navigate:
 To make Maven wait for server-side Quality Gate result:
 
 ```powershell
-mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar "-Dsonar.host.url=http://10.8.78.105:9000" "-Dsonar.token=YOUR_TOKEN" "-Dsonar.qualitygate.wait=true"
+mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar "-Dsonar.host.url=http://{LINUX_IP}:9000" "-Dsonar.token=YOUR_TOKEN" "-Dsonar.qualitygate.wait=true"
 ```
 
 This is the same scan with one additional flag:
