@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InsufficientHoldingsException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.exceptions</a> &gt; <span class="el_source">InsufficientHoldingsException.java</span></div><h1>InsufficientHoldingsException.java</h1><pre class="source lang-java linenums">package org.example.backend.exceptions;
+
+/**
+ * Rule 7: a SELL requests more than the held quantity. Catalogue {@code ORD-409} — the same code
+ * as {@link DuplicateOrderException}; the two are distinguished by exception type, not by code.
+ */
+public final class InsufficientHoldingsException extends DomainException {
+
+    private final long accountId;
+    private final String symbol;
+    private final long requestedQuantity;
+    private final long availableQuantity;
+
+    public InsufficientHoldingsException(
+            long accountId,
+            String symbol,
+            long requestedQuantity,
+            long availableQuantity) {
+
+<span class="fc" id="L20">        super(&quot;ORD-409&quot;, &quot;Insufficient holdings&quot;);</span>
+<span class="fc" id="L21">        this.accountId = accountId;</span>
+<span class="fc" id="L22">        this.symbol = symbol;</span>
+<span class="fc" id="L23">        this.requestedQuantity = requestedQuantity;</span>
+<span class="fc" id="L24">        this.availableQuantity = availableQuantity;</span>
+<span class="fc" id="L25">    }</span>
+
+    public long getAccountId() {
+<span class="nc" id="L28">        return accountId;</span>
+    }
+
+    public String getSymbol() {
+<span class="nc" id="L32">        return symbol;</span>
+    }
+
+    public long getRequestedQuantity() {
+<span class="nc" id="L36">        return requestedQuantity;</span>
+    }
+
+    public long getAvailableQuantity() {
+<span class="nc" id="L40">        return availableQuantity;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
