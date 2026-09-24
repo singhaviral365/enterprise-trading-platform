@@ -69,8 +69,12 @@ export class UsersService {
     accountId: number,
     roles: string[] = ['CUSTOMER'],
   ): Promise<User> {
+    // Auto-generate email from username (required for NOT NULL constraint)
+    const email = `${username}@local.auth`;
+    
     return this.usersRepository.create({
       username,
+      email,
       password_hash: passwordHash,
       account_id: accountId,
       roles,
