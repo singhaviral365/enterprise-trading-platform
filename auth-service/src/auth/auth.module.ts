@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { User } from '../users/user.entity';
 import { RefreshToken } from '../refresh-tokens/refresh-token.entity';
 import { UsersService, UsersRepository } from '../users/users.service';
@@ -29,6 +30,7 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
   providers: [
     AuthService,
     JwtStrategy,
+    JwtAuthGuard,
     UsersService,
     UsersRepository,
     CredentialsService,

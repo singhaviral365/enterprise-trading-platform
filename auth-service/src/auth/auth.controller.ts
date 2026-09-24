@@ -6,9 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Request,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import {
   RegisterDto,
@@ -18,6 +16,8 @@ import {
   TokenResponseDto,
 } from './dto';
 import { UnauthorisedException } from '../common/exceptions';
+import { JwtAuthGuard, AuthenticatedUser } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
 
 /**
  * Auth controller implementing contracts/auth-api.yaml
@@ -100,11 +100,11 @@ export class AuthController {
    *   401: AUTH-401 - No token, invalid token, or expired token
    */
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async getCurrentUser(@Request() req: any): Promise<UserResponseDto> {
-    // Extract user from JWT guard (attached to request by PassportStrategy)
-    const user = req.user;
+  async getCurrentUser(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<UserResponseDto> {
     if (!user || !user.userId) {
       throw new UnauthorisedException('Unauthorised');
     }

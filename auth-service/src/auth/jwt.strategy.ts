@@ -3,6 +3,8 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UnauthorisedException } from '../common/exceptions';
 
+const DEFAULT_JWT_ISSUER = 'auth-service';
+
 /**
  * JWT Strategy for Passport.
  * Validates JWT tokens in Bearer Authorization header.
@@ -23,13 +25,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * This is called after signature verification.
    */
   async validate(payload: any) {
-    // Verify required claims
-    if (!payload.sub || !payload.accountId || !payload.roles || !payload.iss) {
+    // Verify required claims and contract-level types.
+    if (
+      !payload?.sub ||
+      !Number.isInteger(payload.accountId) ||
+      !Array.isArray(payload.roles) ||
+      payload.roles.length === 0 ||
+      !payload.iss
+    ) {
       throw new UnauthorisedException('Unauthorised');
     }
 
     // Verify issuer
-    if (payload.iss !== process.env.JWT_ISSUER) {
+    if (payload.iss !== (process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER)) {
       throw new UnauthorisedException('Unauthorised');
     }
 

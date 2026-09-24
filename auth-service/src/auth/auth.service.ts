@@ -10,6 +10,9 @@ import {
 } from '../common/exceptions';
 import { UserResponseDto, TokenResponseDto } from './dto';
 
+const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
+const DEFAULT_JWT_ISSUER = 'auth-service';
+
 /**
  * Auth service implements the 4 operations:
  * 1. Register: Create user (no tokens issued)
@@ -27,6 +30,33 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly redactingLogger: RedactingLogger,
   ) {}
+
+  private buildAccessToken(user: {
+    id: string;
+    account_id: number;
+    roles: string[];
+  }): string {
+    const iat = Math.floor(Date.now() / 1000);
+    const roles = Array.isArray(user.roles) ? user.roles.filter(Boolean) : [];
+
+    if (roles.length === 0) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+
+    return this.jwtService.sign(
+      {
+        sub: user.id,
+        accountId: Number(user.account_id),
+        roles,
+        iat,
+      },
+      {
+        algorithm: 'HS256',
+        issuer: process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER,
+        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      },
+    );
+  }
 
   /**
    * Register: Create a new user.
@@ -122,20 +152,13 @@ export class AuthService {
     );
 
     // Sign access token
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      accountId: user.account_id,
-      roles: user.roles,
-    } as any);
+    const accessToken = this.buildAccessToken(user);
 
     return {
       accessToken,
       refreshToken: refreshTokenData.token,
       tokenType: 'Bearer',
-      expiresIn: parseInt(
-        process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '900',
-        10,
-      ),
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
     };
   }
 
@@ -170,20 +193,13 @@ export class AuthService {
       );
 
     // Sign new access token
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      accountId: user.account_id,
-      roles: user.roles,
-    } as any);
+    const accessToken = this.buildAccessToken(user);
 
     return {
       accessToken,
       refreshToken: newRefreshTokenData.token,
       tokenType: 'Bearer',
-      expiresIn: parseInt(
-        process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '900',
-        10,
-      ),
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
     };
   }
 
