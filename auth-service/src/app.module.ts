@@ -8,6 +8,7 @@ import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { User } from './users/user.entity';
 import { RefreshToken } from './refresh-tokens/refresh-token.entity';
+import { RedactingLogger } from './common/logging/redacting.logger';
 
 @Module({
   imports: [
@@ -29,12 +30,14 @@ import { RefreshToken } from './refresh-tokens/refresh-token.entity';
       entities: [User, RefreshToken],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',
+      migrations: [],
+      migrationsRun: false,
     }),
 
     // JWT module for token signing
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET,
+      secret: process.env.JWT_SECRET || 'dev-only-change-me-this-secret-is-not-for-production-use',
       signOptions: {
         issuer: process.env.JWT_ISSUER || 'auth-service',
         algorithm: 'HS256',
@@ -49,6 +52,6 @@ import { RefreshToken } from './refresh-tokens/refresh-token.entity';
     AuthModule,
   ],
   controllers: [HealthController],
-  providers: [],
+  providers: [RedactingLogger],
 })
 export class AppModule {}

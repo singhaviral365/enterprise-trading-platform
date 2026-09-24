@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
+import { RedactingLogger } from '../common/logging/redacting.logger';
 import {
   UnauthorisedException,
   RegistrationFailedException,
@@ -24,6 +25,7 @@ export class AuthService {
     private readonly credentialsService: CredentialsService,
     private readonly refreshTokensService: RefreshTokensService,
     private readonly jwtService: JwtService,
+    private readonly redactingLogger: RedactingLogger,
   ) {}
 
   /**
@@ -31,20 +33,33 @@ export class AuthService {
    * - Does NOT issue tokens
    * - Does NOT create trading account
    * - Links user to existing trading account by accountId
+   * - Uses Argon2id password hashing (never plaintext, never MD5/SHA)
    */
   async register(
     username: string,
     password: string,
     accountId: number,
   ): Promise<UserResponseDto> {
+    this.redactingLogger.log(
+      'AuthService',
+      'Registration attempt',
+      { username, accountId },
+    );
+
     // Check if username already taken
     const exists = await this.usersRepository.usernameExists(username);
     if (exists) {
+      this.redactingLogger.warn(
+        'AuthService',
+        'Registration failed - username already taken',
+        { username },
+      );
       throw new RegistrationFailedException('Registration failed');
     }
 
     // Hash password using Argon2id
     const passwordHash = await this.credentialsService.hashPassword(password);
+    this.redactingLogger.debug('AuthService', 'Password hashed successfully');
 
     // Create user with default CUSTOMER role
     const user = await this.usersService.createUser(
@@ -54,17 +69,26 @@ export class AuthService {
       ['CUSTOMER'],
     );
 
+    this.redactingLogger.log(
+      'AuthService',
+      'User registered successfully',
+      { userId: user.id, username },
+    );
+
     return this.userToResponseDto(user);
   }
 
   /**
    * Login: Verify credentials and issue access + refresh tokens.
    * Same response for unknown user and wrong password (no enumeration).
+   * Uses Argon2id for timing-safe password verification.
    */
   async login(
     username: string,
     password: string,
   ): Promise<TokenResponseDto> {
+    this.redactingLogger.log('AuthService', 'Login attempt', { username });
+
     // Find user by username
     const user = await this.usersRepository.findByUsername(username);
 
@@ -78,8 +102,18 @@ export class AuthService {
 
     // Return same error for unknown user or wrong password
     if (!user || !isPasswordValid) {
+      this.redactingLogger.warn(
+        'AuthService',
+        'Login failed - invalid credentials',
+        { username },
+      );
       throw new UnauthorisedException('Unauthorised');
     }
+
+    this.redactingLogger.log('AuthService', 'Login successful', {
+      userId: user.id,
+      username,
+    });
 
     // Generate refresh token
     const refreshTokenData = await this.refreshTokensService.createRefreshToken(

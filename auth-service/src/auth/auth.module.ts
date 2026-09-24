@@ -10,6 +10,7 @@ import { RefreshToken } from '../refresh-tokens/refresh-token.entity';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService, RefreshTokensRepository } from '../refresh-tokens/refresh-tokens.service';
+import { RedactingLogger } from '../common/logging/redacting.logger';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RefreshTokensService, RefreshTokensRepository } from '../refresh-tokens
     CredentialsService,
     RefreshTokensService,
     RefreshTokensRepository,
+    RedactingLogger,
   ],
   exports: [AuthService, UsersService, CredentialsService],
 })
