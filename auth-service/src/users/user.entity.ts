@@ -24,8 +24,8 @@ export class User {
   @Column('varchar', { length: 255 })
   password_hash!: string;
 
-  @Column('bigint')
-  account_id!: number;
+  @Column('bigint', { nullable: true })
+  account_id!: number | null;
 
   @Column('text', { array: true, default: () => `'{CUSTOMER}'` })
   roles!: string[];

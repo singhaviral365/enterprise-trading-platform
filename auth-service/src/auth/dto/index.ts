@@ -1,16 +1,13 @@
 import {
   IsString,
-  IsInt,
   IsArray,
   MinLength,
   MaxLength,
   Matches,
-  Min,
   IsOptional,
   ArrayMinSize,
   IsEnum,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
 
 /**
  * Register request DTO with validation per contracts/auth-api.yaml
@@ -29,11 +26,6 @@ export class RegisterDto {
   @MinLength(12)
   @MaxLength(128)
   password!: string;
-
-  @IsInt()
-  @Min(1)
-  @Transform(({ value }) => parseInt(value, 10))
-  accountId!: number;
 
   @IsOptional()
   @IsArray()
@@ -69,7 +61,7 @@ export class RefreshTokenDto {
 export class UserResponseDto {
   id!: string;
   username!: string;
-  accountId!: number;
+  accountId?: number | null;
   roles!: string[];
   createdOn!: Date;
 }

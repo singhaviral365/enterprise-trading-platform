@@ -33,7 +33,7 @@ export class AuthService {
 
   private buildAccessToken(user: {
     id: string;
-    account_id: number;
+    account_id: number | null;
     roles: string[];
   }): string {
     const iat = Math.floor(Date.now() / 1000);
@@ -43,13 +43,19 @@ export class AuthService {
       throw new UnauthorisedException('Unauthorised');
     }
 
+    const tokenPayload: any = {
+      sub: user.id,
+      roles,
+      iat,
+    };
+
+    // Include accountId only if it's set
+    if (user.account_id !== null && user.account_id !== undefined) {
+      tokenPayload.accountId = Number(user.account_id);
+    }
+
     return this.jwtService.sign(
-      {
-        sub: user.id,
-        accountId: Number(user.account_id),
-        roles,
-        iat,
-      },
+      tokenPayload,
       {
         algorithm: 'HS256',
         issuer: process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER,
@@ -62,18 +68,18 @@ export class AuthService {
    * Register: Create a new user.
    * - Does NOT issue tokens
    * - Does NOT create trading account
-   * - Links user to existing trading account by accountId
+   * - User initially has no account_id (null)
+   * - Account setup happens post-registration via PUT /auth/me/profile
    * - Uses Argon2id password hashing (never plaintext, never MD5/SHA)
    */
   async register(
     username: string,
     password: string,
-    accountId: number,
   ): Promise<UserResponseDto> {
     this.redactingLogger.log(
       'AuthService',
       'Registration attempt',
-      { username, accountId },
+      { username },
     );
 
     // Check if username already taken
@@ -91,11 +97,11 @@ export class AuthService {
     const passwordHash = await this.credentialsService.hashPassword(password);
     this.redactingLogger.debug('AuthService', 'Password hashed successfully');
 
-    // Create user with default CUSTOMER role
+    // Create user with default CUSTOMER role (account_id will be set later via profile setup)
     const user = await this.usersService.createUser(
       username,
       passwordHash,
-      accountId,
+      null,  // account_id is null initially, will be linked during profile setup
       ['CUSTOMER'],
     );
 

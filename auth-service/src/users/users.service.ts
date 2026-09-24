@@ -62,11 +62,12 @@ export class UsersService {
 
   /**
    * Create a new user.
+   * account_id is optional - will be linked later via profile setup
    */
   async createUser(
     username: string,
     passwordHash: string,
-    accountId: number,
+    accountId: number | null,
     roles: string[] = ['CUSTOMER'],
   ): Promise<User> {
     // Auto-generate email from username (required for NOT NULL constraint)

@@ -30,7 +30,7 @@ export class AuthController {
    * POST /auth/register
    * Public endpoint: Register a new user
    *
-   * Request: RegisterDto (username, password, accountId)
+   * Request: RegisterDto (username, password)
    * Response (201): UserResponseDto
    * Errors:
    *   409: AUTH-409 - Username already taken
@@ -45,7 +45,6 @@ export class AuthController {
       return await this.authService.register(
         registerDto.username,
         registerDto.password,
-        registerDto.accountId,
       );
     } catch (error) {
       // Validation errors are handled by ValidationPipe and converted by global exception filter
