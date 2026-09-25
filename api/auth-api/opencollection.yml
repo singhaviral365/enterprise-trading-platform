@@ -1,7 +1,7 @@
 opencollection: 1.0.0
 
 info:
-  name: api
+  name: auth-api
 config:
   proxy:
     inherit: true
@@ -13,11 +13,6 @@ config:
         username: ""
         password: ""
       bypassProxy: ""
-
-request:
-  scripts:
-    - type: before-request
-      code: req.setUrl(`{{base_url}}/${req.url}`)
 bundled: false
 extensions:
   bruno:

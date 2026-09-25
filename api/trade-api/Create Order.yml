@@ -15,8 +15,8 @@ http:
         "side": "BUY",
         "orderPricingType": "LIMIT",
         "quantity": 10,
-        "price": 111,
-        "idempotencyKey": "5h3c1cve-6a1e-4a4f-9c0d-2f7a1b3c4d5e"
+        "price": 300,
+        "idempotencyKey": "6py2cgg-6a1e-4a4f-9c0d-2f7a1b3c4d5e"
       }
   auth:
     type: bearer
@@ -27,3 +27,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true
