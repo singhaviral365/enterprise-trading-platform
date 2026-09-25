@@ -25,10 +25,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * This is called after signature verification.
    */
   async validate(payload: any) {
+    const userId = Number(payload?.sub);
+
     // Verify required claims and contract-level types.
     if (
-      !payload?.sub ||
-      !Number.isInteger(payload.accountId) ||
+      !Number.isInteger(userId) ||
+      userId < 1 ||
       !Array.isArray(payload.roles) ||
       payload.roles.length === 0 ||
       !payload.iss
@@ -42,8 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
-      userId: payload.sub,
-      accountId: payload.accountId,
+      userId,
       roles: payload.roles,
       iat: payload.iat,
       exp: payload.exp,

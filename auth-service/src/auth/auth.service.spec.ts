@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
+import { AccountsClient } from '../accounts/accounts.client';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import { UnauthorisedException } from '../common/exceptions';
 
@@ -34,6 +35,11 @@ describe('AuthService access token contract', () => {
   let refreshTokensService: {
     createRefreshToken: jest.Mock;
     verifyAndConsumeRefreshToken: jest.Mock;
+  };
+  let accountsClient: {
+    createAccount: jest.Mock;
+    getAccount: jest.Mock;
+    linkAccount: jest.Mock;
   };
   let redactingLogger: {
     log: jest.Mock;
@@ -67,6 +73,11 @@ describe('AuthService access token contract', () => {
       createRefreshToken: jest.fn(),
       verifyAndConsumeRefreshToken: jest.fn(),
     };
+    accountsClient = {
+      createAccount: jest.fn(),
+      getAccount: jest.fn(),
+      linkAccount: jest.fn(),
+    };
     redactingLogger = {
       log: jest.fn(),
       warn: jest.fn(),
@@ -78,6 +89,7 @@ describe('AuthService access token contract', () => {
       usersRepository as unknown as UsersRepository,
       credentialsService as unknown as CredentialsService,
       refreshTokensService as unknown as RefreshTokensService,
+      accountsClient as unknown as AccountsClient,
       jwtService as never,
       redactingLogger as unknown as RedactingLogger,
     );
@@ -112,7 +124,6 @@ describe('AuthService access token contract', () => {
       issuer: jwtIssuer,
     }) as {
       sub: string;
-      accountId: number;
       roles: string[];
       iat: number;
       exp: number;
@@ -122,7 +133,6 @@ describe('AuthService access token contract', () => {
 
     expect(response.expiresIn).toBe(900);
     expect(claims.sub).toBe('8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f');
-    expect(claims.accountId).toBe(1);
     expect(claims.roles).toEqual(['CUSTOMER']);
     expect(claims.iat).toBe(fixedEpochSeconds);
     expect(claims.exp).toBe(fixedEpochSeconds + 900);
@@ -155,7 +165,6 @@ describe('AuthService access token contract', () => {
 
     expect(Object.keys(claims).sort()).toEqual([
       'sub',
-      'accountId',
       'roles',
       'iat',
       'exp',

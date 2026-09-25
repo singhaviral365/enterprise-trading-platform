@@ -18,7 +18,9 @@ export class DatabaseInitService implements OnModuleInit {
       // After TypeORM synchronize, ensure users_user_id_seq starts from 1000
       await this.resetUserIdSequence();
     } catch (error) {
-      this.logger.error('Failed to initialize database', error as Error);
+      this.logger.error('DatabaseInitService', 'Failed to initialize database', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Don't throw - let the app continue even if this fails
     }
   }
@@ -32,10 +34,17 @@ export class DatabaseInitService implements OnModuleInit {
       await queryRunner.query(
         'SELECT setval(\'users_user_id_seq\', 1000, false)',
       );
-      this.logger.log('Database: users_user_id_seq reset to START 1000');
+      this.logger.log(
+        'DatabaseInitService',
+        'Database: users_user_id_seq reset to START 1000',
+      );
     } catch (error) {
       this.logger.warn(
+        'DatabaseInitService',
         'Database: Could not reset user_id sequence (may already be set)',
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
       );
     } finally {
       await queryRunner.release();

@@ -36,8 +36,7 @@ describe('JwtAuthGuard', () => {
     const now = Math.floor(Date.now() / 1000);
     return jsonwebtoken.sign(
       {
-        sub: '8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f',
-        accountId: 1,
+        sub: '1000',
         roles: ['CUSTOMER'],
         iat: options?.iat ?? now,
         exp: options?.exp ?? now + 900,
@@ -60,8 +59,7 @@ describe('JwtAuthGuard', () => {
 
     expect(result).toBe(true);
     expect(request.user).toEqual({
-      userId: '8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f',
-      accountId: 1,
+      userId: 1000,
       roles: ['CUSTOMER'],
       iat: expect.any(Number),
       exp: expect.any(Number),

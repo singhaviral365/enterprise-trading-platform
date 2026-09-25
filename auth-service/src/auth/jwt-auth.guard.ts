@@ -9,8 +9,7 @@ import { UnauthorisedException } from '../common/exceptions';
 const DEFAULT_JWT_ISSUER = 'auth-service';
 
 type AccessTokenClaims = {
-  sub: string;
-  accountId: number;
+  sub: string | number;
   roles: string[];
   iat: number;
   exp: number;
@@ -19,7 +18,6 @@ type AccessTokenClaims = {
 
 export type AuthenticatedUser = {
   userId: number;
-  accountId: number;
   roles: string[];
   iat: number;
   exp: number;
@@ -42,8 +40,7 @@ export class JwtAuthGuard implements CanActivate {
 
   protected buildAuthenticatedUser(payload: AccessTokenClaims): AuthenticatedUser {
     return {
-      userId: parseInt(payload.sub, 10),
-      accountId: payload.accountId,
+      userId: Number(payload.sub),
       roles: payload.roles,
       iat: payload.iat,
       exp: payload.exp,
@@ -84,16 +81,17 @@ export class JwtAuthGuard implements CanActivate {
 
     const claims = payload as {
       sub?: unknown;
-      accountId?: unknown;
       roles?: unknown;
       iat?: unknown;
       exp?: unknown;
       iss?: unknown;
     };
+    const parsedUserId = Number(claims.sub);
     const roles = claims.roles;
     if (
-      typeof claims.sub !== 'string' ||
-      !Number.isInteger(claims.accountId) ||
+      (typeof claims.sub !== 'string' && typeof claims.sub !== 'number') ||
+      !Number.isInteger(parsedUserId) ||
+      parsedUserId < 1 ||
       !Array.isArray(roles) ||
       roles.length === 0 ||
       !roles.every((role) => typeof role === 'string') ||
