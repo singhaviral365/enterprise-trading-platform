@@ -6,9 +6,11 @@ import { PassportModule } from '@nestjs/passport';
 import { configuration } from './config/configuration';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
+import { AccountsModule } from './accounts/accounts.module';
 import { User } from './users/user.entity';
 import { RefreshToken } from './refresh-tokens/refresh-token.entity';
 import { RedactingLogger } from './common/logging/redacting.logger';
+import { DatabaseInitService } from './database/database-init.service';
 
 @Module({
   imports: [
@@ -48,10 +50,13 @@ import { RedactingLogger } from './common/logging/redacting.logger';
     // Passport module for authentication strategies
     PassportModule.register({ defaultStrategy: 'jwt' }),
 
+    // Accounts module for trade-api integration
+    AccountsModule,
+
     // Auth module with all endpoints
     AuthModule,
   ],
   controllers: [HealthController],
-  providers: [RedactingLogger],
+  providers: [RedactingLogger, DatabaseInitService],
 })
 export class AppModule {}

@@ -12,6 +12,7 @@ import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService, RefreshTokensRepository } from '../refresh-tokens/refresh-tokens.service';
 import { RedactingLogger } from '../common/logging/redacting.logger';
+import { AccountsModule } from '../accounts/accounts.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
       },
     }),
     PassportModule,
+    AccountsModule,
   ],
   controllers: [AuthController],
   providers: [

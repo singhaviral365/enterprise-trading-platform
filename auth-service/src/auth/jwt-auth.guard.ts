@@ -18,7 +18,7 @@ type AccessTokenClaims = {
 };
 
 export type AuthenticatedUser = {
-  userId: string;
+  userId: number;
   accountId: number;
   roles: string[];
   iat: number;
@@ -42,7 +42,7 @@ export class JwtAuthGuard implements CanActivate {
 
   protected buildAuthenticatedUser(payload: AccessTokenClaims): AuthenticatedUser {
     return {
-      userId: payload.sub,
+      userId: parseInt(payload.sub, 10),
       accountId: payload.accountId,
       roles: payload.roles,
       iat: payload.iat,

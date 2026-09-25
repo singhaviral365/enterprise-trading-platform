@@ -7,6 +7,8 @@ import {
   IsOptional,
   ArrayMinSize,
   IsEnum,
+  IsNumber,
+  Min,
 } from 'class-validator';
 
 /**
@@ -59,11 +61,46 @@ export class RefreshTokenDto {
  * User response DTO
  */
 export class UserResponseDto {
-  id!: string;
+  id!: number;
   username!: string;
-  accountId?: number | null;
   roles!: string[];
   createdOn!: Date;
+}
+
+/**
+ * Setup profile request DTO - Link or create account
+ */
+export class SetupProfileDto {
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  client_name!: string;
+
+  @IsString()
+  @Matches(/^\+?[0-9\s\-\(\)]{10,}$/, {
+    message: 'Phone number must be valid format',
+  })
+  phone_no!: string;
+
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Date of birth must be YYYY-MM-DD format',
+  })
+  dob?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  accountId?: number;
+}
+
+/**
+ * Setup profile response DTO
+ */
+export class SetupProfileResponseDto {
+  accountId!: number;
+  status!: string;
+  message!: string;
 }
 
 /**

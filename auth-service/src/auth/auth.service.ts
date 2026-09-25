@@ -3,12 +3,13 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
+import { AccountsClient } from '../accounts/accounts.client';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import {
   UnauthorisedException,
   RegistrationFailedException,
 } from '../common/exceptions';
-import { UserResponseDto, TokenResponseDto } from './dto';
+import { UserResponseDto, TokenResponseDto, SetupProfileDto } from './dto';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const DEFAULT_JWT_ISSUER = 'auth-service';
@@ -27,13 +28,13 @@ export class AuthService {
     private readonly usersRepository: UsersRepository,
     private readonly credentialsService: CredentialsService,
     private readonly refreshTokensService: RefreshTokensService,
+    private readonly accountsClient: AccountsClient,
     private readonly jwtService: JwtService,
     private readonly redactingLogger: RedactingLogger,
   ) {}
 
   private buildAccessToken(user: {
-    id: string;
-    account_id: number | null;
+    id: number;
     roles: string[];
   }): string {
     const iat = Math.floor(Date.now() / 1000);
@@ -48,11 +49,6 @@ export class AuthService {
       roles,
       iat,
     };
-
-    // Include accountId only if it's set
-    if (user.account_id !== null && user.account_id !== undefined) {
-      tokenPayload.accountId = Number(user.account_id);
-    }
 
     return this.jwtService.sign(
       tokenPayload,
@@ -97,11 +93,10 @@ export class AuthService {
     const passwordHash = await this.credentialsService.hashPassword(password);
     this.redactingLogger.debug('AuthService', 'Password hashed successfully');
 
-    // Create user with default CUSTOMER role (account_id will be set later via profile setup)
+    // Create user with default CUSTOMER role
     const user = await this.usersService.createUser(
       username,
       passwordHash,
-      null,  // account_id is null initially, will be linked during profile setup
       ['CUSTOMER'],
     );
 
@@ -213,12 +208,98 @@ export class AuthService {
    * GetUser: Return the authenticated user profile.
    * Called after JWT validation by the JwtGuard.
    */
-  async getUser(userId: string): Promise<UserResponseDto> {
+  async getUser(userId: number): Promise<UserResponseDto> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.userToResponseDto(user);
+  }
+
+  /**
+   * Setup Profile: Link or create account for authenticated user.
+   * Called via PUT /auth/me/profile after user registers.
+   *
+   * Two options:
+   * 1. Create new account: Send client_name, phone_no, dob
+   *    - Calls trade-api POST /api/accounts/create
+   *    - Trade-api links account to user_id
+   * 2. Link existing account: Send client_name, phone_no, accountId
+   *    - Calls trade-api GET /api/accounts/{id} to verify
+   *    - Calls trade-api POST /api/accounts/link to link user_id to account
+   */
+  async setupProfile(
+    userId: number,
+    setupProfileDto: SetupProfileDto,
+  ): Promise<UserResponseDto> {
+    this.redactingLogger.log(
+      'AuthService',
+      'Setup profile request',
+      { userId, hasAccountId: !!setupProfileDto.accountId },
+    );
+
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+
+    try {
+      if (setupProfileDto.accountId) {
+        // Option 2: Link existing account
+        this.redactingLogger.log(
+          'AuthService',
+          'Linking existing account',
+          { userId, accountId: setupProfileDto.accountId },
+        );
+
+        // Verify account exists in trade-api
+        await this.accountsClient.getAccount(setupProfileDto.accountId);
+
+        // Link account to user
+        await this.accountsClient.linkAccount(
+          userId,
+          setupProfileDto.accountId,
+        );
+
+        this.redactingLogger.log(
+          'AuthService',
+          'Account linked successfully',
+          { userId, accountId: setupProfileDto.accountId },
+        );
+      } else {
+        // Option 1: Create new account
+        this.redactingLogger.log(
+          'AuthService',
+          'Creating new account',
+          { userId },
+        );
+
+        const accountResponse = await this.accountsClient.createAccount(userId, {
+          client_name: setupProfileDto.client_name,
+          phone_no: setupProfileDto.phone_no,
+          email: user.email,
+          dob: setupProfileDto.dob,
+        });
+
+        this.redactingLogger.log(
+          'AuthService',
+          'Account created successfully',
+          { userId, accountId: accountResponse.accountId },
+        );
+      }
+
+      return this.userToResponseDto(user);
+    } catch (error) {
+      this.redactingLogger.error(
+        'AuthService',
+        'Setup profile failed',
+        {
+          userId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      );
+      throw new UnauthorisedException('Unauthorised');
+    }
   }
 
   /**
@@ -228,7 +309,6 @@ export class AuthService {
     return {
       id: user.id,
       username: user.username,
-      accountId: user.account_id,
       roles: user.roles,
       createdOn: user.created_on,
     };

@@ -1,6 +1,6 @@
 import {
   Entity,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
   UpdateDateColumn,
@@ -10,10 +10,9 @@ import {
 @Entity('users')
 @Index('idx_users_username', ['username'], { unique: true })
 @Index('idx_users_email', ['email'], { unique: true })
-@Index('idx_users_account_id', ['account_id'])
 export class User {
-  @PrimaryColumn('uuid', { default: () => 'gen_random_uuid()' })
-  id!: string;
+  @PrimaryGeneratedColumn({ type: 'bigint', name: 'user_id' })
+  id!: number;
 
   @Column('varchar', { length: 64, unique: true })
   username!: string;
@@ -24,20 +23,8 @@ export class User {
   @Column('varchar', { length: 255 })
   password_hash!: string;
 
-  @Column('bigint', { nullable: true })
-  account_id!: number | null;
-
   @Column('text', { array: true, default: () => `'{CUSTOMER}'` })
   roles!: string[];
-
-  @Column('varchar', { length: 255, nullable: true })
-  client_name!: string | null;
-
-  @Column('varchar', { length: 20, nullable: true })
-  phone_no!: string | null;
-
-  @Column('date', { nullable: true })
-  dob!: Date | null;
 
   @CreateDateColumn()
   created_on!: Date;

@@ -16,8 +16,8 @@ export class RefreshToken {
   @PrimaryColumn('uuid', { default: () => 'gen_random_uuid()' })
   id!: string;
 
-  @Column('uuid')
-  user_id!: string;
+  @Column('bigint', { name: 'user_id' })
+  user_id!: number;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })

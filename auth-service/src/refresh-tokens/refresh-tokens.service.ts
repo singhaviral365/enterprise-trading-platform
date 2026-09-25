@@ -43,7 +43,7 @@ export class RefreshTokensRepository {
   /**
    * Revoke all refresh tokens for a user (for theft detection).
    */
-  async revokeAllForUser(userId: string): Promise<void> {
+  async revokeAllForUser(userId: number): Promise<void> {
     await this.refreshTokenRepository.update(
       { user_id: userId },
       { revoked_at: new Date() },
@@ -82,7 +82,7 @@ export class RefreshTokensService {
    * Create a new refresh token for a user.
    */
   async createRefreshToken(
-    userId: string,
+    userId: number,
     expiresIn: number,
   ): Promise<{ token: string; expiresAt: Date }> {
     const { token, hash } = this.generateToken();
@@ -103,7 +103,7 @@ export class RefreshTokensService {
    * Returns the user ID if valid, null if invalid/revoked/expired.
    * On valid consumption, revokes the old token.
    */
-  async verifyAndConsumeRefreshToken(token: string): Promise<string | null> {
+  async verifyAndConsumeRefreshToken(token: string): Promise<number | null> {
     const hash = crypto.createHash('sha256').update(token).digest('hex');
     const refreshToken = await this.refreshTokensRepository.findByHash(hash);
 
@@ -125,7 +125,7 @@ export class RefreshTokensService {
   /**
    * Detect token theft: if a consumed token is presented again, revoke entire chain.
    */
-  async detectTheftAndRevoke(userId: string): Promise<void> {
+  async detectTheftAndRevoke(userId: number): Promise<void> {
     // Revoke all active refresh tokens for this user
     await this.refreshTokensRepository.revokeAllForUser(userId);
     this.logger.warn(`Token theft detected for user ${userId}, revoked all tokens`);

@@ -30,20 +30,13 @@ export class UsersRepository {
   /**
    * Find user by id.
    */
-  async findById(id: string): Promise<User | null> {
+  async findById(id: number): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
     });
   }
 
-  /**
-   * Find user by account_id.
-   */
-  async findByAccountId(accountId: number): Promise<User | null> {
-    return this.userRepository.findOne({
-      where: { account_id: accountId },
-    });
-  }
+
 
   /**
    * Check if username already exists.
@@ -62,12 +55,10 @@ export class UsersService {
 
   /**
    * Create a new user.
-   * account_id is optional - will be linked later via profile setup
    */
   async createUser(
     username: string,
     passwordHash: string,
-    accountId: number | null,
     roles: string[] = ['CUSTOMER'],
   ): Promise<User> {
     // Auto-generate email from username (required for NOT NULL constraint)
@@ -77,7 +68,6 @@ export class UsersService {
       username,
       email,
       password_hash: passwordHash,
-      account_id: accountId,
       roles,
     });
   }
@@ -92,7 +82,7 @@ export class UsersService {
   /**
    * Find user by id.
    */
-  async getUserById(id: string): Promise<User | null> {
+  async getUserById(id: number): Promise<User | null> {
     return this.usersRepository.findById(id);
   }
 

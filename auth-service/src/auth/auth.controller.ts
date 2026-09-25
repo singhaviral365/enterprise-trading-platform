@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Body,
   UseGuards,
   HttpCode,
@@ -14,6 +15,7 @@ import {
   RefreshTokenDto,
   UserResponseDto,
   TokenResponseDto,
+  SetupProfileDto,
 } from './dto';
 import { UnauthorisedException } from '../common/exceptions';
 import { JwtAuthGuard, AuthenticatedUser } from './jwt-auth.guard';
@@ -108,5 +110,29 @@ export class AuthController {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.authService.getUser(user.userId);
+  }
+
+  /**
+   * PUT /auth/me/profile
+   * Protected endpoint: Setup user profile and link/create account
+   * Requires valid JWT in Authorization header
+   *
+   * Request: SetupProfileDto (client_name, phone_no, dob, optional accountId)
+   * Response (200): UserResponseDto
+   * Errors:
+   *   401: AUTH-401 - No token, invalid token, or account doesn't exist
+   *   422: VAL-422 - Validation failed
+   */
+  @Put('me/profile')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async setupProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() setupProfileDto: SetupProfileDto,
+  ): Promise<UserResponseDto> {
+    if (!user || !user.userId) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+    return this.authService.setupProfile(user.userId, setupProfileDto);
   }
 }
