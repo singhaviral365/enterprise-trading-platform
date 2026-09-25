@@ -9,12 +9,12 @@ This guide verifies the full flow now that both sides exist:
 ## Code Map
 
 - Producer entry path in backend: [OrderEventProducer.java](../backend/src/main/java/org/example/backend/events/OrderEventProducer.java)
-- After-commit publish behavior in backend: [backend/src/main/java/org/example/backend/events/OrderPlacedAfterCommitListener.java](../backend/src/main/java/org/example/backend/events/OrderPlacedAfterCommitListener.java)
-- Consumer entry path in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java](../trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java)
-- Consumer config in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java](../trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java)
-- trade_executor result producer: [trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java)
-- trade_executor market poller: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java)
-- trade_executor market-data producer: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java)
+- After-commit publish behavior in backend: [OrderPlacedAfterCommitListener.java](../backend/src/main/java/org/example/backend/events/OrderPlacedAfterCommitListener.java)
+- Consumer entry path in trade_executor: [OrderPlacedConsumer.java](../trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java)
+- Consumer config in trade_executor: [KafkaConsumerConfiguration.java](../trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java)
+- trade_executor result producer: [TradeEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java)
+- trade_executor market poller: [MarketDataPoller.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java)
+- trade_executor market-data producer: [MarketDataEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java)
 
 ## Your Topology
 
