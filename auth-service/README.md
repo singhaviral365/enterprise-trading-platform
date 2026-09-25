@@ -127,6 +127,13 @@ See [contracts/auth-api.yaml](../contracts/auth-api.yaml) for the complete API s
 6. **Logging**: Passwords and tokens never logged
 7. **Validation**: All inputs validated using `class-validator`
 
+### Login Throttle Policy
+
+- Failed-attempt limit per caller: `5` consecutive failures
+- Cooldown after hitting limit: `300` seconds (5 minutes)
+- Caller identity source: `x-forwarded-for` first IP, fallback to request IP
+- Failure response during cooldown: unchanged `AUTH-401` with `Unauthorised`
+
 ## Database Initialization
 
 The application uses TypeORM for database management. On first run:
