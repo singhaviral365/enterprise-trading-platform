@@ -3,13 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
-import { AccountsClient } from '../accounts/accounts.client';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import {
   UnauthorisedException,
   RegistrationFailedException,
 } from '../common/exceptions';
-import { UserResponseDto, TokenResponseDto, SetupProfileDto } from './dto';
+import { UserResponseDto, TokenResponseDto } from './dto';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const DEFAULT_JWT_ISSUER = 'auth-service';
@@ -28,7 +27,6 @@ export class AuthService {
     private readonly usersRepository: UsersRepository,
     private readonly credentialsService: CredentialsService,
     private readonly refreshTokensService: RefreshTokensService,
-    private readonly accountsClient: AccountsClient,
     private readonly jwtService: JwtService,
     private readonly redactingLogger: RedactingLogger,
   ) {}
@@ -63,9 +61,7 @@ export class AuthService {
   /**
    * Register: Create a new user.
    * - Does NOT issue tokens
-   * - Does NOT create trading account
-   * - User initially has no account_id (null)
-   * - Account setup happens post-registration via PUT /auth/me/profile
+    * - Does NOT create trading account
    * - Uses Argon2id password hashing (never plaintext, never MD5/SHA)
    */
   async register(
@@ -214,92 +210,6 @@ export class AuthService {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.userToResponseDto(user);
-  }
-
-  /**
-   * Setup Profile: Link or create account for authenticated user.
-   * Called via PUT /auth/me/profile after user registers.
-   *
-   * Two options:
-   * 1. Create new account: Send client_name, phone_no, dob
-   *    - Calls trade-api POST /api/accounts/create
-   *    - Trade-api links account to user_id
-   * 2. Link existing account: Send client_name, phone_no, accountId
-   *    - Calls trade-api GET /api/accounts/{id} to verify
-   *    - Calls trade-api POST /api/accounts/link to link user_id to account
-   */
-  async setupProfile(
-    userId: number,
-    setupProfileDto: SetupProfileDto,
-  ): Promise<UserResponseDto> {
-    this.redactingLogger.log(
-      'AuthService',
-      'Setup profile request',
-      { userId, hasAccountId: !!setupProfileDto.accountId },
-    );
-
-    const user = await this.usersRepository.findById(userId);
-    if (!user) {
-      throw new UnauthorisedException('Unauthorised');
-    }
-
-    try {
-      if (setupProfileDto.accountId) {
-        // Option 2: Link existing account
-        this.redactingLogger.log(
-          'AuthService',
-          'Linking existing account',
-          { userId, accountId: setupProfileDto.accountId },
-        );
-
-        // Verify account exists in trade-api
-        await this.accountsClient.getAccount(setupProfileDto.accountId);
-
-        // Link account to user
-        await this.accountsClient.linkAccount(
-          userId,
-          setupProfileDto.accountId,
-        );
-
-        this.redactingLogger.log(
-          'AuthService',
-          'Account linked successfully',
-          { userId, accountId: setupProfileDto.accountId },
-        );
-      } else {
-        // Option 1: Create new account
-        this.redactingLogger.log(
-          'AuthService',
-          'Creating new account',
-          { userId },
-        );
-
-        const accountResponse = await this.accountsClient.createAccount(userId, {
-          client_name: setupProfileDto.client_name,
-          phone_no: setupProfileDto.phone_no,
-          email: user.email,
-          dob: setupProfileDto.dob,
-        });
-
-        this.redactingLogger.log(
-          'AuthService',
-          'Account created successfully',
-          { userId, accountId: accountResponse.accountId },
-        );
-      }
-
-      return this.userToResponseDto(user);
-    } catch (error) {
-      this.redactingLogger.error(
-        'AuthService',
-        'Setup profile failed',
-        {
-          userId,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        },
-      );
-      throw new UnauthorisedException('Unauthorised');
-    }
   }
 
   /**

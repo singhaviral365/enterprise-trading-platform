@@ -2,12 +2,21 @@ import {
   Controller,
   Post,
   Get,
-  Put,
   Body,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import {
   RegisterDto,
@@ -15,7 +24,7 @@ import {
   RefreshTokenDto,
   UserResponseDto,
   TokenResponseDto,
-  SetupProfileDto,
+  ErrorResponseDto,
 } from './dto';
 import { UnauthorisedException } from '../common/exceptions';
 import { JwtAuthGuard, AuthenticatedUser } from './jwt-auth.guard';
@@ -24,6 +33,7 @@ import { CurrentUser } from './current-user.decorator';
 /**
  * Auth controller implementing contracts/auth-api.yaml
  */
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -40,21 +50,17 @@ export class AuthController {
    */
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a user' })
+  @ApiCreatedResponse({ type: UserResponseDto })
+  @ApiConflictResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   async register(
     @Body() registerDto: RegisterDto,
   ): Promise<UserResponseDto> {
-    try {
-      return await this.authService.register(
-        registerDto.username,
-        registerDto.password,
-      );
-    } catch (error) {
-      // Validation errors are handled by ValidationPipe and converted by global exception filter
-      if (error.getStatus && error.getStatus() === 409) {
-        throw error;
-      }
-      throw error;
-    }
+    return this.authService.register(
+      registerDto.username,
+      registerDto.password,
+    );
   }
 
   /**
@@ -69,6 +75,10 @@ export class AuthController {
    */
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Log in and receive tokens' })
+  @ApiOkResponse({ type: TokenResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
     return this.authService.login(loginDto.username, loginDto.password);
   }
@@ -85,6 +95,10 @@ export class AuthController {
    */
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Exchange a refresh token for a new token pair' })
+  @ApiOkResponse({ type: TokenResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
+  @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
   ): Promise<TokenResponseDto> {
@@ -103,6 +117,10 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get the authenticated user' })
+  @ApiBearerAuth('bearer')
+  @ApiOkResponse({ type: UserResponseDto })
+  @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   async getCurrentUser(
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<UserResponseDto> {
@@ -110,29 +128,5 @@ export class AuthController {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.authService.getUser(user.userId);
-  }
-
-  /**
-   * PUT /auth/me/profile
-   * Protected endpoint: Setup user profile and link/create account
-   * Requires valid JWT in Authorization header
-   *
-   * Request: SetupProfileDto (client_name, phone_no, dob, optional accountId)
-   * Response (200): UserResponseDto
-   * Errors:
-   *   401: AUTH-401 - No token, invalid token, or account doesn't exist
-   *   422: VAL-422 - Validation failed
-   */
-  @Put('me/profile')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  async setupProfile(
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() setupProfileDto: SetupProfileDto,
-  ): Promise<UserResponseDto> {
-    if (!user || !user.userId) {
-      throw new UnauthorisedException('Unauthorised');
-    }
-    return this.authService.setupProfile(user.userId, setupProfileDto);
   }
 }

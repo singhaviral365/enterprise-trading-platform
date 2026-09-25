@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AuthModule } from './auth/auth.module';
 import { configuration } from './config/configuration';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
@@ -10,6 +12,31 @@ async function bootstrap() {
   const config = configuration();
 
   const app = await NestFactory.create(AppModule);
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Auth service')
+    .setDescription(
+      'Registration, login, token refresh and current-user lookup for the Enterprise Trading Platform.',
+    )
+    .setVersion('1.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'An access token issued by /auth/login or /auth/refresh.',
+      },
+      'bearer',
+    )
+    .build();
+
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {
+    include: [AuthModule],
+  });
+
+  SwaggerModule.setup('api-docs', app, swaggerDocument, {
+    jsonDocumentUrl: 'api-docs-json',
+  });
 
   // Global exception filter (converts all exceptions to error envelope)
   app.useGlobalFilters(new GlobalExceptionFilter());

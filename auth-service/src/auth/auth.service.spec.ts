@@ -3,7 +3,6 @@ import { AuthService } from './auth.service';
 import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
-import { AccountsClient } from '../accounts/accounts.client';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import { UnauthorisedException } from '../common/exceptions';
 
@@ -35,11 +34,6 @@ describe('AuthService access token contract', () => {
   let refreshTokensService: {
     createRefreshToken: jest.Mock;
     verifyAndConsumeRefreshToken: jest.Mock;
-  };
-  let accountsClient: {
-    createAccount: jest.Mock;
-    getAccount: jest.Mock;
-    linkAccount: jest.Mock;
   };
   let redactingLogger: {
     log: jest.Mock;
@@ -73,11 +67,6 @@ describe('AuthService access token contract', () => {
       createRefreshToken: jest.fn(),
       verifyAndConsumeRefreshToken: jest.fn(),
     };
-    accountsClient = {
-      createAccount: jest.fn(),
-      getAccount: jest.fn(),
-      linkAccount: jest.fn(),
-    };
     redactingLogger = {
       log: jest.fn(),
       warn: jest.fn(),
@@ -89,7 +78,6 @@ describe('AuthService access token contract', () => {
       usersRepository as unknown as UsersRepository,
       credentialsService as unknown as CredentialsService,
       refreshTokensService as unknown as RefreshTokensService,
-      accountsClient as unknown as AccountsClient,
       jwtService as never,
       redactingLogger as unknown as RedactingLogger,
     );
