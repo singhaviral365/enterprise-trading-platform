@@ -18,6 +18,22 @@ public interface AccountMapper {
 
     int insertAccount(@Param("account") Account account);
 
+    long nextAccountId();
+
+    Integer selectAnyAdvisorId();
+
+    int upsertAuthClient(
+            @Param("clientId") int clientId,
+            @Param("clientName") String clientName,
+            @Param("email") String email,
+            @Param("phoneNo") String phoneNo,
+            @Param("dob") LocalDate dob,
+            @Param("advisorId") int advisorId);
+
+    int updateAccountClientId(
+            @Param("accountId") int accountId,
+            @Param("clientId") int clientId);
+
     Optional<Account> selectAccountById(
             @Param("accountId") int accountId);
 

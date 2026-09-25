@@ -23,6 +23,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -55,7 +56,7 @@ class TradeControllerReadEndpointsTest {
                         OffsetDateTime.parse("2026-09-10T09:14:22Z")));
 
         mockMvc.perform(get("/api/v1/accounts/1")
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.accountId").value("ACC-000001"))
@@ -75,7 +76,7 @@ class TradeControllerReadEndpointsTest {
                         OffsetDateTime.parse("2026-09-10T09:14:22Z")));
 
         mockMvc.perform(get("/api/v1/accounts/1/balance")
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountId").value(1))
                 .andExpect(jsonPath("$.cashBalance").value(24500.75))
@@ -90,7 +91,7 @@ class TradeControllerReadEndpointsTest {
                         new PositionResponse(1L, "INFY.NS", 40, new BigDecimal("1580.25"))));
 
         mockMvc.perform(get("/api/v1/accounts/1/positions")
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].accountId").value(1))
                 .andExpect(jsonPath("$[0].symbol").value("ACME"))
@@ -117,7 +118,7 @@ class TradeControllerReadEndpointsTest {
                                 OffsetDateTime.parse("2026-09-10T09:14:22Z"))));
 
         mockMvc.perform(get("/api/v1/accounts/1/orders")
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 1L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].orderId").value("1"))
                 .andExpect(jsonPath("$[0].accountId").value(1))
@@ -134,7 +135,7 @@ class TradeControllerReadEndpointsTest {
                 .thenThrow(new AccountNotFoundException(999L));
 
         mockMvc.perform(get("/api/v1/accounts/999")
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 999L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 999L))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("ACC-404"))
                 .andExpect(jsonPath("$.message").value("Account not found"));
@@ -148,8 +149,12 @@ class TradeControllerReadEndpointsTest {
             "/api/v1/accounts/1/orders"
     })
     void tokenForDifferentAccountReturnsAcc403(String path) throws Exception {
+        doThrow(new org.example.backend.exceptions.AccountNotActiveException(1L, AccountStatus.ACTIVE))
+                .when(tradeService)
+                .assertUserCanAccessAccount(2L, 1L);
+
         mockMvc.perform(get(path)
-                        .requestAttr(AuthContext.ACCOUNT_ID_ATTRIBUTE, 2L))
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 2L))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value("ACC-403"))
                 .andExpect(jsonPath("$.message").value("Account not active"));

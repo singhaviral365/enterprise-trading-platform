@@ -9,22 +9,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class JwtConfigurationTest {
 
     private static final String VALID_SECRET = "this-is-a-very-long-secret-key-for-testing-hs256-with-enough-length-for-security";
+    private static final String VALID_ISSUER = "auth-service";
 
     @Test
     void acceptsValidSecret() {
-        assertDoesNotThrow(() -> new JwtConfiguration(VALID_SECRET));
+        assertDoesNotThrow(() -> new JwtConfiguration(VALID_SECRET, VALID_ISSUER));
     }
 
     @Test
     void trimsAndUnquotesSecret() {
-        assertDoesNotThrow(() -> new JwtConfiguration("  \"" + VALID_SECRET + "\"  "));
+        assertDoesNotThrow(() -> new JwtConfiguration("  \"" + VALID_SECRET + "\"  ", VALID_ISSUER));
     }
 
     @Test
     void rejectsTooShortSecretWithHelpfulMessage() {
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtConfiguration("short-secret-value")
+                () -> new JwtConfiguration("short-secret-value", VALID_ISSUER)
         );
 
         assertTrue(exception.getMessage().contains("JWT_SECRET must be at least 32 bytes"));
@@ -34,7 +35,7 @@ class JwtConfigurationTest {
     void rejectsBlankSecret() {
         IllegalStateException exception = assertThrows(
                 IllegalStateException.class,
-                () -> new JwtConfiguration("   ")
+                () -> new JwtConfiguration("   ", VALID_ISSUER)
         );
 
         assertTrue(exception.getMessage().contains("JWT_SECRET is empty"));

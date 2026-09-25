@@ -1,7 +1,11 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.AccountResponse;
+import org.example.backend.dto.AuthAccountResponse;
 import org.example.backend.dto.BalanceResponse;
+import org.example.backend.dto.CreateAccountRequest;
+import org.example.backend.dto.CreateAccountResult;
+import org.example.backend.dto.LinkAccountRequest;
 import org.example.backend.dto.OrderHistoryEntry;
 import org.example.backend.dto.OrderResponse;
 import org.example.backend.dto.PositionResponse;
@@ -33,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -495,5 +500,118 @@ public class TradeService {
                 status,
                 from,
                 to);
+    }
+
+    public void assertUserCanAccessAccount(
+            long userId,
+            long accountId) {
+        Account account = accountMapper
+                .selectAccountById(Math.toIntExact(accountId))
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        if (account.getClientId() != Math.toIntExact(userId)) {
+            throw new AccountNotActiveException(
+                    accountId,
+                    AccountStatus.ACTIVE);
+        }
+    }
+
+    @Transactional
+    public OrderResponse cancelOrderForUser(
+            long orderId,
+            long userId) {
+
+        Order order = orderMapper
+                .selectOrderById(orderId)
+                .orElseThrow(() ->
+                        new OrderNotFoundException(
+                                syntheticOrderUuid(orderId)));
+
+        assertUserCanAccessAccount(userId, order.getAccountId());
+
+        return cancelOrder(orderId, order.getAccountId());
+    }
+
+    @Transactional
+    public CreateAccountResult createAccountForAuth(CreateAccountRequest request) {
+        int userId = Math.toIntExact(request.userId());
+        Integer advisorId = accountMapper.selectAnyAdvisorId();
+
+        if (advisorId == null) {
+            throw new IllegalArgumentException("No advisor is configured for account onboarding");
+        }
+
+        LocalDate dob = request.dob() != null
+                ? request.dob()
+                : LocalDate.now().minusYears(18);
+
+        accountMapper.upsertAuthClient(
+                userId,
+                request.clientName(),
+                request.email(),
+                request.phoneNo(),
+                dob,
+                advisorId);
+
+        int accountId = Math.toIntExact(accountMapper.nextAccountId());
+        String accountNumber = formatAccountNumber(accountId);
+
+        Account account = new Account(
+                accountId,
+                accountNumber,
+                LocalDate.now(),
+                BigDecimal.ZERO,
+                BigDecimal.ZERO,
+                AccountStatus.ACTIVE,
+                "USD",
+                1L,
+                null,
+                null,
+                userId);
+
+        accountMapper.insertAccount(account);
+
+        return new CreateAccountResult(
+                accountId,
+                accountNumber,
+                AccountStatus.ACTIVE.name(),
+                "Account created successfully");
+    }
+
+    public AuthAccountResponse getAccountForAuth(long accountId) {
+        Account account = accountMapper
+                .selectAccountById(Math.toIntExact(accountId))
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        return new AuthAccountResponse(
+                account.getAccountId(),
+                account.getAccountNumber(),
+                account.getAccountStatus(),
+                account.getBalance(),
+                account.getPurchasingPower());
+    }
+
+    @Transactional
+    public void linkAccountForAuth(LinkAccountRequest request) {
+        int accountId = Math.toIntExact(request.accountId());
+        int userId = Math.toIntExact(request.userId());
+
+        Account account = accountMapper
+                .selectAccountById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        if (account.getClientId() == userId) {
+            return;
+        }
+
+        int rows = accountMapper.updateAccountClientId(accountId, userId);
+
+        if (rows == 0) {
+            throw new IllegalArgumentException("Unable to link account");
+        }
+    }
+
+    private static String formatAccountNumber(int accountId) {
+        return "AC" + String.format("%010d", accountId);
     }
 }

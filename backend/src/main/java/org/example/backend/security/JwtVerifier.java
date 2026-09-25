@@ -5,8 +5,8 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.SecurityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,8 +21,7 @@ import javax.crypto.SecretKey;
 public class JwtVerifier {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);
-    private static final String ACCOUNT_ID_CLAIM = "accountId";
-    private static final String ALGORITHM_CLAIM = "alg";
+    private static final String SUBJECT_CLAIM = "sub";
 
     private final JwtConfiguration jwtConfig;
 
@@ -31,14 +30,14 @@ public class JwtVerifier {
     }
 
     /**
-     * Verifies JWT token and extracts account ID.
+     * Verifies JWT token and extracts authenticated user ID.
      * Check order: signature → expiry → algorithm → claims.
      * 
      * @param token the JWT token string
-     * @return the account ID from the token
+     * @return the user ID from the token subject
      * @throws JwtVerificationException if any verification fails
      */
-    public Long verifyAndExtractAccountId(String token) {
+    public Long verifyAndExtractUserId(String token) {
         try {
             return verifyTokenSignature(token);
         } catch (JwtVerificationException e) {
@@ -56,27 +55,20 @@ public class JwtVerifier {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(key)
+                    .requireIssuer(jwtConfig.getIssuer())
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            
-            // Verify algorithm (implicitly checked above, but can add explicit check)
-            String algorithm = claims.get(ALGORITHM_CLAIM, String.class);
-            if (algorithm != null && !algorithm.startsWith("HS")) {
-                logger.error("Unexpected algorithm in token: {}", algorithm);
-                throw new JwtVerificationException("Invalid algorithm");
+
+            Long userId = extractUserId(claims);
+            if (userId == null || userId < 1) {
+                logger.error("Invalid {} in token: {}", SUBJECT_CLAIM, userId);
+                throw new JwtVerificationException("Invalid subject in token");
             }
+
+            return userId;
             
-            // Extract and validate account ID
-            Long accountId = extractAccountId(claims);
-            if (accountId == null || accountId < 1) {
-                logger.error("Invalid accountId in token: {}", accountId);
-                throw new JwtVerificationException("Invalid account ID in token");
-            }
-            
-            return accountId;
-            
-        } catch (SignatureException e) {
+        } catch (SecurityException e) {
             logger.warn("Invalid JWT signature: {}", e.getMessage());
             throw new JwtVerificationException("Invalid signature");
         } catch (ExpiredJwtException e) {
@@ -94,19 +86,23 @@ public class JwtVerifier {
         }
     }
 
-    private Long extractAccountId(Claims claims) {
-        Object rawAccountId = claims.get(ACCOUNT_ID_CLAIM);
-        if (rawAccountId == null) {
+    private Long extractUserId(Claims claims) {
+        Object rawSubject = claims.get(SUBJECT_CLAIM);
+        if (rawSubject == null) {
+            rawSubject = claims.getSubject();
+        }
+
+        if (rawSubject == null) {
             return null;
         }
-        
-        if (rawAccountId instanceof Number num) {
+
+        if (rawSubject instanceof Number num) {
             return num.longValue();
-        } else if (rawAccountId instanceof String str) {
+        } else if (rawSubject instanceof String str) {
             try {
                 return Long.parseLong(str);
             } catch (NumberFormatException e) {
-                logger.error("Invalid accountId format: {}", str);
+                logger.error("Invalid {} format: {}", SUBJECT_CLAIM, str);
                 return null;
             }
         }

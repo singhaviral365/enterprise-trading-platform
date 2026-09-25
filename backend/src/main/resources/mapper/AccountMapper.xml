@@ -72,6 +72,53 @@
         )
     </insert>
 
+    <select id="nextAccountId" resultType="long">
+        SELECT nextval(pg_get_serial_sequence('account', 'account_id'))
+    </select>
+
+    <select id="selectAnyAdvisorId" resultType="int">
+        SELECT advisor_id
+        FROM advisor
+        ORDER BY advisor_id
+        LIMIT 1
+    </select>
+
+    <insert id="upsertAuthClient">
+        INSERT INTO client (
+            client_id,
+            client_name,
+            email,
+            password_hash,
+            phone_no,
+            dob,
+            join_date,
+            risk_profile,
+            advisor_id
+        ) VALUES (
+            #{clientId},
+            #{clientName},
+            #{email},
+            'AUTH_MANAGED',
+            #{phoneNo},
+            #{dob},
+            CURRENT_DATE,
+            'MODERATE',
+            #{advisorId}
+        )
+        ON CONFLICT (client_id)
+        DO UPDATE SET
+            client_name = EXCLUDED.client_name,
+            email = EXCLUDED.email,
+            phone_no = EXCLUDED.phone_no,
+            dob = EXCLUDED.dob
+    </insert>
+
+    <update id="updateAccountClientId">
+        UPDATE account
+        SET client_id = #{clientId}
+        WHERE account_id = #{accountId}
+    </update>
+
     <!-- ===================================================
          SELECT Operations (Single Row)
          =================================================== -->
@@ -140,10 +187,10 @@
             currency,
             version,
             suspended_at,
-            closed_at,
             client_id
-        FROM account
+            user_id
         WHERE client_id = #{clientId}
+        WHERE user_id = #{clientId}
         ORDER BY account_id
     </select>
 
@@ -166,8 +213,8 @@
             currency,
             version,
             suspended_at,
-            closed_at,
             client_id
+            user_id
         FROM account
         WHERE account_status = #{accountStatus}
         ORDER BY account_id
@@ -188,10 +235,10 @@
             currency,
             version,
             suspended_at,
-            closed_at,
             client_id
-        FROM account
+            user_id
         WHERE client_id = #{clientId}
+        WHERE user_id = #{clientId}
           AND account_status = #{accountStatus}
         ORDER BY account_id
     </select>
@@ -210,9 +257,9 @@
             account_status,
             currency,
             version,
-            suspended_at,
-            closed_at,
             client_id
+            closed_at,
+            user_id
         FROM account
         WHERE opening_date BETWEEN #{fromDate} AND #{toDate}
         ORDER BY opening_date DESC, account_id
@@ -349,8 +396,8 @@
             CURRENT_TIMESTAMP AS last_updated
 
         FROM account a
-                 JOIN client c
                       ON c.client_id = a.client_id
+                      ON c.client_id = a.user_id
 
         WHERE a.account_id = #{accountId}
 

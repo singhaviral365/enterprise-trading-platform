@@ -9,9 +9,7 @@ import org.example.backend.dto.OrderHistoryEntry;
 import org.example.backend.dto.OrderResponse;
 import org.example.backend.dto.PlaceOrderRequest;
 import org.example.backend.dto.PositionResponse;
-import org.example.backend.enums.AccountStatus;
 import org.example.backend.enums.OrderStatus;
-import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.security.AuthContext;
 import org.example.backend.service.TradeService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -48,14 +46,12 @@ public class TradeController {
             @Valid @RequestBody PlaceOrderRequest request,
             HttpServletRequest httpServletRequest) {
 
-        long authenticatedAccountId =
-                AuthContext.requiredAccountId(httpServletRequest);
+        long authenticatedUserId =
+                AuthContext.requiredUserId(httpServletRequest);
 
-        if (authenticatedAccountId != request.accountId()) {
-            throw new AccountNotActiveException(
-                    request.accountId(),
-                    AccountStatus.ACTIVE);
-        }
+        tradeService.assertUserCanAccessAccount(
+                authenticatedUserId,
+                request.accountId());
 
         return tradeService.placeOrder(
                 request.accountId(),
@@ -80,12 +76,12 @@ public class TradeController {
             @PathVariable("id") long orderId,
             HttpServletRequest httpServletRequest) {
 
-        long authenticatedAccountId =
-                AuthContext.requiredAccountId(httpServletRequest);
+        long authenticatedUserId =
+                AuthContext.requiredUserId(httpServletRequest);
 
-        return tradeService.cancelOrder(
+        return tradeService.cancelOrderForUser(
                 orderId,
-                authenticatedAccountId);
+                authenticatedUserId);
     }
 
     // =========================================================
@@ -99,7 +95,7 @@ public class TradeController {
             long accountId,
             HttpServletRequest request) {
 
-        assertAccess(accountId, request);
+        assertAccess(accountId, request, tradeService);
 
         return tradeService.getAccount(accountId);
     }
@@ -115,7 +111,7 @@ public class TradeController {
             long accountId,
             HttpServletRequest request) {
 
-        assertAccess(accountId, request);
+        assertAccess(accountId, request, tradeService);
 
         return tradeService.getBalance(accountId);
     }
@@ -131,7 +127,7 @@ public class TradeController {
             long accountId,
             HttpServletRequest request) {
 
-        assertAccess(accountId, request);
+        assertAccess(accountId, request, tradeService);
 
         return tradeService.getPositions(accountId);
     }
@@ -159,7 +155,7 @@ public class TradeController {
 
             HttpServletRequest request) {
 
-        assertAccess(accountId, request);
+        assertAccess(accountId, request, tradeService);
 
         return tradeService.getOrders(
                 accountId,
@@ -174,15 +170,14 @@ public class TradeController {
 
     private static void assertAccess(
             long accountId,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            TradeService tradeService) {
 
-        long authenticatedAccountId =
-                AuthContext.requiredAccountId(request);
+        long authenticatedUserId =
+                AuthContext.requiredUserId(request);
 
-        if (authenticatedAccountId != accountId) {
-            throw new AccountNotActiveException(
-                    accountId,
-                    AccountStatus.ACTIVE);
-        }
+        tradeService.assertUserCanAccessAccount(
+                authenticatedUserId,
+                accountId);
     }
 }

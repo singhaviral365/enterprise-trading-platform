@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class JwtVerifierTest {
 
     private static final String TEST_SECRET = "this-is-a-very-long-secret-key-for-testing-hs256-with-enough-length-for-security";
-    private static final long VALID_ACCOUNT_ID = 123L;
+    private static final long VALID_USER_ID = 123L;
 
     @Mock
     private JwtConfiguration mockConfig;
@@ -39,35 +39,36 @@ class JwtVerifierTest {
     void setUp() {
         signingKey = Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8));
         when(mockConfig.getSigningKey()).thenReturn(signingKey);
+        when(mockConfig.getIssuer()).thenReturn("auth-service");
         verifier = new JwtVerifier(mockConfig);
     }
 
     @Test
-    void testValidTokenExtractsAccountId() {
+    void testValidTokenExtractsUserId() {
         String token = Jwts.builder()
-                .subject("user")
-                .claim("accountId", VALID_ACCOUNT_ID)
+                .subject(String.valueOf(VALID_USER_ID))
+                .issuer("auth-service")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
-        Long accountId = verifier.verifyAndExtractAccountId(token);
-        assertEquals(VALID_ACCOUNT_ID, accountId);
+        Long userId = verifier.verifyAndExtractUserId(token);
+        assertEquals(VALID_USER_ID, userId);
     }
 
     @Test
     void testExpiredTokenThrowsJwtVerificationException() {
         String token = Jwts.builder()
-                .subject("user")
-                .claim("accountId", VALID_ACCOUNT_ID)
+                .subject(String.valueOf(VALID_USER_ID))
+                .issuer("auth-service")
                 .issuedAt(Date.from(Instant.now().minus(2, ChronoUnit.HOURS)))
                 .expiration(Date.from(Instant.now().minus(1, ChronoUnit.HOURS)))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
         assertThrows(JwtVerifier.JwtVerificationException.class,
-                () -> verifier.verifyAndExtractAccountId(token));
+                () -> verifier.verifyAndExtractUserId(token));
     }
 
     @Test
@@ -75,8 +76,8 @@ class JwtVerifierTest {
         // Create token with different key
         SecretKey otherKey = Keys.hmacShaKeyFor("other-secret-key-that-is-also-long-enough-for-hs256-algorithm-testing".getBytes(StandardCharsets.UTF_8));
         String token = Jwts.builder()
-                .subject("user")
-                .claim("accountId", VALID_ACCOUNT_ID)
+                .subject(String.valueOf(VALID_USER_ID))
+                .issuer("auth-service")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                 .signWith(otherKey, SignatureAlgorithm.HS256)
@@ -84,7 +85,7 @@ class JwtVerifierTest {
 
         // Try to verify with different key
         assertThrows(JwtVerifier.JwtVerificationException.class,
-                () -> verifier.verifyAndExtractAccountId(token));
+                () -> verifier.verifyAndExtractUserId(token));
     }
 
     @Test
@@ -92,48 +93,47 @@ class JwtVerifierTest {
         String malformedToken = "not.a.valid.token.structure";
 
         assertThrows(JwtVerifier.JwtVerificationException.class,
-                () -> verifier.verifyAndExtractAccountId(malformedToken));
+                () -> verifier.verifyAndExtractUserId(malformedToken));
     }
 
     @Test
-    void testMissingAccountIdThrowsJwtVerificationException() {
+    void testMissingSubjectThrowsJwtVerificationException() {
         String token = Jwts.builder()
-                .subject("user")
-                // Missing accountId claim
+                .issuer("auth-service")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
         assertThrows(JwtVerifier.JwtVerificationException.class,
-                () -> verifier.verifyAndExtractAccountId(token));
+                () -> verifier.verifyAndExtractUserId(token));
     }
 
     @Test
-    void testInvalidAccountIdThrowsJwtVerificationException() {
+    void testInvalidSubjectThrowsJwtVerificationException() {
         String token = Jwts.builder()
-                .subject("user")
-                .claim("accountId", 0L)  // Invalid: must be >= 1
+                .subject("not-a-number")
+                .issuer("auth-service")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
         assertThrows(JwtVerifier.JwtVerificationException.class,
-                () -> verifier.verifyAndExtractAccountId(token));
+                () -> verifier.verifyAndExtractUserId(token));
     }
 
     @Test
-    void testAccountIdAsStringIsExtractedCorrectly() {
+    void testIssuerMismatchThrowsJwtVerificationException() {
         String token = Jwts.builder()
-                .subject("user")
-                .claim("accountId", "456")  // String format
+                .subject("456")
+                .issuer("different-issuer")
                 .issuedAt(Date.from(Instant.now()))
                 .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
 
-        Long accountId = verifier.verifyAndExtractAccountId(token);
-        assertEquals(456L, accountId);
+        assertThrows(JwtVerifier.JwtVerificationException.class,
+                () -> verifier.verifyAndExtractUserId(token));
     }
 }

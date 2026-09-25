@@ -19,13 +19,14 @@ import java.io.IOException;
  * Authenticates all /api/v1/* requests by verifying JWT Bearer token.
  * 
  * Check order: signature → expiry → algorithm (per story requirements).
- * Dev tokens (dev-account-N) are supported for testing.
+ * Dev tokens (dev-user-N / dev-account-N) are supported for testing.
  * All token failures return AUTH-401 (Unauthorised).
  */
 @Component
 public class ApiAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(ApiAuthenticationFilter.class);
+    private static final String DEV_USER_TOKEN_PREFIX = "dev-user-";
     private static final String DEV_TOKEN_PREFIX = "dev-account-";
 
     private final JwtVerifier jwtVerifier;
@@ -62,25 +63,31 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        Long accountId = extractAccountId(token);
-        if (accountId == null || accountId < 1) {
-            logger.warn("Failed to extract valid account ID from token");
+        Long userId = extractUserId(token);
+        if (userId == null || userId < 1) {
+            logger.warn("Failed to extract valid user ID from token");
             reject(response);
             return;
         }
 
-        request.setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, accountId);
+        request.setAttribute(AuthContext.USER_ID_ATTRIBUTE, userId);
+        // Backward-compatible attribute for older tests/utilities.
+        request.setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, userId);
         filterChain.doFilter(request, response);
     }
 
     /**
-     * Extract account ID from token.
+     * Extract user ID from token.
      * Tries dev token format first, then JWT verification.
      */
-    private Long extractAccountId(String token) {
-        // Support dev tokens for testing
+    private Long extractUserId(String token) {
+        if (token.startsWith(DEV_USER_TOKEN_PREFIX)) {
+            return parseDevToken(token, DEV_USER_TOKEN_PREFIX);
+        }
+
+        // Support legacy dev-account-* tokens for compatibility.
         if (token.startsWith(DEV_TOKEN_PREFIX)) {
-            return parseDevToken(token);
+            return parseDevToken(token, DEV_TOKEN_PREFIX);
         }
 
         // Support plain numeric bearer tokens in local stub mode.
@@ -96,16 +103,16 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
 
         // Verify JWT token (signature → expiry → algorithm)
         try {
-            return jwtVerifier.verifyAndExtractAccountId(token);
+            return jwtVerifier.verifyAndExtractUserId(token);
         } catch (JwtVerifier.JwtVerificationException e) {
             // All JWT failures logged by verifier; return null to trigger AUTH-401
             return null;
         }
     }
 
-    private Long parseDevToken(String token) {
+    private Long parseDevToken(String token, String prefix) {
         try {
-            String idStr = token.substring(DEV_TOKEN_PREFIX.length());
+            String idStr = token.substring(prefix.length());
             return Long.parseLong(idStr);
         } catch (NumberFormatException e) {
             logger.warn("Invalid dev token format: {}", token);

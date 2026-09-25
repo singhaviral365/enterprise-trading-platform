@@ -16,8 +16,11 @@ public class JwtConfiguration {
     private static final int MIN_HS256_KEY_BYTES = 32;
 
     private final SecretKey signingKey;
+    private final String issuer;
 
-    public JwtConfiguration(@Value("${jwt.secret}") String secret) {
+    public JwtConfiguration(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.issuer:auth-service}") String issuer) {
         String normalizedSecret = normalize(secret);
         byte[] keyBytes = normalizedSecret.getBytes(StandardCharsets.UTF_8);
 
@@ -29,10 +32,15 @@ public class JwtConfiguration {
         }
 
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+        this.issuer = normalizeIssuer(issuer);
     }
 
     public SecretKey getSigningKey() {
         return signingKey;
+    }
+
+    public String getIssuer() {
+        return issuer;
     }
 
     private static String normalize(String secret) {
@@ -55,5 +63,12 @@ public class JwtConfiguration {
         }
 
         return trimmed;
+    }
+
+    private static String normalizeIssuer(String issuer) {
+        if (issuer == null || issuer.trim().isEmpty()) {
+            throw new IllegalStateException("JWT issuer is not configured.");
+        }
+        return issuer.trim();
     }
 }

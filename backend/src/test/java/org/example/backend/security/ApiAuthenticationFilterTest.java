@@ -97,13 +97,13 @@ class ApiAuthenticationFilterTest {
     }
 
     @Test
-    void testDevTokenExtractsAccountId() throws Exception {
+    void testDevTokenExtractsUserId() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer dev-account-42");
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
-        verify(mockRequest).setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, 42L);
+        verify(mockRequest).setAttribute(AuthContext.USER_ID_ATTRIBUTE, 42L);
         verify(mockFilterChain).doFilter(mockRequest, mockResponse);
     }
 
@@ -119,14 +119,14 @@ class ApiAuthenticationFilterTest {
     }
 
     @Test
-    void testValidJwtTokenExtractsAccountId() throws Exception {
+    void testValidJwtTokenExtractsUserId() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer valid.jwt.token");
-        when(mockVerifier.verifyAndExtractAccountId("valid.jwt.token")).thenReturn(123L);
+        when(mockVerifier.verifyAndExtractUserId("valid.jwt.token")).thenReturn(123L);
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
-        verify(mockRequest).setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, 123L);
+        verify(mockRequest).setAttribute(AuthContext.USER_ID_ATTRIBUTE, 123L);
         verify(mockFilterChain).doFilter(mockRequest, mockResponse);
     }
 
@@ -134,7 +134,7 @@ class ApiAuthenticationFilterTest {
     void testJwtVerificationFailureReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer expired.jwt.token");
-        when(mockVerifier.verifyAndExtractAccountId("expired.jwt.token"))
+        when(mockVerifier.verifyAndExtractUserId("expired.jwt.token"))
             .thenThrow(new JwtVerifier.JwtVerificationException("Token expired"));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
