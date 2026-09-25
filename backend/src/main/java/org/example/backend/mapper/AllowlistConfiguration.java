@@ -50,7 +50,7 @@ public class AllowlistConfiguration {
                 add("version");
                 add("suspended_at");
                 add("closed_at");
-                add("client_id");
+                add("user_id");
             }}
     );
 

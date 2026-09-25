@@ -20,7 +20,7 @@ public class Account {
     private final int accountId;
 
     @NotBlank
-    @Size(max = 30)
+    @Size(max = 12)
     private final String accountNumber;
 
     @NotNull
@@ -48,7 +48,7 @@ public class Account {
     private OffsetDateTime closedAt;
 
     @Positive
-    private final int clientId;
+    private final int userId;
 
     public Account(
             int accountId,
@@ -61,7 +61,7 @@ public class Account {
             long version,
             OffsetDateTime suspendedAt,
             OffsetDateTime closedAt,
-            int clientId) {
+            int userId) {
 
         if(accountId < 1) {
             throw new IllegalArgumentException(
@@ -73,9 +73,9 @@ public class Account {
                     "Account number is required");
         }
 
-        if(accountNumber.length() > 30) {
+        if(accountNumber.length() > 12) {
             throw new IllegalArgumentException(
-                    "Account number cannot exceed 30 characters");
+                "Account number cannot exceed 12 characters");
         }
 
         Objects.requireNonNull(
@@ -99,9 +99,9 @@ public class Account {
                     "Version must be at least 1");
         }
 
-        if (clientId < 1) {
+        if (userId < 1) {
             throw new IllegalArgumentException(
-                    "Client ID must be at least 1");
+                "User ID must be at least 1");
         }
 
 
@@ -115,7 +115,7 @@ public class Account {
         this.version = version;
         this.suspendedAt = suspendedAt;
         this.closedAt = closedAt;
-        this.clientId = clientId;
+        this.userId = userId;
     }
 
     public void credit(BigDecimal amount) {
@@ -266,7 +266,7 @@ public class Account {
         return closedAt;
     }
 
-    public int getClientId() {
-        return clientId;
+    public int getUserId() {
+        return userId;
     }
 }

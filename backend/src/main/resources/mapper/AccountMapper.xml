@@ -31,7 +31,7 @@
             <arg column="version" javaType="_long" name="version"/>
             <arg column="suspended_at" javaType="java.time.OffsetDateTime" name="suspendedAt"/>
             <arg column="closed_at" javaType="java.time.OffsetDateTime" name="closedAt"/>
-            <arg column="client_id" javaType="_int" name="clientId"/>
+            <arg column="user_id" javaType="_int" name="userId"/>
         </constructor>
     </resultMap>
 
@@ -56,7 +56,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         ) VALUES (
             #{account.accountId},
             #{account.accountNumber},
@@ -68,7 +68,7 @@
             #{account.version},
             #{account.suspendedAt},
             #{account.closedAt},
-            #{account.clientId}
+            #{account.userId}
         )
     </insert>
 
@@ -83,41 +83,32 @@
         LIMIT 1
     </select>
 
-    <insert id="upsertAuthClient">
-        INSERT INTO client (
-            client_id,
-            client_name,
-            email,
-            password_hash,
-            phone_no,
-            dob,
-            join_date,
-            risk_profile,
-            advisor_id
-        ) VALUES (
-            #{clientId},
-            #{clientName},
-            #{email},
-            'AUTH_MANAGED',
-            #{phoneNo},
-            #{dob},
-            CURRENT_DATE,
-            'MODERATE',
-            #{advisorId}
-        )
-        ON CONFLICT (client_id)
-        DO UPDATE SET
-            client_name = EXCLUDED.client_name,
-            email = EXCLUDED.email,
-            phone_no = EXCLUDED.phone_no,
-            dob = EXCLUDED.dob
-    </insert>
-
-    <update id="updateAccountClientId">
-        UPDATE account
-        SET client_id = #{clientId}
+    <select id="accountExists" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM account
         WHERE account_id = #{accountId}
-    </update>
+    </select>
+
+    <select id="selectAccountLinkedUserId" resultType="java.lang.Integer">
+        SELECT user_id
+        FROM account
+        WHERE account_id = #{accountId}
+    </select>
+
+    <select id="countAccountsByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM account
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="isAccountLinkedToUser" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM account
+            WHERE account_id = #{accountId}
+              AND user_id = #{userId}
+        )
+    </select>
 
     <!-- ===================================================
          SELECT Operations (Single Row)
@@ -140,7 +131,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE account_id = #{accountId}
     </select>
@@ -163,7 +154,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE account_number = #{accountNumber}
     </select>
@@ -176,7 +167,7 @@
       Select all accounts for a specific client.
       Client ID is bound as a parameter.
     -->
-    <select id="selectAccountsByClientId" parameterType="int" resultMap="AccountResultMap">
+    <select id="selectAccountsByUserId" parameterType="int" resultMap="AccountResultMap">
         SELECT
             account_id,
             account_number,
@@ -187,10 +178,10 @@
             currency,
             version,
             suspended_at,
-            client_id
+            closed_at,
             user_id
-        WHERE client_id = #{clientId}
-        WHERE user_id = #{clientId}
+        FROM account
+        WHERE user_id = #{userId}
         ORDER BY account_id
     </select>
 
@@ -213,7 +204,7 @@
             currency,
             version,
             suspended_at,
-            client_id
+            closed_at,
             user_id
         FROM account
         WHERE account_status = #{accountStatus}
@@ -224,7 +215,7 @@
       Select accounts by status and client ID.
       Both parameters are bound.
     -->
-    <select id="selectAccountsByClientIdAndStatus" resultMap="AccountResultMap">
+    <select id="selectAccountsByUserIdAndStatus" resultMap="AccountResultMap">
         SELECT
             account_id,
             account_number,
@@ -235,10 +226,10 @@
             currency,
             version,
             suspended_at,
-            client_id
-            user_id
-        WHERE client_id = #{clientId}
-        WHERE user_id = #{clientId}
+            closed_at,
+                        user_id
+        FROM account
+                WHERE user_id = #{userId}
           AND account_status = #{accountStatus}
         ORDER BY account_id
     </select>
@@ -257,7 +248,7 @@
             account_status,
             currency,
             version,
-            client_id
+            suspended_at,
             closed_at,
             user_id
         FROM account
@@ -381,7 +372,7 @@
         SELECT
             a.account_id,
             a.account_number,
-            c.client_name AS holder_name,
+            ('USER-' || a.user_id::text) AS holder_name,
             a.balance,
             a.account_status,
             a.version,
@@ -396,8 +387,6 @@
             CURRENT_TIMESTAMP AS last_updated
 
         FROM account a
-                      ON c.client_id = a.client_id
-                      ON c.client_id = a.user_id
 
         WHERE a.account_id = #{accountId}
 

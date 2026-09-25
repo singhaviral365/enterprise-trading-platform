@@ -22,17 +22,18 @@ public interface AccountMapper {
 
     Integer selectAnyAdvisorId();
 
-    int upsertAuthClient(
-            @Param("clientId") int clientId,
-            @Param("clientName") String clientName,
-            @Param("email") String email,
-            @Param("phoneNo") String phoneNo,
-            @Param("dob") LocalDate dob,
-            @Param("advisorId") int advisorId);
+    boolean accountExists(
+            @Param("accountId") int accountId);
 
-    int updateAccountClientId(
+    Integer selectAccountLinkedUserId(
+            @Param("accountId") int accountId);
+
+    long countAccountsByUserId(
+            @Param("userId") int userId);
+
+    boolean isAccountLinkedToUser(
             @Param("accountId") int accountId,
-            @Param("clientId") int clientId);
+            @Param("userId") int userId);
 
     Optional<Account> selectAccountById(
             @Param("accountId") int accountId);
@@ -40,14 +41,14 @@ public interface AccountMapper {
     Optional<Account> selectAccountByNumber(
             @Param("accountNumber") String accountNumber);
 
-    List<Account> selectAccountsByClientId(
-            @Param("clientId") int clientId);
+    List<Account> selectAccountsByUserId(
+            @Param("userId") int userId);
 
     List<Account> selectAccountsByStatus(
             @Param("accountStatus") AccountStatus accountStatus);
 
-    List<Account> selectAccountsByClientIdAndStatus(
-            @Param("clientId") int clientId,
+    List<Account> selectAccountsByUserIdAndStatus(
+            @Param("userId") int userId,
             @Param("accountStatus") AccountStatus accountStatus);
 
     int updateAccountStatus(
