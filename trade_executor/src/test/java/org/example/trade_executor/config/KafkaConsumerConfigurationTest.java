@@ -86,7 +86,9 @@ class KafkaConsumerConfigurationTest {
         Acknowledgment acknowledgment = mock(Acknowledgment.class);
         OrderPlacedConsumer orderPlacedConsumer = new OrderPlacedConsumer(
                 new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules(),
-                tradeExecutorService);
+                tradeExecutorService,
+                "orders",
+                "trade-executor");
         String nextDelivery = """
                 {
                   \"eventId\": \"event-3\",
@@ -155,7 +157,9 @@ class KafkaConsumerConfigurationTest {
         Acknowledgment acknowledgment = mock(Acknowledgment.class);
         OrderPlacedConsumer orderPlacedConsumer = new OrderPlacedConsumer(
                 new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules(),
-                tradeExecutorService);
+                tradeExecutorService,
+                "orders",
+                "trade-executor");
 
         String nextMessage = """
                 {

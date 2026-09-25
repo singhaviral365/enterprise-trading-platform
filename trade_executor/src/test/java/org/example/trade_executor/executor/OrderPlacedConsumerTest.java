@@ -26,7 +26,11 @@ class OrderPlacedConsumerTest {
 
     @BeforeEach
     void setUp() {
-        consumer = new OrderPlacedConsumer(new ObjectMapper().findAndRegisterModules(), tradeExecutorService);
+      consumer = new OrderPlacedConsumer(
+          new ObjectMapper().findAndRegisterModules(),
+          tradeExecutorService,
+          "orders",
+          "trade-executor");
     }
 
     @Test

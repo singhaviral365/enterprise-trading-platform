@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Order.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.entities</a> &gt; <span class="el_source">Order.java</span></div><h1>Order.java</h1><pre class="source lang-java linenums">package org.example.backend.entities;
+
+import org.example.backend.enums.OrderSide;
+import org.example.backend.enums.OrderPricingType;
+import org.example.backend.enums.OrderStatus;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+public class Order {
+
+    @Positive
+    private final long orderId;
+
+    @NotBlank
+    @Size(max = 100)
+    private final String idempotencyKey;
+
+    @NotNull
+    private OrderStatus orderStatus;
+
+    @NotNull
+    private final OffsetDateTime receivedAt;
+
+    @NotNull
+    private final OrderSide orderSide;
+
+    @NotNull
+    private final OrderPricingType pricingType;
+
+    @DecimalMin(value = &quot;0.00&quot;, inclusive = false)
+    @Digits(integer = 17, fraction = 4)
+    private final BigDecimal price;
+
+    @Positive
+    private final long quantity;
+
+    private OffsetDateTime transactionDate;
+
+    @Positive
+    private final int accountId;
+
+    @Positive
+    private final int instrumentId;
+
+    public Order(
+            long orderId,
+            String idempotencyKey,
+            OrderStatus orderStatus,
+            OffsetDateTime receivedAt,
+            OrderSide orderSide,
+            OrderPricingType pricingType,
+            BigDecimal price,
+            long quantity,
+            OffsetDateTime transactionDate,
+            int accountId,
+<span class="fc" id="L63">            int instrumentId) {</span>
+
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">        if (orderId &lt; 1) {</span>
+<span class="nc" id="L66">            throw new IllegalArgumentException(</span>
+                    &quot;Order ID must be at least 1&quot;);
+        }
+
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if (idempotencyKey == null</span>
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">                || idempotencyKey.isBlank()) {</span>
+
+<span class="nc" id="L73">            throw new IllegalArgumentException(</span>
+                    &quot;Idempotency key is required&quot;);
+        }
+
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">        if (idempotencyKey.length() &gt; 100) {</span>
+<span class="nc" id="L78">            throw new IllegalArgumentException(</span>
+                    &quot;Idempotency key cannot exceed 100 characters&quot;);
+        }
+
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">        if (orderStatus == null) {</span>
+<span class="nc" id="L83">            throw new IllegalArgumentException(</span>
+                    &quot;Order status is required&quot;);
+        }
+
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (receivedAt == null) {</span>
+<span class="nc" id="L88">            throw new IllegalArgumentException(</span>
+                    &quot;Received timestamp is required&quot;);
+        }
+
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">        if (orderSide == null) {</span>
+<span class="nc" id="L93">            throw new IllegalArgumentException(</span>
+                    &quot;Order side is required&quot;);
+        }
+
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">        if (pricingType == null) {</span>
+<span class="nc" id="L98">            throw new IllegalArgumentException(</span>
+                    &quot;Order pricing type is required&quot;);
+        }
+
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">        if (price != null) {</span>
+
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">            if (price.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L105">                throw new IllegalArgumentException(</span>
+                        &quot;Price must be greater than zero&quot;);
+            }
+
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">            if (price.scale() &gt; 4) {</span>
+<span class="nc" id="L110">                throw new IllegalArgumentException(</span>
+                        &quot;Price cannot have more than four decimal places&quot;);
+            }
+        }
+
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        if (quantity &lt;= 0) {</span>
+<span class="nc" id="L116">            throw new IllegalArgumentException(</span>
+                    &quot;Quantity must be greater than zero&quot;);
+        }
+
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">        if (accountId &lt; 1) {</span>
+<span class="nc" id="L121">            throw new IllegalArgumentException(</span>
+                    &quot;Account ID must be at least 1&quot;);
+        }
+
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (instrumentId &lt; 1) {</span>
+<span class="nc" id="L126">            throw new IllegalArgumentException(</span>
+                    &quot;Instrument ID must be at least 1&quot;);
+        }
+
+<span class="fc" id="L130">        this.orderId = orderId;</span>
+<span class="fc" id="L131">        this.idempotencyKey = idempotencyKey;</span>
+<span class="fc" id="L132">        this.orderStatus = orderStatus;</span>
+<span class="fc" id="L133">        this.receivedAt = receivedAt;</span>
+<span class="fc" id="L134">        this.orderSide = orderSide;</span>
+<span class="fc" id="L135">        this.pricingType = pricingType;</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        this.price = price == null</span>
+<span class="nc" id="L137">                ? null</span>
+<span class="fc" id="L138">                : price.setScale(4);</span>
+<span class="fc" id="L139">        this.quantity = quantity;</span>
+<span class="fc" id="L140">        this.transactionDate = transactionDate;</span>
+<span class="fc" id="L141">        this.accountId = accountId;</span>
+<span class="fc" id="L142">        this.instrumentId = instrumentId;</span>
+<span class="fc" id="L143">    }</span>
+
+    public void fill() {
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (orderStatus != OrderStatus.NEW) {</span>
+<span class="nc" id="L148">            throw new IllegalStateException(</span>
+                    &quot;Only a received order can be filled&quot;);
+        }
+
+<span class="nc" id="L152">        orderStatus = OrderStatus.FILLED;</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (transactionDate == null) {</span>
+<span class="nc" id="L155">            transactionDate = OffsetDateTime.now();</span>
+        }
+<span class="nc" id="L157">    }</span>
+
+    public void reject() {
+
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        if (orderStatus != OrderStatus.NEW) {</span>
+<span class="nc" id="L162">            throw new IllegalStateException(</span>
+                    &quot;Only a received order can be rejected&quot;);
+        }
+
+<span class="nc" id="L166">        orderStatus = OrderStatus.REJECTED;</span>
+
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if (transactionDate == null) {</span>
+<span class="nc" id="L169">            transactionDate = OffsetDateTime.now();</span>
+        }
+<span class="nc" id="L171">    }</span>
+
+    public void cancel() {
+
+<span class="nc bnc" id="L175" title="All 2 branches missed.">        if (orderStatus != OrderStatus.NEW) {</span>
+<span class="nc" id="L176">            throw new IllegalStateException(</span>
+                    &quot;Only a received order can be cancelled&quot;);
+        }
+
+<span class="nc" id="L180">        orderStatus = OrderStatus.CANCELLED;</span>
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (transactionDate == null) {</span>
+<span class="nc" id="L183">            transactionDate = OffsetDateTime.now();</span>
+        }
+<span class="nc" id="L185">    }</span>
+
+    public long getOrderId() {
+<span class="fc" id="L188">        return orderId;</span>
+    }
+
+    public String getIdempotencyKey() {
+<span class="fc" id="L192">        return idempotencyKey;</span>
+    }
+
+    public OrderStatus getOrderStatus() {
+<span class="fc" id="L196">        return orderStatus;</span>
+    }
+
+    public OffsetDateTime getReceivedAt() {
+<span class="fc" id="L200">        return receivedAt;</span>
+    }
+
+    public OrderSide getOrderSide() {
+<span class="fc" id="L204">        return orderSide;</span>
+    }
+
+    public OrderPricingType getPricingType() {
+<span class="fc" id="L208">        return pricingType;</span>
+    }
+
+    public BigDecimal getPrice() {
+<span class="fc" id="L212">        return price;</span>
+    }
+
+    public long getQuantity() {
+<span class="fc" id="L216">        return quantity;</span>
+    }
+
+    public OffsetDateTime getTransactionDate() {
+<span class="fc" id="L220">        return transactionDate;</span>
+    }
+
+    public int getAccountId() {
+<span class="fc" id="L224">        return accountId;</span>
+    }
+
+    public int getInstrumentId() {
+<span class="fc" id="L228">        return instrumentId;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

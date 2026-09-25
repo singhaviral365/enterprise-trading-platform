@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TradeExecutorService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">trade-executor</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.service</a> &gt; <span class="el_source">TradeExecutorService.java</span></div><h1>TradeExecutorService.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.service;
+
+import org.example.trade_executor.client.LiveQuote;
+import org.example.trade_executor.client.QuoteClient;
+import org.example.trade_executor.client.QuoteUnavailableException;
+import org.example.backend.entities.Instrument;
+import org.example.backend.entities.Order;
+import org.example.backend.enums.OrderStatus;
+import org.example.backend.events.OrderPlacedMessage;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.trade_executor.events.OrderResolvedEvent;
+import org.example.trade_executor.events.TradeEventProducer;
+import org.example.trade_executor.executor.ExecutionOutcome;
+import org.example.trade_executor.executor.ExecutionRejectReason;
+import org.example.trade_executor.executor.FillDecisionEngine;
+import org.example.trade_executor.executor.PoisonOrderMessageException;
+import org.example.backend.mapper.InstrumentMapper;
+import org.example.backend.mapper.OrderMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+@Service
+public class TradeExecutorService {
+
+<span class="fc" id="L30">    private static final Logger LOGGER = LoggerFactory.getLogger(TradeExecutorService.class);</span>
+
+    private final OrderMapper orderMapper;
+    private final InstrumentMapper instrumentMapper;
+    private final QuoteClient quoteClient;
+    private final FillDecisionEngine fillDecisionEngine;
+    private final OrderSettlementService orderSettlementService;
+    private final TradeEventProducer tradeEventProducer;
+    private final int maxSettlementAttempts;
+
+    public TradeExecutorService(
+            OrderMapper orderMapper,
+            InstrumentMapper instrumentMapper,
+            QuoteClient quoteClient,
+            FillDecisionEngine fillDecisionEngine,
+            OrderSettlementService orderSettlementService,
+            TradeEventProducer tradeEventProducer,
+<span class="fc" id="L47">            @Value(&quot;${trading.executor.max-settlement-attempts:3}&quot;) int maxSettlementAttempts) {</span>
+
+<span class="fc" id="L49">        this.orderMapper = orderMapper;</span>
+<span class="fc" id="L50">        this.instrumentMapper = instrumentMapper;</span>
+<span class="fc" id="L51">        this.quoteClient = quoteClient;</span>
+<span class="fc" id="L52">        this.fillDecisionEngine = fillDecisionEngine;</span>
+<span class="fc" id="L53">        this.orderSettlementService = orderSettlementService;</span>
+<span class="fc" id="L54">        this.tradeEventProducer = tradeEventProducer;</span>
+<span class="fc" id="L55">        this.maxSettlementAttempts = Math.max(1, maxSettlementAttempts);</span>
+<span class="fc" id="L56">    }</span>
+
+    @Transactional
+    public void execute(OrderPlacedMessage message) {
+<span class="fc" id="L60">        LOGGER.info(&quot;Received ORDER_PLACED message for orderId={} accountId={} symbol={}&quot;,</span>
+<span class="fc" id="L61">                message.orderId(),</span>
+<span class="fc" id="L62">                message.accountId(),</span>
+<span class="fc" id="L63">                message.symbol());</span>
+
+<span class="fc" id="L65">        Order order = orderMapper.selectOrderById(message.orderId()).orElse(null);</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        if (order == null) {</span>
+<span class="fc" id="L67">            throw new PoisonOrderMessageException(&quot;unknown orderId: &quot; + message.orderId());</span>
+        }
+
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if (order.getOrderStatus() != OrderStatus.NEW) {</span>
+<span class="nc" id="L71">            LOGGER.info(&quot;Skipping order {} because status is {}&quot;, order.getOrderId(), order.getOrderStatus());</span>
+<span class="nc" id="L72">            return;</span>
+        }
+
+<span class="fc" id="L75">        Instrument instrument = instrumentMapper.selectInstrumentById(order.getInstrumentId()).orElse(null);</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if (instrument == null) {</span>
+<span class="nc" id="L77">            LOGGER.warn(&quot;Instrument not found for order {} (instrumentId={})&quot;, order.getOrderId(), order.getInstrumentId());</span>
+        }
+
+<span class="fc" id="L80">        ExecutionOutcome marketOutcome = determineMarketOutcome(order, instrument);</span>
+<span class="fc" id="L81">        LOGGER.info(&quot;Market outcome for order {}: status={} reason={}&quot;,</span>
+<span class="fc" id="L82">            order.getOrderId(),</span>
+<span class="fc" id="L83">            marketOutcome.status(),</span>
+<span class="fc" id="L84">            marketOutcome.rejectReason());</span>
+
+<span class="fc" id="L86">        settleWithRetry(order.getOrderId(), marketOutcome)</span>
+<span class="fc" id="L87">                .ifPresent(tradeEventProducer::publish);</span>
+<span class="fc" id="L88">    }</span>
+
+    private ExecutionOutcome determineMarketOutcome(Order order, Instrument instrument) {
+<span class="pc bpc" id="L91" title="1 of 4 branches missed.">        if (instrument == null || !instrument.isTradable()) {</span>
+<span class="fc" id="L92">            LOGGER.info(&quot;Skipping quote lookup for order {} because instrument is not tradable&quot;, order.getOrderId());</span>
+<span class="fc" id="L93">            return ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE);</span>
+        }
+
+        try {
+<span class="fc" id="L97">            LOGGER.info(&quot;Requesting quote for order {} symbol={}&quot;, order.getOrderId(), instrument.getInstrumentTicker());</span>
+<span class="fc" id="L98">            Optional&lt;LiveQuote&gt; quote = quoteClient.getQuote(instrument.getInstrumentTicker());</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">            if (quote.isEmpty()) {</span>
+<span class="fc" id="L100">                LOGGER.info(&quot;Quote unavailable for order {} symbol={}&quot;, order.getOrderId(), instrument.getInstrumentTicker());</span>
+<span class="fc" id="L101">                return ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE);</span>
+            }
+
+<span class="fc" id="L104">            return fillDecisionEngine.decide(order, quote.get());</span>
+<span class="fc" id="L105">        } catch (QuoteUnavailableException ex) {</span>
+<span class="fc" id="L106">            LOGGER.warn(&quot;Quote unavailable for symbol {} after retries&quot;, ex.getSymbol(), ex);</span>
+<span class="fc" id="L107">            return ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE);</span>
+        }
+    }
+
+    private Optional&lt;OrderResolvedEvent&gt; settleWithRetry(long orderId, ExecutionOutcome marketOutcome) {
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        for (int attempt = 1; attempt &lt;= maxSettlementAttempts; attempt++) {</span>
+            try {
+<span class="fc" id="L114">                return orderSettlementService.settle(orderId, marketOutcome);</span>
+<span class="fc" id="L115">            } catch (OptimisticLockException ex) {</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">                if (attempt == maxSettlementAttempts) {</span>
+<span class="fc" id="L117">                    throw ex;</span>
+                }
+
+<span class="fc" id="L120">                LOGGER.warn(</span>
+                        &quot;Retrying settlement for order {} after optimistic lock conflict (attempt {} of {})&quot;,
+<span class="fc" id="L122">                        orderId,</span>
+<span class="fc" id="L123">                        attempt,</span>
+<span class="fc" id="L124">                        maxSettlementAttempts);</span>
+            }
+        }
+
+        // Defensive fallback; loop always returns or throws.
+<span class="nc" id="L129">        return Optional.empty();</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

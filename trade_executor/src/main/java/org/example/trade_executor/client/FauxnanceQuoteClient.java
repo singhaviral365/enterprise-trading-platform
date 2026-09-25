@@ -1,4 +1,6 @@
 package org.example.trade_executor.client;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,19 +16,20 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Component
 public class FauxnanceQuoteClient implements QuoteClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FauxnanceQuoteClient.class);
 
-    private static final Pattern SYMBOL_PATTERN = Pattern.compile("\"symbol\"\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern PRICE_PATTERN = Pattern.compile("\"price\"\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)");
-
     private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
     private final URI baseUri;
     private final int maxAttempts;
     private final long retryDelayMillis;
@@ -44,6 +47,7 @@ public class FauxnanceQuoteClient implements QuoteClient {
         this(HttpClient.newBuilder()
                         .connectTimeout(Duration.ofMillis(requestTimeoutMillis))
                         .build(),
+            new ObjectMapper(),
                 URI.create(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"),
                 apiKey,
                 maxAttempts,
@@ -51,17 +55,37 @@ public class FauxnanceQuoteClient implements QuoteClient {
                 Duration.ofMillis(requestTimeoutMillis));
     }
 
-    FauxnanceQuoteClient(
+    public FauxnanceQuoteClient(
             String baseUrl,
             int maxAttempts,
             long retryDelayMillis,
             long requestTimeoutMillis) {
 
-        this(baseUrl, "", maxAttempts, retryDelayMillis, requestTimeoutMillis);
+        this(baseUrl, "", maxAttempts, retryDelayMillis, requestTimeoutMillis, new ObjectMapper());
+        }
+
+        FauxnanceQuoteClient(
+            String baseUrl,
+            String apiKey,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis,
+            ObjectMapper objectMapper) {
+
+        this(HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(requestTimeoutMillis))
+                .build(),
+            objectMapper,
+            URI.create(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"),
+            apiKey,
+            maxAttempts,
+            retryDelayMillis,
+            Duration.ofMillis(requestTimeoutMillis));
     }
 
     FauxnanceQuoteClient(
             HttpClient httpClient,
+            ObjectMapper objectMapper,
             URI baseUri,
             String apiKey,
             int maxAttempts,
@@ -69,6 +93,7 @@ public class FauxnanceQuoteClient implements QuoteClient {
             Duration requestTimeout) {
 
         this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
         this.baseUri = baseUri;
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.maxAttempts = Math.max(1, maxAttempts);
@@ -79,6 +104,40 @@ public class FauxnanceQuoteClient implements QuoteClient {
     @Override
     public Optional<LiveQuote> getQuote(String symbol) {
         URI quoteUri = resolveQuoteUri(symbol);
+        Map<String, LiveQuote> quotes = fetchQuotes(quoteUri, symbol);
+        if (quotes.isEmpty()) {
+            return Optional.empty();
+        }
+
+        LiveQuote quote = quotes.get(symbol);
+        if (quote != null) {
+            return Optional.of(quote);
+        }
+
+        return quotes.values().stream().findFirst();
+    }
+
+    @Override
+    public Map<String, LiveQuote> getQuotes(Collection<String> symbols) {
+        if (symbols == null) {
+            return Map.of();
+        }
+
+        List<String> cleanSymbols = symbols.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        if (cleanSymbols.isEmpty()) {
+            return Map.of();
+        }
+
+        URI quoteUri = resolveBatchQuoteUri(cleanSymbols);
+        return fetchQuotes(quoteUri, String.join(",", cleanSymbols));
+    }
+
+    private Map<String, LiveQuote> fetchQuotes(URI quoteUri, String symbolContext) {
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(quoteUri)
             .timeout(requestTimeout)
@@ -97,18 +156,18 @@ public class FauxnanceQuoteClient implements QuoteClient {
                         HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() == 200) {
-                    return parseQuote(symbol, response.body());
+                    return parseQuotes(response.body());
                 }
 
                 if (response.statusCode() == 404 || response.statusCode() == 204) {
-                    LOGGER.info("No quote available for symbol {} (HTTP {})", symbol, response.statusCode());
-                    return Optional.empty();
+                    LOGGER.info("No quote available for symbols {} (HTTP {})", symbolContext, response.statusCode());
+                    return Map.of();
                 }
 
                 if (isRetryable(response.statusCode()) && attempt < maxAttempts) {
                     LOGGER.warn(
-                            "Retryable quote lookup failure for symbol {} at {} (HTTP {}, attempt {} of {})",
-                            symbol,
+                            "Retryable quote lookup failure for symbols {} at {} (HTTP {}, attempt {} of {})",
+                            symbolContext,
                             quoteUri,
                             response.statusCode(),
                             attempt,
@@ -118,19 +177,19 @@ public class FauxnanceQuoteClient implements QuoteClient {
                 }
 
                 LOGGER.error(
-                    "Quote lookup failed for symbol {} at {} with HTTP {}",
-                    symbol,
+                    "Quote lookup failed for symbols {} at {} with HTTP {}",
+                    symbolContext,
                     quoteUri,
                     response.statusCode());
 
                 throw new QuoteUnavailableException(
-                        symbol,
+                        symbolContext,
                         "Quote lookup failed with HTTP status " + response.statusCode());
             } catch (IOException ex) {
                 if (attempt < maxAttempts) {
                     LOGGER.warn(
-                            "I/O error during quote lookup for symbol {} at {} (attempt {} of {})",
-                            symbol,
+                            "I/O error during quote lookup for symbols {} at {} (attempt {} of {})",
+                            symbolContext,
                             quoteUri,
                             attempt,
                             maxAttempts,
@@ -140,47 +199,95 @@ public class FauxnanceQuoteClient implements QuoteClient {
                 }
 
                 LOGGER.error(
-                    "Quote lookup failed after retries for symbol {} at {}",
-                    symbol,
+                    "Quote lookup failed after retries for symbols {} at {}",
+                    symbolContext,
                     quoteUri,
                     ex);
 
                 throw new QuoteUnavailableException(
-                        symbol,
+                        symbolContext,
                         "Quote lookup failed after retries",
                         ex);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
                 throw new QuoteUnavailableException(
-                        symbol,
+                        symbolContext,
                         "Quote lookup interrupted",
                         ex);
             }
         }
 
-        throw new QuoteUnavailableException(symbol, "Quote lookup failed after retries");
+        throw new QuoteUnavailableException(symbolContext, "Quote lookup failed after retries");
     }
 
-    private Optional<LiveQuote> parseQuote(String symbol, String body) throws IOException {
-        Matcher priceMatcher = PRICE_PATTERN.matcher(body == null ? "" : body);
-        if (!priceMatcher.find()) {
-            return Optional.empty();
+    private Map<String, LiveQuote> parseQuotes(String body) throws IOException {
+        if (body == null || body.isBlank()) {
+            return Map.of();
         }
 
-        String parsedSymbol = symbol;
-        Matcher symbolMatcher = SYMBOL_PATTERN.matcher(body);
-        if (symbolMatcher.find() && !symbolMatcher.group(1).isBlank()) {
-            parsedSymbol = symbolMatcher.group(1);
+        JsonNode root = objectMapper.readTree(body);
+        Map<String, LiveQuote> quotes = new LinkedHashMap<>();
+        collectQuotes(root, quotes);
+        return quotes;
+    }
+
+    private void collectQuotes(JsonNode node, Map<String, LiveQuote> quotes) {
+        if (node == null || node.isNull()) {
+            return;
         }
 
-        return Optional.of(new LiveQuote(
-                parsedSymbol,
-                new BigDecimal(priceMatcher.group(1))));
+        if (node.isObject()) {
+            JsonNode symbolNode = node.get("symbol");
+            JsonNode priceNode = node.get("price");
+            if (symbolNode != null && priceNode != null && symbolNode.isTextual()) {
+                String symbol = symbolNode.asText().trim();
+                BigDecimal price = extractPrice(priceNode);
+                if (!symbol.isBlank() && price != null && price.compareTo(BigDecimal.ZERO) > 0) {
+                    quotes.put(symbol, new LiveQuote(symbol, price));
+                }
+            }
+
+            node.fields().forEachRemaining(entry -> collectQuotes(entry.getValue(), quotes));
+            return;
+        }
+
+        if (node.isArray()) {
+            node.forEach(child -> collectQuotes(child, quotes));
+        }
+    }
+
+    private BigDecimal extractPrice(JsonNode priceNode) {
+        if (priceNode == null || priceNode.isNull()) {
+            return null;
+        }
+        if (priceNode.isNumber()) {
+            return priceNode.decimalValue();
+        }
+        if (priceNode.isTextual()) {
+            String value = priceNode.asText().trim();
+            if (value.isEmpty()) {
+                return null;
+            }
+            try {
+                return new BigDecimal(value);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private URI resolveQuoteUri(String symbol) {
         String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
         return baseUri.resolve("quotes/" + encodedSymbol);
+    }
+
+    private URI resolveBatchQuoteUri(List<String> symbols) {
+        String joinedSymbols = symbols.stream()
+                .map(String::trim)
+                .collect(Collectors.joining(","));
+        String encodedSymbols = URLEncoder.encode(joinedSymbols, StandardCharsets.UTF_8);
+        return baseUri.resolve("quotes?symbols=" + encodedSymbols);
     }
 
     private boolean isRetryable(int statusCode) {

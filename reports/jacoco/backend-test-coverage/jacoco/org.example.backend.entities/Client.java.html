@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Client.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.entities</a> &gt; <span class="el_source">Client.java</span></div><h1>Client.java</h1><pre class="source lang-java linenums">package org.example.backend.entities;
+
+import org.example.backend.enums.RiskProfile;
+
+import java.time.LocalDate;
+import java.util.Objects;
+
+public class Client {
+
+    private final int clientId;
+    private final String clientName;
+    private final String email;
+    private final String passwordHash;
+    private final String phoneNo;
+    private final LocalDate dateOfBirth;
+    private final LocalDate joinDate;
+    private final RiskProfile riskProfile;
+    private final int advisorId;
+
+    public Client(
+            int clientId,
+            String clientName,
+            String email,
+            String passwordHash,
+            String phoneNo,
+            LocalDate dateOfBirth,
+            LocalDate joinDate,
+            RiskProfile riskProfile,
+<span class="nc" id="L29">            int advisorId) {</span>
+
+<span class="nc bnc" id="L31" title="All 2 branches missed.">        if (clientId &lt; 1) {</span>
+<span class="nc" id="L32">            throw new IllegalArgumentException(</span>
+                    &quot;Client ID must be at least 1&quot;
+            );
+        }
+
+<span class="nc bnc" id="L37" title="All 4 branches missed.">        if (clientName == null || clientName.isBlank()) {</span>
+<span class="nc" id="L38">            throw new IllegalArgumentException(</span>
+                    &quot;Client name is required&quot;
+            );
+        }
+
+<span class="nc bnc" id="L43" title="All 4 branches missed.">        if (email == null || email.isBlank()) {</span>
+<span class="nc" id="L44">            throw new IllegalArgumentException(</span>
+                    &quot;Email is required&quot;
+            );
+        }
+
+<span class="nc bnc" id="L49" title="All 4 branches missed.">        if (passwordHash == null || passwordHash.isBlank()) {</span>
+<span class="nc" id="L50">            throw new IllegalArgumentException(</span>
+                    &quot;Password hash is required&quot;
+            );
+        }
+
+<span class="nc bnc" id="L55" title="All 4 branches missed.">        if (phoneNo == null || phoneNo.isBlank()) {</span>
+<span class="nc" id="L56">            throw new IllegalArgumentException(</span>
+                    &quot;Phone number is required&quot;
+            );
+        }
+
+<span class="nc" id="L61">        Objects.requireNonNull(</span>
+                dateOfBirth,
+                &quot;Date of birth is required&quot;
+        );
+
+<span class="nc" id="L66">        Objects.requireNonNull(</span>
+                joinDate,
+                &quot;Join date is required&quot;
+        );
+
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        if (joinDate.isBefore(dateOfBirth)) {</span>
+<span class="nc" id="L72">            throw new IllegalArgumentException(</span>
+                    &quot;Join date cannot be before date of birth&quot;
+            );
+        }
+
+<span class="nc" id="L77">        Objects.requireNonNull(</span>
+                riskProfile,
+                &quot;Risk profile is required&quot;
+        );
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (advisorId &lt; 1) {</span>
+<span class="nc" id="L83">            throw new IllegalArgumentException(</span>
+                    &quot;Advisor ID must be at least 1&quot;
+            );
+        }
+
+<span class="nc" id="L88">        this.clientId = clientId;</span>
+<span class="nc" id="L89">        this.clientName = clientName;</span>
+<span class="nc" id="L90">        this.email = email;</span>
+<span class="nc" id="L91">        this.passwordHash = passwordHash;</span>
+<span class="nc" id="L92">        this.phoneNo = phoneNo;</span>
+<span class="nc" id="L93">        this.dateOfBirth = dateOfBirth;</span>
+<span class="nc" id="L94">        this.joinDate = joinDate;</span>
+<span class="nc" id="L95">        this.riskProfile = riskProfile;</span>
+<span class="nc" id="L96">        this.advisorId = advisorId;</span>
+<span class="nc" id="L97">    }</span>
+
+    public int getClientId() {
+<span class="nc" id="L100">        return clientId;</span>
+    }
+
+    public String getClientName() {
+<span class="nc" id="L104">        return clientName;</span>
+    }
+
+    public String getEmail() {
+<span class="nc" id="L108">        return email;</span>
+    }
+
+    public String getPasswordHash() {
+<span class="nc" id="L112">        return passwordHash;</span>
+    }
+
+    public String getPhoneNo() {
+<span class="nc" id="L116">        return phoneNo;</span>
+    }
+
+    public LocalDate getDateOfBirth() {
+<span class="nc" id="L120">        return dateOfBirth;</span>
+    }
+
+    public LocalDate getJoinDate() {
+<span class="nc" id="L124">        return joinDate;</span>
+    }
+
+    public RiskProfile getRiskProfile() {
+<span class="nc" id="L128">        return riskProfile;</span>
+    }
+
+    public int getAdvisorId() {
+<span class="nc" id="L132">        return advisorId;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

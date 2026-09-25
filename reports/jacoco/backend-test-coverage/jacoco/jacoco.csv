@@ -1,0 +1,55 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Backend,org.example.backend.config,MybatisConfiguration,0,31,1,1,0,9,1,3,0,3
+Backend,org.example.backend.config,KafkaProducerConfiguration,0,62,0,0,0,12,0,4,0,4
+Backend,org.example.backend.enums,RiskProfile,27,0,0,0,5,0,1,0,1,0
+Backend,org.example.backend.enums,OrderPricingType,0,15,0,0,0,3,0,1,0,1
+Backend,org.example.backend.enums,OrderSide,0,15,0,0,0,3,0,1,0,1
+Backend,org.example.backend.enums,InstrumentStatus,0,21,0,0,0,4,0,1,0,1
+Backend,org.example.backend.enums,AccountStatus,0,21,0,0,0,4,0,1,0,1
+Backend,org.example.backend.enums,InstrumentAssetClass,0,27,0,0,0,5,0,1,0,1
+Backend,org.example.backend.enums,OrderStatus,0,27,0,0,0,5,0,1,0,1
+Backend,org.example.backend.dto,OrderHistoryEntry,0,36,0,0,0,1,0,1,0,1
+Backend,org.example.backend.dto,PositionResponse,0,15,0,0,0,1,0,1,0,1
+Backend,org.example.backend.dto,ErrorResponse,0,9,0,0,0,1,0,1,0,1
+Backend,org.example.backend.dto,AccountResponse,0,24,0,0,0,1,0,1,0,1
+Backend,org.example.backend.dto,OrderResponse,0,27,0,0,0,1,0,1,0,1
+Backend,org.example.backend.dto,PlaceOrderRequest,2,47,1,7,1,5,1,5,0,2
+Backend,org.example.backend.dto,BalanceResponse,0,15,0,0,0,1,0,1,0,1
+Backend,org.example.backend.repository,dummyreposiotroy,3,0,0,0,1,0,1,0,1,0
+Backend,org.example.backend.exceptions,DomainException,0,10,0,0,0,4,0,2,0,2
+Backend,org.example.backend.exceptions,AccountNotFoundException,3,8,0,0,1,3,1,1,1,1
+Backend,org.example.backend.exceptions,InsufficientFundsException,9,14,0,0,3,5,3,1,3,1
+Backend,org.example.backend.exceptions,InsufficientHoldingsException,12,17,0,0,4,6,4,1,4,1
+Backend,org.example.backend.exceptions,AccountNotActiveException,0,17,0,0,0,6,0,3,0,3
+Backend,org.example.backend.exceptions,InstrumentNotFoundException,0,11,0,0,0,4,0,2,0,2
+Backend,org.example.backend.exceptions,OrderNotCancellableException,3,8,0,0,1,3,1,1,1,1
+Backend,org.example.backend.exceptions,DuplicateOrderException,0,11,0,0,0,4,0,2,0,2
+Backend,org.example.backend.exceptions,UnauthorisedException,0,5,0,0,0,2,0,1,0,1
+Backend,org.example.backend.exceptions,OptimisticLockException,0,5,0,0,0,2,0,1,0,1
+Backend,org.example.backend.exceptions,OrderNotFoundException,11,0,0,0,4,0,2,0,2,0
+Backend,org.example.backend,BackendApplication,5,3,0,0,2,1,1,1,1,1
+Backend,org.example.backend.service,TradeService,248,275,22,18,76,84,25,21,11,15
+Backend,org.example.backend.controller,ApiExceptionHandler,6,137,3,12,2,44,3,16,0,7
+Backend,org.example.backend.controller,TradeController,17,85,1,3,5,27,2,8,1,7
+Backend,org.example.backend.mapper,AllowlistConfiguration.new HashSet() {...},47,0,0,0,13,0,1,0,1,0
+Backend,org.example.backend.mapper,AllowlistConfiguration.new HashSet() {...},23,0,0,0,7,0,1,0,1,0
+Backend,org.example.backend.mapper,AllowlistConfiguration.new HashSet() {...},43,0,0,0,12,0,1,0,1,0
+Backend,org.example.backend.mapper,AllowlistConfiguration.new HashSet() {...},19,0,0,0,6,0,1,0,1,0
+Backend,org.example.backend.mapper,AllowlistConfiguration.new HashSet() {...},23,0,0,0,7,0,1,0,1,0
+Backend,org.example.backend.mapper,AllowlistConfiguration,119,0,12,0,25,0,13,0,7,0
+Backend,org.example.backend.security,JwtConfiguration,17,64,6,10,3,16,6,5,1,2
+Backend,org.example.backend.security,JwtVerifier.JwtVerificationException,0,4,0,0,0,2,0,1,0,1
+Backend,org.example.backend.security,JwtVerifier,54,121,4,10,15,36,3,9,0,5
+Backend,org.example.backend.security,ApiAuthenticationFilter,10,151,3,15,4,43,3,13,0,7
+Backend,org.example.backend.security,AuthContext,4,13,1,1,1,3,1,1,0,1
+Backend,org.example.backend.events,OrderPlacedAfterCommitListener,12,25,1,1,5,10,1,4,0,4
+Backend,org.example.backend.events,OrderPlacedMessage,0,37,0,0,0,8,0,2,0,2
+Backend,org.example.backend.events,OrderPlacedEvent,0,21,0,0,0,1,0,1,0,1
+Backend,org.example.backend.events,OrderPlacedAfterCommitListener.new TransactionSynchronization() {...},0,15,0,0,0,3,0,2,0,2
+Backend,org.example.backend.events,OrderEventProducer,0,43,0,0,0,14,0,2,0,2
+Backend,org.example.backend.entities,Advisor,75,0,14,0,21,0,13,0,6,0
+Backend,org.example.backend.entities,Client,134,0,22,0,37,0,21,0,10,0
+Backend,org.example.backend.entities,Instrument,33,55,6,6,8,16,10,3,4,3
+Backend,org.example.backend.entities,Order,119,114,27,15,31,39,24,12,3,12
+Backend,org.example.backend.entities,Account,168,128,34,10,42,39,28,14,6,14
+Backend,org.example.backend.entities,Holding,43,61,8,6,10,19,8,6,1,6

@@ -4,6 +4,7 @@ This guide verifies the full flow now that both sides exist:
 
 - backend produces ORDER_PLACED to orders
 - trade_executor consumes orders, settles, then produces resolution events to trade-events
+- trade_executor market poller publishes QUOTE events to market-data
 
 ## Code Map
 
@@ -12,12 +13,14 @@ This guide verifies the full flow now that both sides exist:
 - Consumer entry path in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java](../trade_executor/src/main/java/org/example/trade_executor/executor/OrderPlacedConsumer.java)
 - Consumer config in trade_executor: [trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java](../trade_executor/src/main/java/org/example/trade_executor/config/KafkaConsumerConfiguration.java)
 - trade_executor result producer: [trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/events/TradeEventProducer.java)
+- trade_executor market poller: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataPoller.java)
+- trade_executor market-data producer: [trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java](../trade_executor/src/main/java/org/example/trade_executor/marketdata/MarketDataEventProducer.java)
 
 ## Your Topology
 
 - backend runs on Windows
 - trade_executor runs on Windows
-- Kafka runs on Linux VM at 10.8.78.105
+- Kafka runs on Linux VM at {LINUX_IP}
 
 This works only if the broker advertises a host that Windows clients can reach.
 
@@ -28,7 +31,7 @@ This works only if the broker advertises a host that Windows clients can reach.
 In VM repo root .env, set:
 
 ```bash
-KAFKA_EXTERNAL_HOST=10.8.78.105
+KAFKA_EXTERNAL_HOST={LINUX_IP}
 ```
 
 This is already supported by [docker-compose.yml](../docker-compose.yml) using KAFKA_ADVERTISED_LISTENERS.
@@ -52,7 +55,7 @@ docker-compose up -d --force-recreate kafka kafka-init
 Set this for both backend and trade_executor run configurations:
 
 ```text
-KAFKA_BOOTSTRAP_SERVERS=10.8.78.105:9092
+KAFKA_BOOTSTRAP_SERVERS={LINUX_IP}:9092
 ```
 
 Both apps read this in their application properties.
@@ -66,6 +69,7 @@ Compose v2:
 ```bash
 docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic orders
 docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic trade-events
+docker compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic market-data
 ```
 
 Compose v1:
@@ -73,6 +77,7 @@ Compose v1:
 ```bash
 docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic orders
 docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic trade-events
+docker-compose exec kafka kafka-topics --bootstrap-server kafka:29092 --describe --topic market-data
 ```
 
 ### 2) Start live consumers on Linux VM
@@ -101,9 +106,22 @@ docker-compose exec kafka kafka-console-consumer \
   --property print.timestamp=true
 ```
 
+Terminal C (market-data topic):
+
+```bash
+docker-compose exec kafka kafka-console-consumer \
+  --bootstrap-server kafka:29092 \
+  --topic market-data \
+  --property print.key=true \
+  --property key.separator=" | " \
+  --property print.partition=true \
+  --property print.timestamp=true
+```
+
+
 ### 3) Run backend and trade_executor on Windows
 
-Confirm both processes start with KAFKA_BOOTSTRAP_SERVERS=10.8.78.105:9092.
+Confirm both processes start with KAFKA_BOOTSTRAP_SERVERS={LINUX_IP}:9092.
 
 ### 4) Call POST /api/v1/orders from Bruno
 
@@ -114,25 +132,26 @@ Use a new idempotencyKey each call.
 - orders consumer shows ORDER_PLACED event
 - trade_executor consumes and processes that event
 - trade-events consumer shows resolution event such as ORDER_FILLED or ORDER_REJECTED
+- market-data consumer shows QUOTE events keyed by symbol
 - orders table status transitions from NEW to a terminal state when execution completes
 
 ## How Detection Works Across Windows and Linux
 
 Detection is Kafka metadata driven:
 
-1. Windows client connects to bootstrap server 10.8.78.105:9092.
+1. Windows client connects to bootstrap server {LINUX_IP}:9092.
 2. Broker returns cluster metadata, including advertised broker addresses.
 3. Client then talks to the advertised addresses for produce and consume traffic.
 
 If advertised address is localhost, Windows clients try to connect to themselves and fail.
-If advertised address is 10.8.78.105, Windows clients reach the VM correctly.
+If advertised address is {LINUX_IP}, Windows clients reach the VM correctly.
 
 ## Fast Troubleshooting
 
 ### No message on orders
 
 - backend API may have returned 4xx or 409 and produced nothing
-- backend may not have KAFKA_BOOTSTRAP_SERVERS set to 10.8.78.105:9092
+- backend may not have KAFKA_BOOTSTRAP_SERVERS set to {LINUX_IP}:9092
 - VM broker may still advertise localhost
 
 ### orders has data but trade-events is empty
