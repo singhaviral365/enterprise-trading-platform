@@ -5,6 +5,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountNotFoundException;
+import org.example.backend.exceptions.AccountLinkConflictException;
 import org.example.backend.exceptions.DomainException;
 import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InsufficientFundsException;
@@ -45,6 +46,9 @@ public class ApiExceptionHandler {
 
             case AccountNotFoundException ignored ->
                     HttpStatus.NOT_FOUND;
+
+            case AccountLinkConflictException ignored ->
+                    HttpStatus.CONFLICT;
 
             case InstrumentNotFoundException ignored ->
                     HttpStatus.NOT_FOUND;

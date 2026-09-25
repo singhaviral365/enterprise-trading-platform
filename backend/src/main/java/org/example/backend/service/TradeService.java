@@ -1,11 +1,10 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.AccountResponse;
-import org.example.backend.dto.AuthAccountResponse;
 import org.example.backend.dto.BalanceResponse;
 import org.example.backend.dto.CreateAccountRequest;
 import org.example.backend.dto.CreateAccountResult;
-import org.example.backend.dto.LinkAccountRequest;
+import org.example.backend.dto.LinkAccountStatusResponse;
 import org.example.backend.dto.OrderHistoryEntry;
 import org.example.backend.dto.OrderResponse;
 import org.example.backend.dto.PositionResponse;
@@ -20,6 +19,7 @@ import org.example.backend.enums.OrderPricingType;
 import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
+import org.example.backend.exceptions.AccountLinkConflictException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
@@ -44,6 +44,8 @@ import java.util.UUID;
 
 @Service
 public class TradeService {
+
+        private static final BigDecimal MIN_OPENING_BALANCE = new BigDecimal("20000.0000");
 
         private static final BigDecimal MARKET_PERSISTED_PRICE = new BigDecimal("0.0001");
 
@@ -505,16 +507,43 @@ public class TradeService {
     public void assertUserCanAccessAccount(
             long userId,
             long accountId) {
-        Account account = accountMapper
-                .selectAccountById(Math.toIntExact(accountId))
-                .orElseThrow(() -> new AccountNotFoundException(accountId));
+                int accountIdInt = Math.toIntExact(accountId);
+                if (!accountMapper.accountExists(accountIdInt)) {
+                        throw new AccountNotFoundException(accountId);
+                }
 
-        if (account.getClientId() != Math.toIntExact(userId)) {
-            throw new AccountNotActiveException(
-                    accountId,
-                    AccountStatus.ACTIVE);
+                Integer linkedUserId = accountMapper.selectAccountLinkedUserId(accountIdInt);
+                if (linkedUserId == null || linkedUserId != Math.toIntExact(userId)) {
+                        throw new AccountLinkConflictException("Account is not linked to authenticated user");
         }
     }
+
+        public boolean isAccountLinkedToUser(
+                        long userId,
+                        long accountId) {
+                int accountIdInt = Math.toIntExact(accountId);
+                int userIdInt = Math.toIntExact(userId);
+
+                return accountMapper.isAccountLinkedToUser(accountIdInt, userIdInt);
+        }
+
+        public LinkAccountStatusResponse getAccountLinkStatusForUser(long userId) {
+                int userIdInt = Math.toIntExact(userId);
+                var accounts = accountMapper.selectAccountsByUserId(userIdInt);
+
+                if (accounts.isEmpty()) {
+                        return new LinkAccountStatusResponse(
+                                        false,
+                                        "No linked account yet",
+                                        null);
+                }
+
+                String accountNumber = accounts.get(0).getAccountNumber();
+                return new LinkAccountStatusResponse(
+                                true,
+                                "Linked account found",
+                                accountNumber);
+        }
 
     @Transactional
     public OrderResponse cancelOrderForUser(
@@ -533,41 +562,31 @@ public class TradeService {
     }
 
     @Transactional
-    public CreateAccountResult createAccountForAuth(CreateAccountRequest request) {
-        int userId = Math.toIntExact(request.userId());
-        Integer advisorId = accountMapper.selectAnyAdvisorId();
+        public CreateAccountResult createAccountForAuth(
+                        long userId,
+                        CreateAccountRequest request) {
+                int userIdInt = Math.toIntExact(userId);
 
-        if (advisorId == null) {
-            throw new IllegalArgumentException("No advisor is configured for account onboarding");
-        }
-
-        LocalDate dob = request.dob() != null
-                ? request.dob()
-                : LocalDate.now().minusYears(18);
-
-        accountMapper.upsertAuthClient(
-                userId,
-                request.clientName(),
-                request.email(),
-                request.phoneNo(),
-                dob,
-                advisorId);
+                if (accountMapper.countAccountsByUserId(userIdInt) > 0) {
+                        throw new AccountLinkConflictException("User already has an account");
+                }
 
         int accountId = Math.toIntExact(accountMapper.nextAccountId());
         String accountNumber = formatAccountNumber(accountId);
+        BigDecimal openingBalance = resolveOpeningBalance(request.balance());
 
         Account account = new Account(
                 accountId,
                 accountNumber,
                 LocalDate.now(),
-                BigDecimal.ZERO,
-                BigDecimal.ZERO,
+                openingBalance,
+                openingBalance,
                 AccountStatus.ACTIVE,
                 "USD",
                 1L,
                 null,
                 null,
-                userId);
+                userIdInt);
 
         accountMapper.insertAccount(account);
 
@@ -578,40 +597,20 @@ public class TradeService {
                 "Account created successfully");
     }
 
-    public AuthAccountResponse getAccountForAuth(long accountId) {
-        Account account = accountMapper
-                .selectAccountById(Math.toIntExact(accountId))
-                .orElseThrow(() -> new AccountNotFoundException(accountId));
+        private BigDecimal resolveOpeningBalance(BigDecimal requestedBalance) {
+                if (requestedBalance == null) {
+                        return MIN_OPENING_BALANCE;
+                }
 
-        return new AuthAccountResponse(
-                account.getAccountId(),
-                account.getAccountNumber(),
-                account.getAccountStatus(),
-                account.getBalance(),
-                account.getPurchasingPower());
-    }
+                BigDecimal normalized = requestedBalance.setScale(4);
+                if (normalized.compareTo(MIN_OPENING_BALANCE) < 0) {
+                        throw new IllegalArgumentException("Opening balance must be at least 20000");
+                }
 
-    @Transactional
-    public void linkAccountForAuth(LinkAccountRequest request) {
-        int accountId = Math.toIntExact(request.accountId());
-        int userId = Math.toIntExact(request.userId());
-
-        Account account = accountMapper
-                .selectAccountById(accountId)
-                .orElseThrow(() -> new AccountNotFoundException(accountId));
-
-        if (account.getClientId() == userId) {
-            return;
+                return normalized;
         }
-
-        int rows = accountMapper.updateAccountClientId(accountId, userId);
-
-        if (rows == 0) {
-            throw new IllegalArgumentException("Unable to link account");
-        }
-    }
 
     private static String formatAccountNumber(int accountId) {
-        return "AC" + String.format("%010d", accountId);
+                return "ACC" + String.format("%09d", accountId);
     }
 }

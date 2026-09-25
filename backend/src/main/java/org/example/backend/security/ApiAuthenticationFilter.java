@@ -38,7 +38,9 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        return !path.startsWith("/api/v1/") && !path.equals("/api/v1");
+        boolean v1Path = path.startsWith("/api/v1/") || path.equals("/api/v1");
+        boolean accountsPath = path.startsWith("/api/v1/accounts/") || path.equals("/api/v1/accounts");
+        return !v1Path && !accountsPath;
     }
 
     @Override
