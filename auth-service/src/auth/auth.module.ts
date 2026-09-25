@@ -12,6 +12,7 @@ import { UsersService, UsersRepository } from '../users/users.service';
 import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService, RefreshTokensRepository } from '../refresh-tokens/refresh-tokens.service';
 import { RedactingLogger } from '../common/logging/redacting.logger';
+import { LoginThrottleService } from './login-throttle.service';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
     RefreshTokensService,
     RefreshTokensRepository,
     RedactingLogger,
+    LoginThrottleService,
   ],
   exports: [AuthService, UsersService, CredentialsService],
 })

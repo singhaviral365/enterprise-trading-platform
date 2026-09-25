@@ -5,6 +5,7 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService } from '../refresh-tokens/refresh-tokens.service';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import { UnauthorisedException } from '../common/exceptions';
+import { LoginThrottleService } from './login-throttle.service';
 
 jest.mock('@nestjs/jwt', () => ({
   JwtService: class {
@@ -40,6 +41,11 @@ describe('AuthService access token contract', () => {
     warn: jest.Mock;
     debug: jest.Mock;
   };
+  let loginThrottleService: {
+    isBlocked: jest.Mock;
+    recordFailure: jest.Mock;
+    reset: jest.Mock;
+  };
 
   beforeEach(() => {
     process.env.JWT_SECRET = jwtSecret;
@@ -72,6 +78,11 @@ describe('AuthService access token contract', () => {
       warn: jest.fn(),
       debug: jest.fn(),
     };
+    loginThrottleService = {
+      isBlocked: jest.fn(() => false),
+      recordFailure: jest.fn(),
+      reset: jest.fn(),
+    };
 
     service = new AuthService(
       {} as UsersService,
@@ -80,6 +91,7 @@ describe('AuthService access token contract', () => {
       refreshTokensService as unknown as RefreshTokensService,
       jwtService as never,
       redactingLogger as unknown as RedactingLogger,
+      loginThrottleService as unknown as LoginThrottleService,
     );
   });
 
@@ -106,7 +118,7 @@ describe('AuthService access token contract', () => {
     jest.spyOn(Date, 'now').mockReturnValue(fixedEpochSeconds * 1000);
     setupValidLoginMocks();
 
-    const response = await service.login('trader01', 'Password123!');
+    const response = await service.login('trader01', 'Password123!', 'test-caller');
     const claims = jsonwebtoken.verify(response.accessToken, jwtSecret, {
       algorithms: ['HS256'],
       issuer: jwtIssuer,
@@ -131,7 +143,7 @@ describe('AuthService access token contract', () => {
     jest.spyOn(Date, 'now').mockReturnValue(fixedEpochSeconds * 1000);
     setupValidLoginMocks();
 
-    const response = await service.login('trader01', 'Password123!');
+    const response = await service.login('trader01', 'Password123!', 'test-caller');
 
     expect(() => {
       jsonwebtoken.verify(response.accessToken, jwtSecret, {
@@ -145,7 +157,7 @@ describe('AuthService access token contract', () => {
     jest.spyOn(Date, 'now').mockReturnValue(fixedEpochSeconds * 1000);
     setupValidLoginMocks();
 
-    const response = await service.login('trader01', 'Password123!');
+    const response = await service.login('trader01', 'Password123!', 'test-caller');
     const claims = jsonwebtoken.verify(response.accessToken, jwtSecret, {
       algorithms: ['HS256'],
       issuer: jwtIssuer,
@@ -244,6 +256,92 @@ describe('AuthService access token contract', () => {
       expect(firstRefresh.refreshToken).toBe('rotated-refresh-token-1');
       expect(secondRefresh.refreshToken).toBe('rotated-refresh-token-2');
       expect(secondRefresh.refreshToken).not.toBe(firstRefresh.refreshToken);
+    });
+  });
+
+  describe('login hardening', () => {
+    async function captureUnauthorised(
+      run: () => Promise<unknown>,
+    ): Promise<UnauthorisedException> {
+      try {
+        await run();
+        throw new Error('Expected UnauthorisedException');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnauthorisedException);
+        return error as UnauthorisedException;
+      }
+    }
+
+    it('returns the same AUTH-401 status and body for unknown user and wrong password', async () => {
+      credentialsService.verifyPassword.mockResolvedValue(false);
+
+      usersRepository.findByUsername.mockResolvedValueOnce(null);
+      const unknownUserFailure = await captureUnauthorised(() =>
+        service.login('missing.user', 'WrongPassword123!', 'caller-1'),
+      );
+
+      usersRepository.findByUsername.mockResolvedValueOnce({
+        id: 1001,
+        username: 'known.user',
+        password_hash: '$argon2id$known-hash',
+        roles: ['CUSTOMER'],
+      });
+      const wrongPasswordFailure = await captureUnauthorised(() =>
+        service.login('known.user', 'WrongPassword123!', 'caller-1'),
+      );
+
+      expect(unknownUserFailure.getStatus()).toBe(wrongPasswordFailure.getStatus());
+      expect(unknownUserFailure.getResponse()).toEqual(
+        wrongPasswordFailure.getResponse(),
+      );
+    });
+
+    it('does comparable work for unknown user and wrong password paths', async () => {
+      credentialsService.verifyPassword.mockResolvedValue(false);
+
+      usersRepository.findByUsername.mockResolvedValueOnce(null);
+      await service
+        .login('missing.user', 'WrongPassword123!', 'caller-A')
+        .catch(() => null);
+
+      usersRepository.findByUsername.mockResolvedValueOnce({
+        id: 1002,
+        username: 'known.user',
+        password_hash: '$argon2id$known-hash',
+        roles: ['CUSTOMER'],
+      });
+      await service
+        .login('known.user', 'WrongPassword123!', 'caller-B')
+        .catch(() => null);
+
+      expect(credentialsService.verifyPassword).toHaveBeenCalledTimes(2);
+      expect(loginThrottleService.isBlocked).toHaveBeenCalledTimes(2);
+      expect(loginThrottleService.recordFailure).toHaveBeenCalledTimes(2);
+      expect(loginThrottleService.reset).not.toHaveBeenCalled();
+
+      const [firstCallArgs, secondCallArgs] = credentialsService.verifyPassword.mock.calls;
+      expect(firstCallArgs[0]).toBe('WrongPassword123!');
+      expect(secondCallArgs[0]).toBe('WrongPassword123!');
+    });
+
+    it('returns AUTH-401 when throttle blocks the caller even with valid credentials', async () => {
+      usersRepository.findByUsername.mockResolvedValue({
+        id: 1003,
+        username: 'blocked.user',
+        password_hash: '$argon2id$known-hash',
+        roles: ['CUSTOMER'],
+      });
+      credentialsService.verifyPassword.mockResolvedValue(true);
+      loginThrottleService.isBlocked.mockReturnValue(true);
+
+      await expect(
+        service.login('blocked.user', 'Password123!', 'caller-throttled'),
+      ).rejects.toBeInstanceOf(UnauthorisedException);
+
+      expect(loginThrottleService.recordFailure).toHaveBeenCalledWith(
+        'caller-throttled',
+      );
+      expect(loginThrottleService.reset).not.toHaveBeenCalled();
     });
   });
 });

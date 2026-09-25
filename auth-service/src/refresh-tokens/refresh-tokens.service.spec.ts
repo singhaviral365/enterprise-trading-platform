@@ -5,14 +5,14 @@ import {
 } from './refresh-tokens.service';
 
 type StoredRefreshToken = {
-  user_id: string;
+  user_id: number;
   token_hash: string;
   expires_at: Date;
   revoked_at: Date | null;
 };
 
 describe('RefreshTokensService', () => {
-  const userId = '8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f';
+  const userId = 12345;
 
   let service: RefreshTokensService;
   let storedTokens: StoredRefreshToken[];

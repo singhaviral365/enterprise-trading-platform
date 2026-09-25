@@ -6,6 +6,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -29,6 +30,7 @@ import {
 import { UnauthorisedException } from '../common/exceptions';
 import { JwtAuthGuard, AuthenticatedUser } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
+import { Request } from 'express';
 
 /**
  * Auth controller implementing contracts/auth-api.yaml
@@ -79,8 +81,15 @@ export class AuthController {
   @ApiOkResponse({ type: TokenResponseDto })
   @ApiUnauthorizedResponse({ type: ErrorResponseDto })
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
-  async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
-    return this.authService.login(loginDto.username, loginDto.password);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() request: Request,
+  ): Promise<TokenResponseDto> {
+    return this.authService.login(
+      loginDto.username,
+      loginDto.password,
+      this.resolveCallerId(request),
+    );
   }
 
   /**
@@ -128,5 +137,22 @@ export class AuthController {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.authService.getUser(user.userId);
+  }
+
+  private resolveCallerId(request: Request): string {
+    const forwardedFor = request.headers['x-forwarded-for'];
+    const firstForwarded = Array.isArray(forwardedFor)
+      ? forwardedFor[0]
+      : forwardedFor;
+
+    if (typeof firstForwarded === 'string' && firstForwarded.trim().length > 0) {
+      return firstForwarded.split(',')[0].trim();
+    }
+
+    if (typeof request.ip === 'string' && request.ip.trim().length > 0) {
+      return request.ip;
+    }
+
+    return 'unknown-caller';
   }
 }

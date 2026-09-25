@@ -9,9 +9,12 @@ import {
   RegistrationFailedException,
 } from '../common/exceptions';
 import { UserResponseDto, TokenResponseDto } from './dto';
+import { LoginThrottleService } from './login-throttle.service';
 
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 const DEFAULT_JWT_ISSUER = 'auth-service';
+const DUMMY_ARGON2ID_HASH =
+  '$argon2id$v=19$m=65536,t=3,p=2$MDEyMzQ1Njc4OWFiY2RlZg$ae5MbA5HD/nOiVoQN73kuKsSG9C7+nVj5POBuhjB7Nk';
 
 /**
  * Auth service implements the 4 operations:
@@ -29,6 +32,7 @@ export class AuthService {
     private readonly refreshTokensService: RefreshTokensService,
     private readonly jwtService: JwtService,
     private readonly redactingLogger: RedactingLogger,
+    private readonly loginThrottleService: LoginThrottleService,
   ) {}
 
   private buildAccessToken(user: {
@@ -113,22 +117,25 @@ export class AuthService {
   async login(
     username: string,
     password: string,
+    callerId: string,
   ): Promise<TokenResponseDto> {
     this.redactingLogger.log('AuthService', 'Login attempt', { username });
+
+    const isCallerThrottled = this.loginThrottleService.isBlocked(callerId);
 
     // Find user by username
     const user = await this.usersRepository.findByUsername(username);
 
-    // Check password (even if user not found, do a dummy verify to prevent timing attacks)
-    const isPasswordValid = user
-      ? await this.credentialsService.verifyPassword(password, user.password_hash)
-      : await this.credentialsService.verifyPassword(
-          password,
-          '$argon2id$v=19$m=65536,t=3,p=4$' + 'x'.repeat(22) + '$' + 'x'.repeat(43),
-        );
+    // Always verify against a real Argon2id hash so unknown-user and wrong-password paths do comparable work.
+    const hashForVerification = user?.password_hash ?? DUMMY_ARGON2ID_HASH;
+    const isPasswordValid = await this.credentialsService.verifyPassword(
+      password,
+      hashForVerification,
+    );
 
     // Return same error for unknown user or wrong password
-    if (!user || !isPasswordValid) {
+    if (!user || !isPasswordValid || isCallerThrottled) {
+      this.loginThrottleService.recordFailure(callerId);
       this.redactingLogger.warn(
         'AuthService',
         'Login failed - invalid credentials',
@@ -136,6 +143,8 @@ export class AuthService {
       );
       throw new UnauthorisedException('Unauthorised');
     }
+
+    this.loginThrottleService.reset(callerId);
 
     this.redactingLogger.log('AuthService', 'Login successful', {
       userId: user.id,
