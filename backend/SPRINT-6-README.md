@@ -1,5 +1,19 @@
 # Sprint 6
 
+## Auth Service OpenAPI (Generated)
+
+The auth service publishes OpenAPI generated from NestJS decorators on controllers and DTOs.
+
+- Human-readable docs page: `http://localhost:3000/api-docs`
+- JSON document: `http://localhost:3000/api-docs-json`
+
+The generated document covers the four auth routes:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/refresh`
+- `GET /auth/me`
+
 ## Order placement characterization tests
 
 The Sprint 6 order-placement characterization tests live in the dedicated package:
