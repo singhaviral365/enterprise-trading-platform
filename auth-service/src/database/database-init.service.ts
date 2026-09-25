@@ -15,7 +15,7 @@ export class DatabaseInitService implements OnModuleInit {
     }
 
     try {
-      // After TypeORM synchronize, ensure users_user_id_seq starts from 1000
+      // After TypeORM synchronize, ensure users_user_id_seq starts from 1001
       await this.resetUserIdSequence();
     } catch (error) {
       this.logger.error('DatabaseInitService', 'Failed to initialize database', {
@@ -29,14 +29,17 @@ export class DatabaseInitService implements OnModuleInit {
     const queryRunner = this.dataSource.createQueryRunner();
 
     try {
-      // Reset the sequence to start from 1000
-      // This ensures new user_ids begin at 1000, not 1
+      // Ensure next generated user_id is at least 1001 while preserving existing rows.
       await queryRunner.query(
-        'SELECT setval(\'users_user_id_seq\', 1000, false)',
+        `SELECT setval(
+            'users_user_id_seq',
+            GREATEST(COALESCE((SELECT MAX(user_id) FROM users), 1000), 1000),
+            true
+         )`,
       );
       this.logger.log(
         'DatabaseInitService',
-        'Database: users_user_id_seq reset to START 1000',
+        'Database: users_user_id_seq set for next value >= 1001',
       );
     } catch (error) {
       this.logger.warn(
