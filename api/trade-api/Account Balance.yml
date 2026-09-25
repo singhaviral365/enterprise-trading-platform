@@ -1,5 +1,5 @@
 info:
-  name: Account_Balance
+  name: Account Balance
   type: http
   seq: 3
 
@@ -15,3 +15,4 @@ settings:
   timeout: 0
   followRedirects: true
   maxRedirects: 5
+  forwardAuthorizationHeader: true
