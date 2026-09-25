@@ -22,6 +22,7 @@ public class JwtVerifier {
 
     private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);
     private static final String SUBJECT_CLAIM = "sub";
+    private static final String USER_ID_CLAIM = "user_id";
 
     private final JwtConfiguration jwtConfig;
 
@@ -51,6 +52,8 @@ public class JwtVerifier {
 
     private Long verifyTokenSignature(String token) {
         SecretKey key = jwtConfig.getSigningKey();
+
+        assertSupportedTokenFormat(token);
         
         try {
             Claims claims = Jwts.parser()
@@ -80,33 +83,75 @@ public class JwtVerifier {
         } catch (MalformedJwtException e) {
             logger.warn("Malformed JWT: {}", e.getMessage());
             throw new JwtVerificationException("Malformed token");
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid JWT input: {}", e.getMessage());
+            throw new JwtVerificationException("Malformed token");
         } catch (JwtException e) {
             logger.warn("JWT verification failed: {}", e.getMessage());
             throw new JwtVerificationException("Token verification failed");
         }
     }
 
-    private Long extractUserId(Claims claims) {
-        Object rawSubject = claims.get(SUBJECT_CLAIM);
-        if (rawSubject == null) {
-            rawSubject = claims.getSubject();
+    private void assertSupportedTokenFormat(String token) {
+        String[] parts = token.split("\\.");
+        if (parts.length == 3) {
+            return;
         }
 
-        if (rawSubject == null) {
+        if (parts.length == 5) {
+            logger.warn("Encrypted JWE tokens are not supported. Expected signed JWT (JWS) access token");
+            throw new JwtVerificationException("Unsupported token format");
+        }
+
+        logger.warn("Invalid JWT compact serialization. Expected 3 parts for JWS but got {}", parts.length);
+        throw new JwtVerificationException("Malformed token");
+    }
+
+    private Long extractUserId(Claims claims) {
+        Object rawUserId = claims.get(USER_ID_CLAIM);
+        Object rawSubject = claims.get(SUBJECT_CLAIM);
+
+        if (rawUserId != null && rawSubject != null) {
+            Long parsedUserId = parseClaimAsLong(rawUserId, USER_ID_CLAIM);
+            Long parsedSubject = parseClaimAsLong(rawSubject, SUBJECT_CLAIM);
+            if (parsedUserId == null || parsedSubject == null || !parsedUserId.equals(parsedSubject)) {
+                logger.error("Token contains conflicting user identity claims: user_id={}, sub={}", rawUserId, rawSubject);
+                return null;
+            }
+            return parsedUserId;
+        }
+
+        if (rawUserId != null) {
+            return parseClaimAsLong(rawUserId, USER_ID_CLAIM);
+        }
+
+        if (rawSubject != null) {
+            return parseClaimAsLong(rawSubject, SUBJECT_CLAIM);
+        }
+
+        String subject = claims.getSubject();
+        if (subject == null) {
             return null;
         }
 
-        if (rawSubject instanceof Number num) {
+        return parseClaimAsLong(subject, SUBJECT_CLAIM);
+    }
+
+    private Long parseClaimAsLong(Object claimValue, String claimName) {
+        if (claimValue instanceof Number num) {
             return num.longValue();
-        } else if (rawSubject instanceof String str) {
+        }
+
+        if (claimValue instanceof String str) {
             try {
                 return Long.parseLong(str);
             } catch (NumberFormatException e) {
-                logger.error("Invalid {} format: {}", SUBJECT_CLAIM, str);
+                logger.error("Invalid {} format: {}", claimName, str);
                 return null;
             }
         }
-        
+
+        logger.error("Invalid {} type: {}", claimName, claimValue.getClass().getSimpleName());
         return null;
     }
 
