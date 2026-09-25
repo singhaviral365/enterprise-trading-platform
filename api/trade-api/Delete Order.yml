@@ -5,7 +5,7 @@ info:
 
 http:
   method: DELETE
-  url: orders/6
+  url: orders/3
   auth:
     type: bearer
     token: "{{JWT_KEY}}"
