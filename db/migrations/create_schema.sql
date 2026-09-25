@@ -35,6 +35,10 @@ CREATE TABLE account
 
     account_number      VARCHAR(12) NOT NULL,
 
+    -- User ID added as INTEGER.
+    -- It is NOT a foreign key.
+    user_id             INTEGER NOT NULL,
+
     opening_date        DATE NOT NULL,
 
     balance             NUMERIC(19,4) NOT NULL DEFAULT 0.0000,
@@ -59,6 +63,10 @@ CREATE TABLE account
 
     CONSTRAINT chk_account_number
         CHECK (account_number ~ '^[A-Z0-9]{12}$'),
+
+    -- Explicit check that user_id cannot be NULL.
+    CONSTRAINT chk_account_user_id
+        CHECK (user_id IS NOT NULL),
 
     CONSTRAINT chk_account_status
         CHECK (
