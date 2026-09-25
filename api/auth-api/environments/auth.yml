@@ -1,0 +1,7 @@
+name: auth
+variables:
+  - name: base_url
+    value: http://localhost:3000/auth
+  - secret: true
+    name: JWT_KEY
+    description: ""
