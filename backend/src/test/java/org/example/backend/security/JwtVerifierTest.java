@@ -57,6 +57,35 @@ class JwtVerifierTest {
         assertEquals(VALID_USER_ID, userId);
     }
 
+        @Test
+        void testValidTokenWithUserIdClaimExtractsUserId() {
+                String token = Jwts.builder()
+                                .claim("user_id", VALID_USER_ID)
+                                .issuer("auth-service")
+                                .issuedAt(Date.from(Instant.now()))
+                                .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
+                                .signWith(signingKey, SignatureAlgorithm.HS256)
+                                .compact();
+
+                Long userId = verifier.verifyAndExtractUserId(token);
+                assertEquals(VALID_USER_ID, userId);
+        }
+
+        @Test
+        void testConflictingSubAndUserIdClaimsThrowsJwtVerificationException() {
+                String token = Jwts.builder()
+                                .subject(String.valueOf(VALID_USER_ID))
+                                .claim("user_id", VALID_USER_ID + 1)
+                                .issuer("auth-service")
+                                .issuedAt(Date.from(Instant.now()))
+                                .expiration(Date.from(Instant.now().plus(1, ChronoUnit.HOURS)))
+                                .signWith(signingKey, SignatureAlgorithm.HS256)
+                                .compact();
+
+                assertThrows(JwtVerifier.JwtVerificationException.class,
+                                () -> verifier.verifyAndExtractUserId(token));
+        }
+
     @Test
     void testExpiredTokenThrowsJwtVerificationException() {
         String token = Jwts.builder()
@@ -95,6 +124,14 @@ class JwtVerifierTest {
         assertThrows(JwtVerifier.JwtVerificationException.class,
                 () -> verifier.verifyAndExtractUserId(malformedToken));
     }
+
+        @Test
+        void testJweCompactTokenIsRejected() {
+                String jweLikeToken = "a.b.c.d.e";
+
+                assertThrows(JwtVerifier.JwtVerificationException.class,
+                                () -> verifier.verifyAndExtractUserId(jweLikeToken));
+        }
 
     @Test
     void testMissingSubjectThrowsJwtVerificationException() {
