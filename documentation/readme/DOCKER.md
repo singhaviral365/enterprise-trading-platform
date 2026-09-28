@@ -29,7 +29,7 @@ POSTGRES_DB=trading
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=<set-a-strong-password>
 JWT_SECRET=<set-at-least-32-characters>
-CORE_JAVA_REPO_URL=<your-git-remote-url>
+CORE_JAVA_REPO_URL=$(git remote get-url origin)
 CORE_JAVA_REF=core-java
 ```
 
