@@ -31,7 +31,7 @@
             <arg column="version" javaType="_long" name="version"/>
             <arg column="suspended_at" javaType="java.time.OffsetDateTime" name="suspendedAt"/>
             <arg column="closed_at" javaType="java.time.OffsetDateTime" name="closedAt"/>
-            <arg column="client_id" javaType="_int" name="clientId"/>
+            <arg column="user_id" javaType="_int" name="clientId"/>
         </constructor>
     </resultMap>
 
@@ -56,7 +56,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         ) VALUES (
             #{account.accountId},
             #{account.accountNumber},
@@ -93,7 +93,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE account_id = #{accountId}
     </select>
@@ -116,7 +116,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE account_number = #{accountNumber}
     </select>
@@ -141,9 +141,9 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
-        WHERE client_id = #{clientId}
+          WHERE user_id = #{clientId}
         ORDER BY account_id
     </select>
 
@@ -167,7 +167,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE account_status = #{accountStatus}
         ORDER BY account_id
@@ -189,9 +189,9 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
-        WHERE client_id = #{clientId}
+        WHERE user_id = #{clientId}
           AND account_status = #{accountStatus}
         ORDER BY account_id
     </select>
@@ -212,7 +212,7 @@
             version,
             suspended_at,
             closed_at,
-            client_id
+            user_id
         FROM account
         WHERE opening_date BETWEEN #{fromDate} AND #{toDate}
         ORDER BY opening_date DESC, account_id
