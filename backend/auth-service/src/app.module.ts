@@ -17,7 +17,7 @@ import { DatabaseInitService } from './database/database-init.service';
     ConfigModule.forRoot({
       load: [configuration],
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: ['.env.local', '.env', '../.env', '../../.env'],
     }),
 
     // Database connection configuration
