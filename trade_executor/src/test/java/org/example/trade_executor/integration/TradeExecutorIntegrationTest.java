@@ -277,7 +277,11 @@ class TradeExecutorIntegrationTest {
         OrderPlacedConsumer orderPlacedConsumer(
                 ObjectMapper objectMapper,
                 TradeExecutorService tradeExecutorService) {
-            return new OrderPlacedConsumer(objectMapper, tradeExecutorService);
+            return new OrderPlacedConsumer(
+                    objectMapper,
+                    tradeExecutorService,
+                    "orders",
+                    "trade-executor");
         }
     }
 

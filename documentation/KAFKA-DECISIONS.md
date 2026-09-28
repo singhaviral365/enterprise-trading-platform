@@ -71,6 +71,36 @@ Keying by `orderId`: This would send each order to a different partition (since 
 **Failure Mode to Avoid:**
 Keying by quote-ID or timestamp: This would randomize partition assignment, breaking the freshness guarantee. A strategy service could act on stale quotes.
 
+### 5. Market Poller Interval and Fauxnance Quota
+
+The market poller runs inside `trade_executor` and calls Fauxnance batch quotes endpoint with at most 25 symbols per request. Quota is 2000 requests/day per API key.
+
+Requests per day are calculated as:
+
+$$
+	ext{requests/day} = \left\lceil\frac{\text{symbols}}{25}\right\rceil \times \frac{86400}{\text{interval seconds}}
+$$
+
+Interval floor for quota safety is:
+
+$$
+	ext{minimum interval} = \left\lceil\frac{\left\lceil\text{symbols}/25\right\rceil \times 86400}{2000}\right\rceil
+$$
+
+The executor enforces this floor in code. Effective interval is:
+
+$$
+	ext{effective interval} = \max(\text{configured POLL_INTERVAL_SECONDS}, \text{minimum interval})
+$$
+
+Example with 8 symbols and configured 30s:
+- Requests per poll: $\lceil 8/25 \rceil = 1$
+- Minimum interval: $\lceil 86400 / 2000 \rceil = 44s$
+- Effective interval: $\max(30, 44) = 44s$
+- Requests/day: $\lfloor 86400 / 44 \rfloor = 1963$
+
+This remains under the 2000/day quota.
+
 ## Dead-Letter Topics
 
 Three dead-letter topics are created with 1 partition and retention matching their source topic:

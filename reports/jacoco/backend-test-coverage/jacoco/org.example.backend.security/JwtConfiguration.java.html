@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.security</a> &gt; <span class="el_source">JwtConfiguration.java</span></div><h1>JwtConfiguration.java</h1><pre class="source lang-java linenums">package org.example.backend.security;
+
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Provides JWT signing key configured from environment.
+ */
+@Component
+public class JwtConfiguration {
+
+    private static final int MIN_HS256_KEY_BYTES = 32;
+
+    private final SecretKey signingKey;
+
+<span class="fc" id="L20">    public JwtConfiguration(@Value(&quot;${jwt.secret}&quot;) String secret) {</span>
+<span class="fc" id="L21">        String normalizedSecret = normalize(secret);</span>
+<span class="fc" id="L22">        byte[] keyBytes = normalizedSecret.getBytes(StandardCharsets.UTF_8);</span>
+
+<span class="fc bfc" id="L24" title="All 2 branches covered.">        if (keyBytes.length &lt; MIN_HS256_KEY_BYTES) {</span>
+<span class="fc" id="L25">            throw new IllegalStateException(</span>
+                    &quot;JWT_SECRET must be at least 32 bytes (256 bits) for HS256. &quot;
+                            + &quot;The configured value is only &quot; + keyBytes.length + &quot; bytes. &quot;
+                            + &quot;Set JWT_SECRET to a strong secret key, not a JWT token value.&quot;);
+        }
+
+<span class="fc" id="L31">        this.signingKey = Keys.hmacShaKeyFor(keyBytes);</span>
+<span class="fc" id="L32">    }</span>
+
+    public SecretKey getSigningKey() {
+<span class="nc" id="L35">        return signingKey;</span>
+    }
+
+    private static String normalize(String secret) {
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">        if (secret == null) {</span>
+<span class="nc" id="L40">            throw new IllegalStateException(&quot;JWT_SECRET is not configured.&quot;);</span>
+        }
+
+<span class="fc" id="L43">        String trimmed = secret.trim();</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (trimmed.isEmpty()) {</span>
+<span class="fc" id="L45">            throw new IllegalStateException(&quot;JWT_SECRET is empty.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L48" title="1 of 4 branches missed.">        if ((trimmed.startsWith(&quot;\&quot;&quot;) &amp;&amp; trimmed.endsWith(&quot;\&quot;&quot;))</span>
+<span class="pc bpc" id="L49" title="3 of 4 branches missed.">                || (trimmed.startsWith(&quot;'&quot;) &amp;&amp; trimmed.endsWith(&quot;'&quot;))) {</span>
+<span class="fc" id="L50">            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();</span>
+        }
+
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (trimmed.isEmpty()) {</span>
+<span class="nc" id="L54">            throw new IllegalStateException(&quot;JWT_SECRET is empty after trimming quotes.&quot;);</span>
+        }
+
+<span class="fc" id="L57">        return trimmed;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

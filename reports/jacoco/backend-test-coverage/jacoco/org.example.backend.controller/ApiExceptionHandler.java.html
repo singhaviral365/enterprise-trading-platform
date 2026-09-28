@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.controller</a> &gt; <span class="el_source">ApiExceptionHandler.java</span></div><h1>ApiExceptionHandler.java</h1><pre class="source lang-java linenums">package org.example.backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import org.example.backend.dto.ErrorResponse;
+import org.example.backend.exceptions.AccountNotActiveException;
+import org.example.backend.exceptions.AccountNotFoundException;
+import org.example.backend.exceptions.DomainException;
+import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.InsufficientFundsException;
+import org.example.backend.exceptions.InsufficientHoldingsException;
+import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.backend.exceptions.OrderNotCancellableException;
+import org.example.backend.exceptions.OrderNotFoundException;
+import org.example.backend.exceptions.UnauthorisedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+
+@RestControllerAdvice
+<span class="fc" id="L31">public class ApiExceptionHandler {</span>
+
+<span class="fc" id="L33">    private static final Logger logger = LoggerFactory.getLogger(ApiExceptionHandler.class);</span>
+
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleDomainErrors(
+            DomainException ex) {
+
+<span class="pc bpc" id="L39" title="2 of 11 branches missed.">        HttpStatus status = switch (ex) {</span>
+<span class="fc" id="L40">            case UnauthorisedException ignored -&gt;</span>
+<span class="fc" id="L41">                    HttpStatus.UNAUTHORIZED;</span>
+
+<span class="fc" id="L43">            case AccountNotActiveException ignored -&gt;</span>
+<span class="fc" id="L44">                    HttpStatus.FORBIDDEN;</span>
+
+<span class="fc" id="L46">            case AccountNotFoundException ignored -&gt;</span>
+<span class="fc" id="L47">                    HttpStatus.NOT_FOUND;</span>
+
+<span class="fc" id="L49">            case InstrumentNotFoundException ignored -&gt;</span>
+<span class="fc" id="L50">                    HttpStatus.NOT_FOUND;</span>
+
+<span class="fc" id="L52">            case InsufficientFundsException ignored -&gt;</span>
+<span class="fc" id="L53">                    HttpStatus.BAD_REQUEST;</span>
+
+<span class="fc" id="L55">            case InsufficientHoldingsException ignored -&gt;</span>
+<span class="fc" id="L56">                    HttpStatus.CONFLICT;</span>
+
+<span class="fc" id="L58">            case DuplicateOrderException ignored -&gt;</span>
+<span class="fc" id="L59">                    HttpStatus.CONFLICT;</span>
+
+<span class="fc" id="L61">            case OptimisticLockException ignored -&gt;</span>
+<span class="fc" id="L62">                    HttpStatus.CONFLICT;</span>
+
+<span class="fc" id="L64">            case OrderNotCancellableException ignored -&gt;</span>
+<span class="fc" id="L65">                    HttpStatus.CONFLICT;</span>
+
+<span class="nc" id="L67">            case OrderNotFoundException ignored -&gt;</span>
+<span class="nc" id="L68">                    HttpStatus.NOT_FOUND;</span>
+
+            default -&gt;
+<span class="pc" id="L71">                    HttpStatus.UNPROCESSABLE_ENTITY;</span>
+        };
+
+<span class="fc" id="L74">        return ResponseEntity</span>
+<span class="fc" id="L75">                .status(status)</span>
+<span class="fc" id="L76">                .body(</span>
+                        new ErrorResponse(
+<span class="fc" id="L78">                                ex.getErrorCode(),</span>
+<span class="fc" id="L79">                                ex.getMessage()</span>
+                        )
+                );
+    }
+
+    @ExceptionHandler({
+            MethodArgumentNotValidException.class,
+            ConstraintViolationException.class,
+            HttpMessageNotReadableException.class,
+            IllegalArgumentException.class,
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidationErrors(
+            Exception ex) {
+
+<span class="fc" id="L95">        return ResponseEntity</span>
+<span class="fc" id="L96">                .unprocessableEntity()</span>
+<span class="fc" id="L97">                .body(</span>
+                        new ErrorResponse(
+                                &quot;VAL-422&quot;,
+<span class="fc" id="L100">                                validationMessage(ex)</span>
+                        )
+                );
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleNotFound(
+            NoHandlerFoundException ex) {
+
+<span class="fc" id="L109">        return ResponseEntity</span>
+<span class="fc" id="L110">                .status(HttpStatus.NOT_FOUND)</span>
+<span class="fc" id="L111">                .body(</span>
+                        new ErrorResponse(
+                                &quot;RES-404&quot;,
+                                &quot;Resource not found&quot;
+                        )
+                );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleFallback(
+            Exception ex,
+            HttpServletRequest request) {
+
+<span class="fc" id="L124">        logger.error(&quot;Unhandled exception on {} {}&quot;, request.getMethod(), request.getRequestURI(), ex);</span>
+
+<span class="fc" id="L126">        return ResponseEntity</span>
+<span class="fc" id="L127">                .status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L128">                .body(</span>
+                        new ErrorResponse(
+                                &quot;SRV-500&quot;,
+                                &quot;Internal server error&quot;
+                        )
+                );
+    }
+
+    private static String validationMessage(Exception ex) {
+
+<span class="fc bfc" id="L138" title="All 2 branches covered.">        if (ex instanceof MethodArgumentNotValidException manve) {</span>
+
+<span class="fc" id="L140">            FieldError fieldError =</span>
+<span class="fc" id="L141">                    manve.getBindingResult().getFieldError();</span>
+
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">            if (fieldError != null) {</span>
+<span class="fc" id="L144">                return &quot;Invalid input&quot;;</span>
+            }
+        }
+
+<span class="fc" id="L148">        return &quot;Invalid input&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

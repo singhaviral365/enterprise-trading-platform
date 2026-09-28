@@ -57,7 +57,7 @@ class TradeServiceTransactionalIntegrationTest extends PostgresIntegrationSuppor
         assertEquals(1, ordersCountFor(1));
         assertEquals("NEW", orderStatus("idem-success-1"));
         assertEquals("LIMIT", orderPricingType("idem-success-1"));
-        assertEquals(new BigDecimal("50.00"), orderPrice("idem-success-1"));
+        assertEquals(0, new BigDecimal("50.00").compareTo(orderPrice("idem-success-1")));
     }
 
     @Test

@@ -1,0 +1,500 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TradeService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.service</a> &gt; <span class="el_source">TradeService.java</span></div><h1>TradeService.java</h1><pre class="source lang-java linenums">package org.example.backend.service;
+
+import org.example.backend.dto.AccountResponse;
+import org.example.backend.dto.BalanceResponse;
+import org.example.backend.dto.OrderHistoryEntry;
+import org.example.backend.dto.OrderResponse;
+import org.example.backend.dto.PositionResponse;
+import org.example.backend.entities.Account;
+import org.example.backend.entities.Holding;
+import org.example.backend.entities.Instrument;
+import org.example.backend.entities.Order;
+import org.example.backend.events.OrderPlacedAfterCommitListener;
+import org.example.backend.events.OrderPlacedEvent;
+import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderPricingType;
+import org.example.backend.enums.OrderSide;
+import org.example.backend.enums.OrderStatus;
+import org.example.backend.exceptions.AccountNotActiveException;
+import org.example.backend.exceptions.AccountNotFoundException;
+import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.exceptions.InsufficientFundsException;
+import org.example.backend.exceptions.InsufficientHoldingsException;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.backend.exceptions.OrderNotFoundException;
+import org.example.backend.exceptions.OrderNotCancellableException;
+import org.example.backend.mapper.AccountMapper;
+import org.example.backend.mapper.HoldingMapper;
+import org.example.backend.mapper.InstrumentMapper;
+import org.example.backend.mapper.OrderMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class TradeService {
+
+<span class="fc" id="L43">        private static final BigDecimal MARKET_PERSISTED_PRICE = new BigDecimal(&quot;0.0001&quot;);</span>
+
+    private final AccountMapper accountMapper;
+    private final HoldingMapper holdingMapper;
+    private final InstrumentMapper instrumentMapper;
+    private final OrderMapper orderMapper;
+    private final OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
+
+    public TradeService(
+            AccountMapper accountMapper,
+            HoldingMapper holdingMapper,
+            InstrumentMapper instrumentMapper,
+            OrderMapper orderMapper,
+<span class="fc" id="L56">            OrderPlacedAfterCommitListener orderPlacedAfterCommitListener) {</span>
+
+<span class="fc" id="L58">        this.accountMapper = accountMapper;</span>
+<span class="fc" id="L59">        this.holdingMapper = holdingMapper;</span>
+<span class="fc" id="L60">        this.instrumentMapper = instrumentMapper;</span>
+<span class="fc" id="L61">        this.orderMapper = orderMapper;</span>
+<span class="fc" id="L62">        this.orderPlacedAfterCommitListener = orderPlacedAfterCommitListener;</span>
+<span class="fc" id="L63">    }</span>
+
+    // =========================================================
+    // STORY 5 - PLACE ORDER
+    // =========================================================
+
+    @Transactional
+    public OrderResponse placeOrder(
+            long accountId,
+            String symbol,
+            OrderSide side,
+            OrderPricingType orderPricingType,
+            long quantity,
+            BigDecimal price,
+            String idempotencyKey) {
+
+<span class="fc" id="L79">        requireActiveAccount(accountId);</span>
+<span class="fc" id="L80">        Instrument instrument = requireTradableInstrument(symbol);</span>
+<span class="fc" id="L81">        ensureIdempotencyKeyUnused(idempotencyKey);</span>
+
+<span class="fc" id="L83">        BigDecimal persistedPrice = normalizePersistedPrice(orderPricingType, price);</span>
+
+<span class="fc" id="L85">        Order order = createAndPersistNewOrder(</span>
+                accountId,
+                instrument,
+                side,
+                orderPricingType,
+                quantity,
+                persistedPrice,
+                idempotencyKey);
+
+<span class="fc" id="L94">        orderPlacedAfterCommitListener.onOrderPlaced(</span>
+                new OrderPlacedEvent(
+<span class="fc" id="L96">                        order.getOrderId(),</span>
+<span class="fc" id="L97">                        order.getAccountId(),</span>
+                        symbol,
+<span class="fc" id="L99">                        order.getOrderSide(),</span>
+<span class="fc" id="L100">                        order.getQuantity(),</span>
+<span class="fc" id="L101">                        order.getReceivedAt()));</span>
+
+<span class="fc" id="L103">        return new OrderResponse(</span>
+<span class="fc" id="L104">                String.valueOf(order.getOrderId()),</span>
+<span class="fc" id="L105">                order.getOrderStatus(),</span>
+                &quot;Order placed successfully&quot;,
+                symbol,
+<span class="fc" id="L108">                order.getOrderSide(),</span>
+<span class="fc" id="L109">                order.getPricingType(),</span>
+<span class="fc" id="L110">                (int) order.getQuantity(),</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">                                orderPricingType == OrderPricingType.MARKET</span>
+<span class="fc" id="L112">                                                ? null</span>
+<span class="fc" id="L113">                                                : order.getPrice());</span>
+    }
+
+        private static BigDecimal normalizePersistedPrice(
+                        OrderPricingType orderPricingType,
+                        BigDecimal requestedPrice) {
+
+<span class="pc bpc" id="L120" title="1 of 4 branches missed.">                if (orderPricingType == OrderPricingType.MARKET &amp;&amp; requestedPrice == null) {</span>
+<span class="fc" id="L121">                        return MARKET_PERSISTED_PRICE;</span>
+                }
+
+<span class="fc" id="L124">                return requestedPrice;</span>
+        }
+
+    private Account requireActiveAccount(long accountId) {
+<span class="fc" id="L128">        Account account = accountMapper</span>
+<span class="fc" id="L129">                .selectAccountById((int) accountId)</span>
+<span class="fc" id="L130">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L131">                        new AccountNotFoundException(accountId));</span>
+
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (account.getAccountStatus() != AccountStatus.ACTIVE) {</span>
+<span class="fc" id="L134">            throw new AccountNotActiveException(</span>
+                    accountId,
+<span class="fc" id="L136">                    account.getAccountStatus());</span>
+        }
+
+<span class="fc" id="L139">        return account;</span>
+    }
+
+    private Instrument requireTradableInstrument(String symbol) {
+<span class="fc" id="L143">        Instrument instrument = instrumentMapper</span>
+<span class="fc" id="L144">                .selectInstrumentByTicker(symbol)</span>
+<span class="fc" id="L145">                .orElseThrow(() -&gt;</span>
+<span class="fc" id="L146">                        new InstrumentNotFoundException(symbol));</span>
+
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">        if (!instrument.isTradable()) {</span>
+<span class="nc" id="L149">            throw new InstrumentNotFoundException(symbol);</span>
+        }
+
+<span class="fc" id="L152">        return instrument;</span>
+    }
+
+    private void ensureIdempotencyKeyUnused(String idempotencyKey) {
+<span class="fc" id="L156">        if (orderMapper</span>
+<span class="fc" id="L157">                .selectOrderByIdempotencyKey(idempotencyKey)</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">                .isPresent()) {</span>
+
+<span class="fc" id="L160">            throw new DuplicateOrderException(idempotencyKey);</span>
+        }
+<span class="fc" id="L162">    }</span>
+
+    private static BigDecimal calculateOrderValue(
+            BigDecimal price,
+            long quantity) {
+
+<span class="nc" id="L168">        return price</span>
+<span class="nc" id="L169">                .multiply(BigDecimal.valueOf(quantity))</span>
+<span class="nc" id="L170">                .setScale(2, RoundingMode.HALF_UP);</span>
+    }
+
+    private Holding validateOrderAndLoadSellHolding(
+            long accountId,
+            String symbol,
+            OrderSide side,
+            long quantity,
+            Account account,
+            Instrument instrument,
+            BigDecimal orderValue) {
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (side == OrderSide.BUY) {</span>
+<span class="nc" id="L183">            assertSufficientFunds(accountId, account, orderValue);</span>
+<span class="nc" id="L184">            return null;</span>
+        }
+
+<span class="nc" id="L187">        return requireSufficientHolding(</span>
+                accountId,
+                symbol,
+                quantity,
+<span class="nc" id="L191">                instrument.getInstrumentId());</span>
+    }
+
+    private void assertSufficientFunds(
+            long accountId,
+            Account account,
+            BigDecimal orderValue) {
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        if (!account.canAfford(orderValue)) {</span>
+<span class="nc" id="L200">            throw new InsufficientFundsException(</span>
+                    accountId,
+                    orderValue,
+<span class="nc" id="L203">                    account.getBalance());</span>
+        }
+<span class="nc" id="L205">    }</span>
+
+    private Holding requireSufficientHolding(
+            long accountId,
+            String symbol,
+            long quantity,
+            int instrumentId) {
+
+<span class="nc" id="L213">        Holding holding = holdingMapper</span>
+<span class="nc" id="L214">                .selectHoldingByAccountAndInstrument(</span>
+                        (int) accountId,
+                        instrumentId)
+<span class="nc" id="L217">                .orElse(null);</span>
+
+        long availableQuantity =
+<span class="nc bnc" id="L220" title="All 2 branches missed.">                holding == null</span>
+<span class="nc" id="L221">                        ? 0</span>
+<span class="nc" id="L222">                        : holding.getQuantity();</span>
+
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (availableQuantity &lt; quantity) {</span>
+<span class="nc" id="L225">            throw new InsufficientHoldingsException(</span>
+                    accountId,
+                    symbol,
+                    quantity,
+                    availableQuantity);
+        }
+
+<span class="nc" id="L232">        return holding;</span>
+    }
+
+    private static void applyCashChange(
+            Account account,
+            OrderSide side,
+            BigDecimal orderValue) {
+
+<span class="nc bnc" id="L240" title="All 2 branches missed.">        if (side == OrderSide.BUY) {</span>
+<span class="nc" id="L241">            account.debit(orderValue);</span>
+        } else {
+<span class="nc" id="L243">            account.credit(orderValue);</span>
+        }
+<span class="nc" id="L245">    }</span>
+
+    private void updateAccountBalanceOrThrow(
+            long accountId,
+            Account account) {
+
+<span class="nc" id="L251">        int affectedRows = accountMapper.updateAccountBalanceWithVersion(</span>
+                (int) accountId,
+<span class="nc" id="L253">                account.getBalance(),</span>
+<span class="nc" id="L254">                account.getVersion());</span>
+
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if (affectedRows == 0) {</span>
+<span class="nc" id="L257">            throw new OptimisticLockException();</span>
+        }
+<span class="nc" id="L259">    }</span>
+
+    private void persistHoldingChange(
+            long accountId,
+            OrderSide side,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument,
+            Holding sellHolding) {
+
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        if (side == OrderSide.BUY) {</span>
+<span class="nc" id="L270">            upsertBuyHolding(accountId, quantity, price, instrument);</span>
+<span class="nc" id="L271">            return;</span>
+        }
+
+<span class="nc" id="L274">        long remainingQuantity = sellHolding.getQuantity() - quantity;</span>
+<span class="nc" id="L275">        holdingMapper.updateHoldingQuantity(</span>
+<span class="nc" id="L276">                sellHolding.getHoldingId(),</span>
+                remainingQuantity);
+<span class="nc" id="L278">    }</span>
+
+    private void upsertBuyHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+<span class="nc" id="L286">        Holding existingHolding = holdingMapper</span>
+<span class="nc" id="L287">                .selectHoldingByAccountAndInstrument(</span>
+                        (int) accountId,
+<span class="nc" id="L289">                        instrument.getInstrumentId())</span>
+<span class="nc" id="L290">                .orElse(null);</span>
+
+<span class="nc bnc" id="L292" title="All 2 branches missed.">        if (existingHolding == null) {</span>
+<span class="nc" id="L293">            insertNewHolding(accountId, quantity, price, instrument);</span>
+<span class="nc" id="L294">            return;</span>
+        }
+
+<span class="nc" id="L297">        long oldQuantity = existingHolding.getQuantity();</span>
+<span class="nc" id="L298">        long newQuantity = oldQuantity + quantity;</span>
+
+<span class="nc" id="L300">        BigDecimal oldValue = existingHolding.getPurchasePrice()</span>
+<span class="nc" id="L301">                .multiply(BigDecimal.valueOf(oldQuantity));</span>
+
+<span class="nc" id="L303">        BigDecimal newValue = price</span>
+<span class="nc" id="L304">                .multiply(BigDecimal.valueOf(quantity));</span>
+
+<span class="nc" id="L306">        BigDecimal averagePrice = oldValue</span>
+<span class="nc" id="L307">                .add(newValue)</span>
+<span class="nc" id="L308">                .divide(</span>
+<span class="nc" id="L309">                        BigDecimal.valueOf(newQuantity),</span>
+                        2,
+                        RoundingMode.HALF_UP);
+
+<span class="nc" id="L313">        holdingMapper.updateHoldingQuantityAndPrice(</span>
+<span class="nc" id="L314">                existingHolding.getHoldingId(),</span>
+                newQuantity,
+                averagePrice);
+<span class="nc" id="L317">    }</span>
+
+    private void insertNewHolding(
+            long accountId,
+            long quantity,
+            BigDecimal price,
+            Instrument instrument) {
+
+<span class="nc" id="L325">        long holdingId = holdingMapper.nextHoldingId();</span>
+
+<span class="nc" id="L327">        Holding newHolding = new Holding(</span>
+                holdingId,
+                quantity,
+                price,
+                (int) accountId,
+<span class="nc" id="L332">                instrument.getInstrumentId());</span>
+
+<span class="nc" id="L334">        holdingMapper.insertHolding(newHolding);</span>
+<span class="nc" id="L335">    }</span>
+
+    // -----------------------------------------------------
+    // Create order
+    // -----------------------------------------------------
+    private Order createAndPersistNewOrder(
+            long accountId,
+            Instrument instrument,
+            OrderSide side,
+            OrderPricingType orderPricingType,
+            long quantity,
+            BigDecimal price,
+            String idempotencyKey) {
+
+<span class="fc" id="L349">        long orderId = orderMapper.nextOrderId();</span>
+<span class="fc" id="L350">        OffsetDateTime receivedAt = OffsetDateTime.now();</span>
+
+<span class="fc" id="L352">        Order order = new Order(</span>
+                orderId,
+                idempotencyKey,
+                OrderStatus.NEW,
+                receivedAt,
+                side,
+                orderPricingType,
+                price,
+                quantity,
+                null,
+                (int) accountId,
+<span class="fc" id="L363">                instrument.getInstrumentId());</span>
+
+<span class="fc" id="L365">        orderMapper.insertOrder(order);</span>
+<span class="fc" id="L366">        return order;</span>
+    }
+
+    // =========================================================
+    // STORY 5 - CANCEL ORDER
+    // =========================================================
+
+    /*
+     * NOTE:
+     * The current Order entity/database uses long order_id,
+     * while the API contract specifies UUID for cancellation.
+     *
+     * This method therefore cannot be made contract-correct until
+     * the order ID representation is aligned.
+     *
+     * Do NOT fake a UUID -&gt; long conversion.
+     */
+    @Transactional
+    public OrderResponse cancelOrder(
+            long orderId,
+            long accountId) {
+
+<span class="fc" id="L388">        Order order = orderMapper</span>
+<span class="fc" id="L389">                .selectOrderById(orderId)</span>
+<span class="fc" id="L390">                .orElseThrow(() -&gt;</span>
+<span class="nc" id="L391">                        new OrderNotFoundException(</span>
+<span class="nc" id="L392">                                syntheticOrderUuid(orderId)));</span>
+
+<span class="fc bfc" id="L394" title="All 2 branches covered.">        if (order.getAccountId() != accountId) {</span>
+<span class="fc" id="L395">            throw new AccountNotActiveException(</span>
+                    accountId,
+                    AccountStatus.ACTIVE);
+        }
+
+<span class="fc" id="L400">        int affectedRows =</span>
+<span class="fc" id="L401">                orderMapper.cancelOrder(</span>
+                        orderId,
+                        accountId);
+
+<span class="pc bpc" id="L405" title="1 of 2 branches missed.">        if (affectedRows == 0) {</span>
+<span class="fc" id="L406">            throw new OrderNotCancellableException(</span>
+<span class="fc" id="L407">                    syntheticOrderUuid(orderId));</span>
+        }
+
+<span class="nc" id="L410">        return new OrderResponse(</span>
+<span class="nc" id="L411">                String.valueOf(orderId),</span>
+                OrderStatus.CANCELLED,
+                &quot;Order cancelled successfully&quot;,
+                null,
+<span class="nc" id="L415">                order.getOrderSide(),</span>
+<span class="nc" id="L416">                order.getPricingType(),</span>
+<span class="nc" id="L417">                (int) order.getQuantity(),</span>
+<span class="nc" id="L418">                order.getPrice());</span>
+    }
+
+    private static UUID syntheticOrderUuid(long orderId) {
+<span class="fc" id="L422">        return UUID.nameUUIDFromBytes(</span>
+<span class="fc" id="L423">                String.valueOf(orderId)</span>
+<span class="fc" id="L424">                        .getBytes());</span>
+    }
+
+    // =========================================================
+    // STORY 6 - ACCOUNT
+    // =========================================================
+
+    public AccountResponse getAccount(long accountId) {
+
+<span class="fc" id="L433">        AccountResponse account =</span>
+<span class="fc" id="L434">                accountMapper.selectAccountResponseById(accountId);</span>
+
+<span class="fc bfc" id="L436" title="All 2 branches covered.">        if (account == null) {</span>
+<span class="fc" id="L437">            throw new AccountNotFoundException(accountId);</span>
+        }
+
+<span class="fc" id="L440">        return account;</span>
+    }
+
+    // =========================================================
+    // STORY 6 - BALANCE
+    // =========================================================
+
+    public BalanceResponse getBalance(long accountId) {
+
+<span class="fc" id="L449">        BalanceResponse balance =</span>
+<span class="fc" id="L450">                accountMapper.selectBalanceResponseByAccountId(</span>
+                        accountId);
+
+<span class="pc bpc" id="L453" title="1 of 2 branches missed.">        if (balance == null) {</span>
+<span class="nc" id="L454">            throw new AccountNotFoundException(accountId);</span>
+        }
+
+<span class="fc" id="L457">        return balance;</span>
+    }
+
+    // =========================================================
+    // STORY 6 - POSITIONS
+    // =========================================================
+
+    public List&lt;PositionResponse&gt; getPositions(
+            long accountId) {
+
+<span class="fc" id="L467">        if (accountMapper.selectAccountById((int) accountId)</span>
+<span class="pc bpc" id="L468" title="1 of 2 branches missed.">                .isEmpty()) {</span>
+
+<span class="nc" id="L470">            throw new AccountNotFoundException(accountId);</span>
+        }
+
+<span class="fc" id="L473">        return holdingMapper</span>
+<span class="fc" id="L474">                .selectPositionResponsesByAccountId(accountId);</span>
+    }
+
+    // =========================================================
+    // STORY 6 - ORDER HISTORY
+    // =========================================================
+
+    public List&lt;OrderHistoryEntry&gt; getOrders(
+            long accountId,
+            OrderStatus status,
+            OffsetDateTime from,
+            OffsetDateTime to) {
+
+<span class="fc" id="L487">        if (accountMapper.selectAccountById((int) accountId)</span>
+<span class="pc bpc" id="L488" title="1 of 2 branches missed.">                .isEmpty()) {</span>
+
+<span class="nc" id="L490">            throw new AccountNotFoundException(accountId);</span>
+        }
+
+<span class="fc" id="L493">        return orderMapper.selectOrderHistoryByAccountId(</span>
+                accountId,
+                status,
+                from,
+                to);
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
