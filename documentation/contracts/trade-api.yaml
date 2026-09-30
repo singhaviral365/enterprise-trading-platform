@@ -11,7 +11,7 @@ info:
     ## Identifiers
 
     `accountId` means the numeric surrogate key `ACCOUNTS.id` everywhere in this contract: in the
-    path parameter, in the order request body, and in the JWT `accountId` claim. The string business
+    path parameter, in the order request body and in the account-creation response. The string business
     identifier lives on `ACCOUNTS.account_id` and is returned as `AccountResponse.accountId`, which
     is the one place the name carries the other meaning. Where any other material uses the name
     loosely, this contract is the one that binds.
@@ -40,7 +40,7 @@ info:
     | 2 | The account must be `ACTIVE` | `ACC-403`, 403 |
     | 3 | The instrument must exist and be tradable | `INS-404`, 404 |
     | 4 | Quantity must be greater than zero | `VAL-422`, 422 |
-    | 5 | Price must be greater than zero | `VAL-422`, 422 |
+    | 5 | A `LIMIT` order must carry a price greater than zero; a `MARKET` order must not carry one | `VAL-422`, 422 |
     | 6 | BUY: cash balance must be at least quantity multiplied by price | `ORD-400`, 400 |
     | 7 | SELL: held quantity must be at least the order quantity | `ORD-409`, 409 |
     | 8 | The idempotency key must be unique | `ORD-409`, 409 |
@@ -54,9 +54,11 @@ info:
     ## Authentication
 
     Every `/api/v1/**` route requires a valid signed JWT in the `Authorization` header. A missing,
-    malformed, expired or wrongly signed token is `AUTH-401`, 401. A valid token whose `accountId`
-    claim does not match the account being addressed is `ACC-403`, 403: a token proves who you are,
-    not what you may reach.
+    malformed, expired or wrongly signed token is `AUTH-401`, 401. The token carries the user (`sub`),
+    not an account. The service looks up the account linked to that user, and an order or
+    cancellation that addresses an account not linked to the authenticated user is `ACC-409`, 409.
+    A token proves who you are, not what you may reach. A user gets an account through
+    `POST /api/v1/accounts/create` and can check it with `GET /api/v1/accounts/link`.
   contact:
     name: Enterprise Trading Platform, programme materials
   license:
@@ -73,6 +75,8 @@ tags:
     description: Placing and cancelling orders.
   - name: Accounts
     description: Account details, cash balance, holdings and order history.
+  - name: Onboarding
+    description: Opening a trading account for the authenticated user and checking the link.
 
 security:
   - bearerAuth: []
@@ -103,6 +107,7 @@ paths:
                   accountId: 1
                   symbol: ACME
                   side: BUY
+                  orderPricingType: LIMIT
                   quantity: 100
                   price: 25.50
                   idempotencyKey: 6f2b1c2a-6a1e-4a4f-9c0d-2f7a1b3c4d5e
@@ -170,6 +175,10 @@ paths:
                   value:
                     errorCode: ORD-409
                     message: Duplicate order
+                notLinked:
+                  value:
+                    errorCode: ACC-409
+                    message: Account is not linked to authenticated user
         '422':
           $ref: '#/components/responses/InvalidInput'
 
@@ -365,6 +374,65 @@ paths:
         '404':
           $ref: '#/components/responses/AccountNotFound'
 
+  /api/v1/accounts/create:
+    post:
+      tags: [Onboarding]
+      operationId: createAccount
+      summary: Open a trading account for the authenticated user
+      description: |
+        Creates an `ACTIVE` account linked to the user in the token (`sub`). A user may own one
+        account: a second call returns `ACC-409`. `balance` is optional and defaults to the service's
+        minimum opening balance.
+
+        Field names in this request are snake_case (`client_name`, `phone_no`), unlike the rest of
+        the contract. That is what the service accepts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '200':
+          description: Account created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAccountResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '409':
+          description: The user already has an account.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                exists:
+                  value:
+                    errorCode: ACC-409
+                    message: User already has an account
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+
+  /api/v1/accounts/link:
+    get:
+      tags: [Onboarding]
+      operationId: getAccountLink
+      summary: Check whether the authenticated user has a trading account
+      description: |
+        Reads the user from the token. Returns `linked: false` when the user has no account yet,
+        which is the signal to call `POST /api/v1/accounts/create`. Not an error case.
+      responses:
+        '200':
+          description: The link status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkAccountStatusResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+
 components:
 
   securitySchemes:
@@ -411,7 +479,7 @@ components:
                 errorCode: ACC-404
                 message: Account not found
     AccountNotActive:
-      description: The account is SUSPENDED or CLOSED, or the token does not grant access to it.
+      description: The account is SUSPENDED or CLOSED.
       content:
         application/json:
           schema:
@@ -464,16 +532,23 @@ components:
       enum: [ACTIVE, SUSPENDED, CLOSED]
       description: Only an ACTIVE account may place or cancel orders.
 
+    OrderPricingType:
+      type: string
+      enum: [LIMIT, MARKET]
+      description: |
+        `LIMIT` orders carry a `price`. `MARKET` orders execute at the live quote and must not carry
+        one.
+
     PlaceOrderRequest:
       type: object
       additionalProperties: false
-      required: [accountId, symbol, side, quantity, price, idempotencyKey]
+      required: [accountId, symbol, side, orderPricingType, quantity, idempotencyKey]
       properties:
         accountId:
           type: integer
           format: int64
           minimum: 1
-          description: The numeric account key, `ACCOUNTS.id`. Must match the token's `accountId` claim.
+          description: The numeric account key, `ACCOUNTS.id`. Must be the account linked to the authenticated user, otherwise `ACC-409`.
           example: 1
         symbol:
           type: string
@@ -486,6 +561,8 @@ components:
           examples: [ACME, AAPL, INFY.NS, 'FX:EURUSD']
         side:
           $ref: '#/components/schemas/OrderSide'
+        orderPricingType:
+          $ref: '#/components/schemas/OrderPricingType'
         quantity:
           type: integer
           format: int32
@@ -498,6 +575,7 @@ components:
           exclusiveMinimum: 0
           multipleOf: 0.01
           description: |
+            Required for `LIMIT` orders, forbidden for `MARKET` orders (otherwise `VAL-422`).
             Limit price per unit, to two decimal places. Must be greater than zero, business rule 5.
             Serialise as a JSON number and hold it as `BigDecimal` in Java. Never use `double` for
             money in the domain.
@@ -514,7 +592,7 @@ components:
     OrderResponse:
       type: object
       additionalProperties: false
-      required: [orderId, status, message, symbol, side, quantity, price]
+      required: [orderId, status, message, symbol, side, orderPricingType, quantity]
       properties:
         orderId:
           type: string
@@ -531,19 +609,22 @@ components:
           example: ACME
         side:
           $ref: '#/components/schemas/OrderSide'
+        orderPricingType:
+          $ref: '#/components/schemas/OrderPricingType'
         quantity:
           type: integer
           format: int32
           example: 100
         price:
-          type: number
+          type: [number, 'null']
           format: double
+          description: The limit price. Null for a `MARKET` order.
           example: 25.50
 
     OrderHistoryEntry:
       type: object
       additionalProperties: false
-      required: [orderId, accountId, symbol, side, quantity, price, status, createdOn]
+      required: [orderId, accountId, symbol, side, orderPricingType, quantity, status, createdOn]
       properties:
         orderId:
           type: string
@@ -557,14 +638,16 @@ components:
           example: ACME
         side:
           $ref: '#/components/schemas/OrderSide'
+        orderPricingType:
+          $ref: '#/components/schemas/OrderPricingType'
         quantity:
           type: integer
           format: int32
           example: 100
         price:
-          type: number
+          type: [number, 'null']
           format: double
-          description: The limit price submitted with the order.
+          description: The limit price submitted with the order. Null for a `MARKET` order.
           example: 25.50
         executedPrice:
           type: [number, 'null']
@@ -669,6 +752,78 @@ components:
             leaves it unchanged, which is what makes realised profit and loss computable later.
           example: 25.50
 
+    CreateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [client_name, phone_no, email]
+      properties:
+        client_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          example: Priya Menon
+        phone_no:
+          type: string
+          minLength: 10
+          maxLength: 20
+          pattern: '^\+?[0-9\s\-()]{10,20}$'
+          example: '+91 98765 43210'
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: priya.menon@example.com
+        dob:
+          type: string
+          format: date
+          description: Optional date of birth.
+          example: '1995-06-15'
+        balance:
+          type: number
+          format: double
+          description: Optional opening cash balance. Defaults to the service minimum.
+          example: 10000.00
+
+    CreateAccountResponse:
+      type: object
+      additionalProperties: false
+      required: [accountId, accountNumber, status, message]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: The numeric account key, `ACCOUNTS.id`. Use it in every other endpoint.
+          example: 1
+        accountNumber:
+          type: string
+          description: The business identifier, the same value as `AccountResponse.accountId`.
+          example: ACC-000001
+        status:
+          type: string
+          description: The new account's status, `ACTIVE`.
+          example: ACTIVE
+        message:
+          type: string
+          description: For display only. Never branch on this string.
+          example: Account created successfully
+
+    LinkAccountStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [linked, message]
+      properties:
+        linked:
+          type: boolean
+          description: True when the authenticated user owns a trading account.
+        message:
+          type: string
+          description: For display only. Never branch on this string.
+          example: Linked account found
+        accountNumber:
+          type: string
+          description: Present only when `linked` is true. The business identifier, `ACC-000001` form.
+          example: ACC-000001
+
     ErrorResponse:
       type: object
       additionalProperties: false
@@ -679,17 +834,20 @@ components:
       properties:
         errorCode:
           type: string
-          enum: [ACC-404, ACC-403, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401]
+          enum: [ACC-404, ACC-403, ACC-409, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401, RES-404, SRV-500]
           description: |
             | Code | HTTP | Meaning |
             |---|---|---|
             | `ACC-404` | 404 | Account not found |
-            | `ACC-403` | 403 | Account not active, or not reachable with this token |
+            | `ACC-403` | 403 | Account not active |
+            | `ACC-409` | 409 | Account not linked to the authenticated user, or the user already has an account |
             | `INS-404` | 404 | Instrument not found or not tradable |
             | `ORD-400` | 400 | Insufficient funds |
             | `ORD-409` | 409 | Insufficient holdings, duplicate order, or order not cancellable |
             | `VAL-422` | 422 | Invalid input |
             | `AUTH-401` | 401 | Unauthorised or invalid token |
+            | `RES-404` | 404 | No such route |
+            | `SRV-500` | 500 | Unexpected server error |
           example: ORD-409
         message:
           type: string

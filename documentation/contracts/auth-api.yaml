@@ -15,8 +15,7 @@ info:
 
     | Claim | Type | Meaning |
     |---|---|---|
-    | `sub` | string | The user identifier. A UUID. Stable for the life of the user. Not the username, not the email, because both can change. |
-    | `accountId` | integer | The numeric trading account key, `ACCOUNTS.id`. The Trade REST API compares this against the account in the request path or body and returns `ACC-403` if they differ. |
+    | `sub` | integer | The user identifier: the numeric `users.id`, stable for the life of the user. Not the username, not the email, because both can change. The Trade REST API reads it as the authenticated user. |
     | `roles` | array of string | Authorisation roles. `CUSTOMER` for a normal trading user, `ADMIN` for an operator. Always present, never empty. |
     | `iat` | integer | Issued-at, seconds since the Unix epoch. |
     | `exp` | integer | Expiry, seconds since the Unix epoch. Fifteen minutes after `iat` for an access token. |
@@ -26,14 +25,17 @@ info:
 
     ```json
     {
-      "sub": "8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f",
-      "accountId": 1,
+      "sub": 1000,
       "roles": ["CUSTOMER"],
       "iat": 1790000000,
       "exp": 1790000900,
       "iss": "auth-service"
     }
     ```
+
+    There is deliberately no `accountId` claim. A user is linked to a trading account inside the Trade
+    REST API (`GET /api/v1/accounts/link`), which resolves the account from `sub`. See
+    `CONTRACT-CHANGES.md`.
 
     Signing: `HS256` with a shared secret in development, read from `JWT_SECRET`. The auth service
     and Trade REST API must use the same algorithm and secret. Move to `RS256` with a published public key
@@ -73,6 +75,8 @@ tags:
     description: Registration, login and token lifecycle.
   - name: Profile
     description: The authenticated user.
+  - name: Health
+    description: Liveness probe.
 
 paths:
   /auth/register:
@@ -82,9 +86,9 @@ paths:
       security: []
       summary: Register a user
       description: |
-        Creates a user and links it to an existing trading account. It does not create the trading
-        account: accounts are owned by the Trade REST API's schema and seeded in Sprint 3. Registering
-        against an unknown `accountId` fails validation.
+        Creates a user with the `CUSTOMER` role. It does not create or link a trading account: after
+        the first login the client calls the Trade REST API, `GET /api/v1/accounts/link` to see
+        whether the user already has an account and `POST /api/v1/accounts/create` to open one.
 
         Registration does not return tokens. The client logs in afterwards. Returning a session from
         a registration endpoint makes the endpoint an unauthenticated session factory, and any
@@ -183,7 +187,8 @@ paths:
       summary: Get the authenticated user
       description: |
         Returns the user identified by the access token. Protected. The UI calls it after login to
-        populate the dashboard greeting and to learn which account to address.
+        populate the dashboard greeting. To learn which trading account the user has, call the Trade REST
+        API, `GET /api/v1/accounts/link`.
 
         Read the identity from the verified token, never from a query parameter or a header the
         client controls. Accepting a client-supplied user identifier here is OWASP A01.
@@ -196,6 +201,21 @@ paths:
                 $ref: '#/components/schemas/UserResponse'
         '401':
           $ref: '#/components/responses/Unauthorised'
+
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      security: []
+      summary: Liveness probe
+      description: Unauthenticated. Used by Docker Compose and monitoring. Not part of the `/auth` surface.
+      responses:
+        '200':
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
 components:
 
@@ -238,7 +258,7 @@ components:
     RegisterRequest:
       type: object
       additionalProperties: false
-      required: [username, password, accountId]
+      required: [username, password]
       properties:
         username:
           type: string
@@ -254,12 +274,6 @@ components:
             Minimum twelve characters. Length beats character-class rules, so do not impose a
             symbol requirement that pushes users towards a shorter password.
           writeOnly: true
-        accountId:
-          type: integer
-          format: int64
-          minimum: 1
-          description: The numeric trading account key, `ACCOUNTS.id`, that this user will trade.
-          example: 1
         roles:
           type: array
           minItems: 1
@@ -272,7 +286,6 @@ components:
       example:
         username: priya.menon
         password: 'correct horse battery staple'
-        accountId: 1
 
     LoginRequest:
       type: object
@@ -320,21 +333,16 @@ components:
     UserResponse:
       type: object
       additionalProperties: false
-      required: [id, username, accountId, roles]
+      required: [id, username, roles]
       properties:
         id:
-          type: string
-          format: uuid
-          description: The value carried in the `sub` claim.
-          example: 8f14e45f-ceea-4c1b-9d3b-1a2b3c4d5e6f
+          type: integer
+          format: int64
+          description: The user's numeric key, the value carried in the `sub` claim.
+          example: 1000
         username:
           type: string
           example: priya.menon
-        accountId:
-          type: integer
-          format: int64
-          description: The numeric trading account key, `ACCOUNTS.id`.
-          example: 1
         roles:
           type: array
           minItems: 1
@@ -345,6 +353,16 @@ components:
           type: string
           format: date-time
           example: '2026-10-05T08:00:00Z'
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
 
     Role:
       type: string
