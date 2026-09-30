@@ -1,0 +1,83 @@
+/* Full-page (default) */
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-z);
+  display: grid;
+  place-items: center;
+}
+
+/* Dims the page using the theme's own background colour. */
+:host::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--surface-background);
+  opacity: 0.8;
+}
+
+.spinner {
+  --spinner-size: 15px;
+  position: relative;
+  display: inline-block;
+  width: 7em;
+  height: 1em;
+  font-size: var(--spinner-size);
+}
+
+/* Inline */
+:host(.is-inline) {
+  position: static;
+  z-index: auto;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+:host(.is-inline)::before {
+  display: none;
+}
+
+:host(.is-inline) .spinner {
+  --spinner-size: 6px;
+}
+
+/* Three dots drawn with box-shadows; em units let one size variable scale everything. */
+.dots {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.3em;
+  height: 0.3em;
+  margin-top: -0.15em;
+  border-radius: 50%;
+  color: var(--accent-primary-background);
+  box-shadow:
+    1.42em 0 0 0.52em,
+    2.84em 0 0 0.227em,
+    4.26em 0 0 0;
+  transform: translateX(-2.84em);
+  animation: dots 0.5s infinite alternate linear;
+}
+
+@keyframes dots {
+  50% {
+    box-shadow:
+      1.42em 0 0 0.227em,
+      2.84em 0 0 0.52em,
+      4.26em 0 0 0.227em;
+  }
+
+  100% {
+    box-shadow:
+      1.42em 0 0 0,
+      2.84em 0 0 0.227em,
+      4.26em 0 0 0.52em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dots {
+    animation: none;
+  }
+}

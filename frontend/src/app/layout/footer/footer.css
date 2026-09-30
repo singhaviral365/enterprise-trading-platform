@@ -1,0 +1,19 @@
+.app-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--footer-z);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  height: var(--footer-height);
+  font-size: 16px;
+  color: var(--accent-primary-foreground);
+  border-top: 1px solid var(--surface-line);
+  background: var(--accent-primary-background);
+}
+
+.footer-content {
+  text-align: right;
+  margin: 0 16px;
+}

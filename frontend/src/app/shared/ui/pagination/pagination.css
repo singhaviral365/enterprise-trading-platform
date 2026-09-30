@@ -1,0 +1,13 @@
+.paginator {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.paginator-items {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 13.5px;
+}

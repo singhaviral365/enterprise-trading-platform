@@ -1,0 +1,20 @@
+<div class="multiselect-container" role="group" [attr.aria-label]="label() || null">
+  @for (option of options(); track option.id) {
+    <button
+      type="button"
+      class="btn is-small"
+      [class.is-readonly]="readOnly()"
+      [class.is-primary]="readOnly()"
+      [class.is-info]="!readOnly() && isSelected(option.id)"
+      [class.is-secondary]="!readOnly() && !isSelected(option.id)"
+      [attr.aria-pressed]="readOnly() ? null : isSelected(option.id)"
+      [attr.aria-disabled]="readOnly() ? 'true' : null"
+      (click)="toggle(option.id)"
+    >
+      @if (!readOnly() && isSelected(option.id)) {
+        <i class="fas fa-check" aria-hidden="true"></i>
+      }
+      {{ option.label }}
+    </button>
+  }
+</div>

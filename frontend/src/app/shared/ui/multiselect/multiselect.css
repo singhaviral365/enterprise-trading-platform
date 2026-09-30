@@ -1,0 +1,9 @@
+.multiselect-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.is-readonly {
+  cursor: default;
+}

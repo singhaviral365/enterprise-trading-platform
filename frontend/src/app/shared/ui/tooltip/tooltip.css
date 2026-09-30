@@ -1,0 +1,50 @@
+:host {
+  display: inline-flex;
+}
+
+:host(.is-block) {
+  display: block;
+}
+
+.tooltip-anchor {
+  display: inherit;
+}
+
+:host(.is-block) .tooltip-anchor {
+  display: block;
+}
+
+.tooltip-content {
+  position: fixed;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 10px;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: var(--notification-z);
+  max-width: 320px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.tooltip-content[data-position='top'] {
+  position-area: top;
+  transform: translateY(-8px);
+}
+
+.tooltip-content[data-position='bottom'] {
+  position-area: bottom;
+  transform: translateY(8px);
+}
+
+.tooltip-content[data-position='left'] {
+  position-area: left;
+  transform: translateX(-8px);
+}
+
+.tooltip-content[data-position='right'] {
+  position-area: right;
+  transform: translateX(8px);
+}

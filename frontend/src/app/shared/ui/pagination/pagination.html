@@ -1,0 +1,31 @@
+@if (totalPages() > 1) {
+  <nav class="paginator" aria-label="Pagination">
+    <div class="paginator-items">
+      <app-tooltip text="Go to previous page" [disabled]="currentPage() <= 1">
+        <button
+          type="button"
+          class="btn is-tertiary is-icon-only"
+          aria-label="Previous page"
+          [disabled]="currentPage() <= 1"
+          (click)="changePage(currentPage() - 1)"
+        >
+          <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        </button>
+      </app-tooltip>
+
+      <span aria-live="polite">Page {{ currentPage() }} of {{ totalPages() }}</span>
+
+      <app-tooltip text="Go to next page" [disabled]="currentPage() >= totalPages()">
+        <button
+          type="button"
+          class="btn is-tertiary is-icon-only"
+          aria-label="Next page"
+          [disabled]="currentPage() >= totalPages()"
+          (click)="changePage(currentPage() + 1)"
+        >
+          <i class="fas fa-arrow-right" aria-hidden="true"></i>
+        </button>
+      </app-tooltip>
+    </div>
+  </nav>
+}

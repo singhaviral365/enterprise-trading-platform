@@ -1,0 +1,59 @@
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  bottom: var(--footer-height);
+  width: var(--sidebar-width-closed);
+  background: var(--surface-background);
+  z-index: var(--sidebar-z);
+  transition: width 0.25s ease;
+  overflow: hidden;
+}
+
+.sidebar.is-open {
+  width: var(--sidebar-width-open);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  gap: 4px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--surface-foreground);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.sidebar-link i {
+  width: 20px;
+  text-align: left;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sidebar-link:hover {
+  color: var(--surface-foreground);
+  background: var(--surface-container-background);
+}
+
+/* Active state uses the darker accent so text meets AA contrast on the sidebar background. */
+.sidebar-link.active {
+  color: var(--accent-primary-background-interaction);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

@@ -1,0 +1,32 @@
+<div class="notification-container" role="region" aria-label="Notifications">
+  @for (n of service.notifications(); track n.id) {
+    <div
+      [class]="'notification-toast is-' + n.type"
+      [attr.role]="n.type === 'error' ? 'alert' : 'status'"
+    >
+      @switch (n.type) {
+        @case ('success') {
+          <i class="fas fa-check-circle" aria-hidden="true"></i>
+        }
+        @case ('error') {
+          <i class="fas fa-times-circle" aria-hidden="true"></i>
+        }
+        @case ('warning') {
+          <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        }
+        @default {
+          <i class="fas fa-info-circle" aria-hidden="true"></i>
+        }
+      }
+      <span>{{ n.message }}</span>
+      <button
+        type="button"
+        [class]="'btn is-icon-only close-btn is-' + n.type"
+        aria-label="Dismiss notification"
+        (click)="service.dismiss(n.id)"
+      >
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+</div>

@@ -1,0 +1,20 @@
+<aside id="app-sidebar" class="sidebar" [class.is-open]="open()">
+  <nav class="sidebar-nav" aria-label="Main navigation">
+    @for (item of items(); track item.route) {
+      <app-tooltip [block]="true" position="right" [text]="item.label" [disabled]="open()">
+        <a
+          class="sidebar-link"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [attr.aria-label]="open() ? null : item.label"
+        >
+          <i [class]="item.icon" aria-hidden="true"></i>
+          @if (open()) {
+            <span class="sidebar-link-text">{{ item.label }}</span>
+          }
+        </a>
+      </app-tooltip>
+    }
+  </nav>
+</aside>
