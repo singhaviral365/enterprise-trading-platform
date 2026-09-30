@@ -42,3 +42,7 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated API clients (src/app/api/generated) are COMMITTED on purpose, so do not ignore them.
+# Regenerate with `npm run api:generate` whenever documentation/contracts changes; never edit by hand.
+!/src/app/api/generated/
