@@ -1,5 +1,5 @@
 import { Component, model } from '@angular/core';
-import { OrderSide } from '../../../core/order.service';
+import { OrderSide } from '../../../api/generated/trade';
 
 /**
  * Buy / Sell switch built on native radio buttons (arrow keys and screen readers work as usual),
@@ -11,5 +11,7 @@ import { OrderSide } from '../../../core/order.service';
   styleUrl: './side-toggle.css',
 })
 export class SideToggle {
-  readonly side = model<OrderSide>('BUY');
+  readonly side = model<OrderSide>(OrderSide.Buy);
+
+  protected readonly OrderSide = OrderSide;
 }
