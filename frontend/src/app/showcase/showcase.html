@@ -9,9 +9,9 @@
     <h2 id="session-heading" class="card-title">Session</h2>
     <p class="form-hint mb-16">The sidebar only appears after login.</p>
     @if (session.isLoggedIn()) {
-      <button type="button" class="btn is-secondary" (click)="session.logout()">Simulate logout</button>
+      <button type="button" class="btn is-secondary" (click)="session.clear()">Sign out</button>
     } @else {
-      <button type="button" class="btn is-primary" (click)="session.login()">Simulate login</button>
+      <button type="button" class="btn is-primary" (click)="authDialog.open()">Sign in</button>
     }
   </section>
 

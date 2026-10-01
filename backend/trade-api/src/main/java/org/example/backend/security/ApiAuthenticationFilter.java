@@ -8,6 +8,7 @@ import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.UnauthorisedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -19,7 +20,9 @@ import java.io.IOException;
  * Authenticates all /api/v1/* requests by verifying JWT Bearer token.
  * 
  * Check order: signature → expiry → algorithm (per story requirements).
- * Dev tokens (dev-user-N / dev-account-N) are supported for testing.
+ * The user id always comes from a JWT signed by the Auth service. Unsigned shortcut tokens
+ * (dev-user-N / dev-account-N / a bare number) let the caller pick any user id, so they are only
+ * honoured when security.dev-tokens.enabled=true, which only the test configuration sets.
  * All token failures return AUTH-401 (Unauthorised).
  */
 @Component
@@ -30,9 +33,16 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
     private static final String DEV_TOKEN_PREFIX = "dev-account-";
 
     private final JwtVerifier jwtVerifier;
+    private final boolean devTokensEnabled;
 
-    public ApiAuthenticationFilter(JwtVerifier jwtVerifier) {
+    public ApiAuthenticationFilter(
+            JwtVerifier jwtVerifier,
+            @Value("${security.dev-tokens.enabled:false}") boolean devTokensEnabled) {
         this.jwtVerifier = jwtVerifier;
+        this.devTokensEnabled = devTokensEnabled;
+        if (devTokensEnabled) {
+            logger.warn("Unsigned dev tokens are ENABLED. Never enable security.dev-tokens.enabled outside tests.");
+        }
     }
 
     @Override
@@ -80,9 +90,18 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
 
     /**
      * Extract user ID from token.
-     * Tries dev token format first, then JWT verification.
+     * Only a signed JWT is accepted, unless dev tokens are explicitly enabled (tests only).
      */
     private Long extractUserId(String token) {
+        if (!devTokensEnabled) {
+            try {
+                return jwtVerifier.verifyAndExtractUserId(token);
+            } catch (JwtVerifier.JwtVerificationException e) {
+                // All JWT failures logged by verifier; return null to trigger AUTH-401
+                return null;
+            }
+        }
+
         if (token.startsWith(DEV_USER_TOKEN_PREFIX)) {
             return parseDevToken(token, DEV_USER_TOKEN_PREFIX);
         }

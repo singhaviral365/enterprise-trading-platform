@@ -1,0 +1,89 @@
+<form class="auth-form" novalidate (submit)="onSubmit($event)" data-testid="login-form">
+  @if (serverError()) {
+    <div class="auth-alert" role="alert" data-testid="login-error">
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      <span>{{ serverError() }}</span>
+    </div>
+  }
+
+  <div class="form-group">
+    <label class="form-label" for="login-username">Username</label>
+    <div class="input-with-icon">
+      <i class="fas fa-user" aria-hidden="true"></i>
+      <input
+        id="login-username"
+        class="form-input"
+        type="text"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="Enter your username"
+        data-testid="login-username"
+        [formField]="loginForm.username"
+        [class.is-error]="loginForm.username().touched() && loginForm.username().invalid()"
+        [attr.aria-invalid]="loginForm.username().touched() && loginForm.username().invalid()"
+        [attr.aria-describedby]="loginForm.username().touched() && loginForm.username().invalid() ? 'login-username-error' : null"
+      />
+    </div>
+    @if (loginForm.username().touched() && loginForm.username().invalid()) {
+      <p id="login-username-error" class="form-error-text" data-testid="login-username-error">
+        {{ loginForm.username().errors()[0].message }}
+      </p>
+    }
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="login-password">Password</label>
+    <div class="input-with-icon has-toggle">
+      <i class="fas fa-lock" aria-hidden="true"></i>
+      <input
+        id="login-password"
+        class="form-input"
+        autocomplete="current-password"
+        placeholder="Enter your password"
+        data-testid="login-password"
+        appNoClipboard
+        (clipboardBlocked)="onClipboardBlocked()"
+        [type]="showPassword() ? 'text' : 'password'"
+        [formField]="loginForm.password"
+        [class.is-error]="loginForm.password().touched() && loginForm.password().invalid()"
+        [attr.aria-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+        [attr.aria-describedby]="loginForm.password().touched() && loginForm.password().invalid() ? 'login-password-error' : null"
+      />
+      <button
+        type="button"
+        class="password-toggle"
+        [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+        [attr.aria-pressed]="showPassword()"
+        (click)="showPassword.update((v) => !v)"
+      >
+        <i class="fas" [class.fa-eye]="!showPassword()" [class.fa-eye-slash]="showPassword()" aria-hidden="true"></i>
+      </button>
+    </div>
+    <p class="form-hint" aria-live="polite" data-testid="login-clipboard-notice">{{ clipboardNotice() }}</p>
+    @if (loginForm.password().touched() && loginForm.password().invalid()) {
+      <p id="login-password-error" class="form-error-text" data-testid="login-password-error">
+        {{ loginForm.password().errors()[0].message }}
+      </p>
+    }
+  </div>
+
+  <button
+    type="submit"
+    class="btn is-primary is-large full-width-btn"
+    data-testid="login-submit"
+    [disabled]="loginForm().submitting()"
+  >
+    @if (loginForm().submitting()) {
+      <app-spinner [inline]="true" label="Signing in" />
+      Signing in…
+    } @else {
+      Sign in
+    }
+  </button>
+
+  <p class="auth-switch">
+    New here?
+    <button type="button" class="link-button" (click)="switchToRegister.emit()">Create an account</button>
+  </p>
+</form>

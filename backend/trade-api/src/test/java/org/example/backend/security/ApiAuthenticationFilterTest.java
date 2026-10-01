@@ -44,7 +44,7 @@ class ApiAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        filter = new ApiAuthenticationFilter(mockVerifier);
+        filter = new ApiAuthenticationFilter(mockVerifier, true);
         responseBody = new StringWriter();
         when(mockResponse.getWriter()).thenReturn(new PrintWriter(responseBody));
     }
@@ -91,6 +91,34 @@ class ApiAuthenticationFilterTest {
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer ");
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
+    }
+
+    @Test
+    void testDevTokenRejectedWhenDevTokensDisabled() throws Exception {
+        ApiAuthenticationFilter productionFilter = new ApiAuthenticationFilter(mockVerifier, false);
+        when(mockRequest.getRequestURI()).thenReturn("/api/v1/accounts/link");
+        when(mockRequest.getHeader("Authorization")).thenReturn("Bearer dev-user-1000");
+        when(mockVerifier.verifyAndExtractUserId("dev-user-1000"))
+                .thenThrow(new JwtVerifier.JwtVerificationException("Malformed token"));
+
+        productionFilter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
+
+        verify(mockResponse).setStatus(401);
+        verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
+    }
+
+    @Test
+    void testNumericTokenRejectedWhenDevTokensDisabled() throws Exception {
+        ApiAuthenticationFilter productionFilter = new ApiAuthenticationFilter(mockVerifier, false);
+        when(mockRequest.getRequestURI()).thenReturn("/api/v1/accounts/link");
+        when(mockRequest.getHeader("Authorization")).thenReturn("Bearer 1000");
+        when(mockVerifier.verifyAndExtractUserId("1000"))
+                .thenThrow(new JwtVerifier.JwtVerificationException("Malformed token"));
+
+        productionFilter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
         verify(mockResponse).setStatus(401);
         verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);

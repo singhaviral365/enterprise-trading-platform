@@ -1,0 +1,71 @@
+<dialog
+  #dialogElement
+  class="auth-dialog"
+  aria-labelledby="auth-dialog-title"
+  data-testid="auth-dialog"
+  (cancel)="onCancel($event)"
+  (click)="onClick($event)"
+>
+  @if (authDialog.isOpen()) {
+    <div class="auth-panel" [class.is-wide]="authDialog.mode() === 'account'">
+      <div class="auth-panel-header">
+        <div class="auth-brand" aria-hidden="true">
+          <i class="fas" [class.fa-chart-line]="authDialog.mode() !== 'account'" [class.fa-building-columns]="authDialog.mode() === 'account'"></i>
+        </div>
+        <div class="auth-heading">
+          <h2 id="auth-dialog-title" class="auth-title">{{ heading().title }}</h2>
+          <p class="auth-subtitle">{{ heading().subtitle }}</p>
+        </div>
+        <button
+          type="button"
+          class="btn is-tertiary is-icon-only auth-close"
+          aria-label="Close"
+          data-testid="auth-dialog-close"
+          (click)="dismiss()"
+        >
+          <i class="fas fa-times" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      @if (authDialog.mode() === 'account') {
+        <app-account-setup-form
+          [email]="authDialog.prefillEmail()"
+          (completed)="onAccountCompleted()"
+          (skipped)="dismiss()"
+        />
+      } @else {
+        <div class="auth-tabs" role="tablist" aria-label="Sign in or register" (keydown)="onTabKeydown($event)">
+          @for (mode of modes; track mode.id) {
+            <button
+              type="button"
+              role="tab"
+              class="auth-tab"
+              [id]="'auth-tab-' + mode.id"
+              [class.is-active]="authDialog.mode() === mode.id"
+              [attr.aria-selected]="authDialog.mode() === mode.id"
+              [attr.aria-controls]="'auth-tabpanel-' + mode.id"
+              [attr.tabindex]="authDialog.mode() === mode.id ? 0 : -1"
+              [attr.data-testid]="'auth-tab-' + mode.id"
+              (click)="authDialog.setMode(mode.id)"
+            >
+              {{ mode.label }}
+            </button>
+          }
+        </div>
+
+        <div
+          class="auth-body"
+          role="tabpanel"
+          [id]="'auth-tabpanel-' + authDialog.mode()"
+          [attr.aria-labelledby]="'auth-tab-' + authDialog.mode()"
+        >
+          @if (authDialog.mode() === 'login') {
+            <app-login-form (signedIn)="onSignedIn($event)" (switchToRegister)="authDialog.setMode('register')" />
+          } @else {
+            <app-register-form (signedIn)="onSignedIn($event)" (switchToLogin)="authDialog.setMode('login')" />
+          }
+        </div>
+      }
+    </div>
+  }
+</dialog>

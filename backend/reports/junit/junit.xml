@@ -1,111 +1,161 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="jest tests" tests="48" failures="0" errors="0" time="15.717">
-  <testsuite name="RedactingLogger" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:26" time="10.906" tests="14">
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact password field" name="RedactingLogger redaction of sensitive fields should redact password field" time="0.029" file="src\common\logging\redacting.logger.spec.ts">
+<testsuites name="jest tests" tests="72" failures="0" errors="0" time="44.631">
+  <testsuite name="RegisterDto" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:19" time="38.175" tests="21">
+    <testcase classname="RegisterDto accepts a valid username and a strong password" name="RegisterDto accepts a valid username and a strong password" time="0.045" file="src\auth\dto\register.dto.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact password_hash field" name="RedactingLogger redaction of sensitive fields should redact password_hash field" time="0.007" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RegisterDto rejects &quot;tradingdesk2026!&quot; (missing a capital letter)" name="RegisterDto rejects &quot;tradingdesk2026!&quot; (missing a capital letter)" time="0.013" file="src\auth\dto\register.dto.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact passwordHash field (camelCase)" name="RedactingLogger redaction of sensitive fields should redact passwordHash field (camelCase)" time="0.005" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RegisterDto rejects &quot;TradingDesk!!!!&quot; (missing a number)" name="RegisterDto rejects &quot;TradingDesk!!!!&quot; (missing a number)" time="0.002" file="src\auth\dto\register.dto.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact token field" name="RedactingLogger redaction of sensitive fields should redact token field" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RegisterDto rejects &quot;TradingDesk2026&quot; (missing a special symbol)" name="RegisterDto rejects &quot;TradingDesk2026&quot; (missing a special symbol)" time="0.001" file="src\auth\dto\register.dto.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact nested password fields at any depth" name="RedactingLogger redaction of sensitive fields should redact nested password fields at any depth" time="0.004" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RegisterDto rejects the username &quot;trader.one&quot; (missing a number)" name="RegisterDto rejects the username &quot;trader.one&quot; (missing a number)" time="0.005" file="src\auth\dto\register.dto.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction of sensitive fields should redact authorization header" name="RedactingLogger redaction of sensitive fields should redact authorization header" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RegisterDto rejects the username &quot;traderone7&quot; (missing a . _ -)" name="RegisterDto rejects the username &quot;traderone7&quot; (missing a . _ -)" time="0.003" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects a password shorter than 12 characters even if it has every character type" name="RegisterDto rejects a password shorter than 12 characters even if it has every character type" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;1trader.a&quot;" name="RegisterDto rejects the username &quot;1trader.a&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;.trader1&quot;" name="RegisterDto rejects the username &quot;.trader1&quot;" time="0.002" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;trader1.&quot;" name="RegisterDto rejects the username &quot;trader1.&quot;" time="0.002" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;trader..one1&quot;" name="RegisterDto rejects the username &quot;trader..one1&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;trader_-one1&quot;" name="RegisterDto rejects the username &quot;trader_-one1&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;trader one1&quot;" name="RegisterDto rejects the username &quot;trader one1&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;t1&quot;" name="RegisterDto rejects the username &quot;t1&quot;" time="0" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;trader.one&quot;" name="RegisterDto rejects the username &quot;trader.one&quot;" time="0" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto rejects the username &quot;traderone1&quot;" name="RegisterDto rejects the username &quot;traderone1&quot;" time="0" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto accepts the username &quot;trader.one7&quot;" name="RegisterDto accepts the username &quot;trader.one7&quot;" time="0" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto accepts the username &quot;ann_thomas_123&quot;" name="RegisterDto accepts the username &quot;ann_thomas_123&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto accepts the username &quot;e2e.user.1790746347041&quot;" name="RegisterDto accepts the username &quot;e2e.user.1790746347041&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto accepts the username &quot;Priya-Menon9&quot;" name="RegisterDto accepts the username &quot;Priya-Menon9&quot;" time="0" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+    <testcase classname="RegisterDto accepts the username &quot;a_1&quot;" name="RegisterDto accepts the username &quot;a_1&quot;" time="0.001" file="src\auth\dto\register.dto.spec.ts">
+    </testcase>
+  </testsuite>
+  <testsuite name="CredentialsService" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:19" time="38.305" tests="16">
+    <testcase classname="CredentialsService hashPassword should hash a password successfully" name="CredentialsService hashPassword should hash a password successfully" time="0.893" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService hashPassword should produce different hashes for the same password (salting)" name="CredentialsService hashPassword should produce different hashes for the same password (salting)" time="0.476" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService hashPassword should use Argon2id, not MD5 or SHA" name="CredentialsService hashPassword should use Argon2id, not MD5 or SHA" time="0.227" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService hashPassword should use Argon2id parameters with sufficient cost" name="CredentialsService hashPassword should use Argon2id parameters with sufficient cost" time="0.239" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService verifyPassword should verify a correct password" name="CredentialsService verifyPassword should verify a correct password" time="0.353" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService verifyPassword should reject an incorrect password" name="CredentialsService verifyPassword should reject an incorrect password" time="0.34" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService verifyPassword should reject empty password against non-empty hash" name="CredentialsService verifyPassword should reject empty password against non-empty hash" time="0.393" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService verifyPassword should handle invalid hash gracefully" name="CredentialsService verifyPassword should handle invalid hash gracefully" time="0.004" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService verifyPassword should implement timing-safe comparison (no fast-fail on first mismatch)" name="CredentialsService verifyPassword should implement timing-safe comparison (no fast-fail on first mismatch)" time="0.471" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService security requirements should never use MD5 hash algorithm" name="CredentialsService security requirements should never use MD5 hash algorithm" time="0.155" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService security requirements should never use SHA-256 hash algorithm" name="CredentialsService security requirements should never use SHA-256 hash algorithm" time="0.134" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService security requirements should use Argon2id for password hashing" name="CredentialsService security requirements should use Argon2id for password hashing" time="0.138" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService security requirements should use high memory cost to resist GPU attacks" name="CredentialsService security requirements should use high memory cost to resist GPU attacks" time="0.133" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService security requirements should use appropriate time cost to prevent DoS" name="CredentialsService security requirements should use appropriate time cost to prevent DoS" time="0.128" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService password hashing performance should complete password hashing in reasonable time (~100-200ms)" name="CredentialsService password hashing performance should complete password hashing in reasonable time (~100-200ms)" time="1.336" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+    <testcase classname="CredentialsService password hashing performance should complete password verification in reasonable time" name="CredentialsService password hashing performance should complete password verification in reasonable time" time="0.76" file="src\credentials\credentials.service.spec.ts">
+    </testcase>
+  </testsuite>
+  <testsuite name="RedactingLogger" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:57" time="0.658" tests="14">
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact password field" name="RedactingLogger redaction of sensitive fields should redact password field" time="0.041" file="src\common\logging\redacting.logger.spec.ts">
+    </testcase>
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact password_hash field" name="RedactingLogger redaction of sensitive fields should redact password_hash field" time="0.005" file="src\common\logging\redacting.logger.spec.ts">
+    </testcase>
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact passwordHash field (camelCase)" name="RedactingLogger redaction of sensitive fields should redact passwordHash field (camelCase)" time="0.004" file="src\common\logging\redacting.logger.spec.ts">
+    </testcase>
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact token field" name="RedactingLogger redaction of sensitive fields should redact token field" time="0.006" file="src\common\logging\redacting.logger.spec.ts">
+    </testcase>
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact nested password fields at any depth" name="RedactingLogger redaction of sensitive fields should redact nested password fields at any depth" time="0.007" file="src\common\logging\redacting.logger.spec.ts">
+    </testcase>
+    <testcase classname="RedactingLogger redaction of sensitive fields should redact authorization header" name="RedactingLogger redaction of sensitive fields should redact authorization header" time="0.005" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
     <testcase classname="RedactingLogger redaction verification should actually redact password values in output" name="RedactingLogger redaction verification should actually redact password values in output" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger redaction verification should preserve non-sensitive field values" name="RedactingLogger redaction verification should preserve non-sensitive field values" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RedactingLogger redaction verification should preserve non-sensitive field values" name="RedactingLogger redaction verification should preserve non-sensitive field values" time="0.002" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger non-sensitive field handling should not redact email field" name="RedactingLogger non-sensitive field handling should not redact email field" time="0.002" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RedactingLogger non-sensitive field handling should not redact email field" name="RedactingLogger non-sensitive field handling should not redact email field" time="0.004" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger non-sensitive field handling should not redact phone field" name="RedactingLogger non-sensitive field handling should not redact phone field" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RedactingLogger non-sensitive field handling should not redact phone field" name="RedactingLogger non-sensitive field handling should not redact phone field" time="0.008" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger array and complex object handling should handle arrays of objects with sensitive fields" name="RedactingLogger array and complex object handling should handle arrays of objects with sensitive fields" time="0.002" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RedactingLogger array and complex object handling should handle arrays of objects with sensitive fields" name="RedactingLogger array and complex object handling should handle arrays of objects with sensitive fields" time="0.006" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
     <testcase classname="RedactingLogger array and complex object handling should handle mixed nested structures" name="RedactingLogger array and complex object handling should handle mixed nested structures" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
-    <testcase classname="RedactingLogger error handling should handle null/undefined values gracefully" name="RedactingLogger error handling should handle null/undefined values gracefully" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
+    <testcase classname="RedactingLogger error handling should handle null/undefined values gracefully" name="RedactingLogger error handling should handle null/undefined values gracefully" time="0.007" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
     <testcase classname="RedactingLogger error handling should handle circular references" name="RedactingLogger error handling should handle circular references" time="0.003" file="src\common\logging\redacting.logger.spec.ts">
     </testcase>
   </testsuite>
-  <testsuite name="AuthService access token contract" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:26" time="11.794" tests="9">
-    <testcase classname="AuthService access token contract issues a token with contract claims and 15-minute expiry" name="AuthService access token contract issues a token with contract claims and 15-minute expiry" time="0.023" file="src\auth\auth.service.spec.ts">
+  <testsuite name="JwtAuthGuard" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:58" time="0.379" tests="4">
+    <testcase classname="JwtAuthGuard accepts a valid token" name="JwtAuthGuard accepts a valid token" time="0.007" file="src\auth\jwt-auth.guard.spec.ts">
+    </testcase>
+    <testcase classname="JwtAuthGuard refuses an expired token signed with the right key" name="JwtAuthGuard refuses an expired token signed with the right key" time="0.021" file="src\auth\jwt-auth.guard.spec.ts">
+    </testcase>
+    <testcase classname="JwtAuthGuard refuses a wrong-signature token before reading claims" name="JwtAuthGuard refuses a wrong-signature token before reading claims" time="0.003" file="src\auth\jwt-auth.guard.spec.ts">
+    </testcase>
+    <testcase classname="JwtAuthGuard refuses a malformed authorization header" name="JwtAuthGuard refuses a malformed authorization header" time="0.001" file="src\auth\jwt-auth.guard.spec.ts">
+    </testcase>
+  </testsuite>
+  <testsuite name="LoginThrottleService" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:59" time="0.321" tests="2">
+    <testcase classname="LoginThrottleService limits repeated failed attempts from one caller" name="LoginThrottleService limits repeated failed attempts from one caller" time="0.002" file="src\auth\login-throttle.service.spec.ts">
+    </testcase>
+    <testcase classname="LoginThrottleService unblocks caller after cooldown period" name="LoginThrottleService unblocks caller after cooldown period" time="0.002" file="src\auth\login-throttle.service.spec.ts">
+    </testcase>
+  </testsuite>
+  <testsuite name="RefreshTokensService" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:58" time="2.099" tests="3">
+    <testcase classname="RefreshTokensService stores refresh tokens as hashes, not plaintext tokens" name="RefreshTokensService stores refresh tokens as hashes, not plaintext tokens" time="0.004" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
+    </testcase>
+    <testcase classname="RefreshTokensService supports one-time-use semantics with rotation and revocation" name="RefreshTokensService supports one-time-use semantics with rotation and revocation" time="0.001" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
+    </testcase>
+    <testcase classname="RefreshTokensService rejects expired refresh tokens" name="RefreshTokensService rejects expired refresh tokens" time="0.001" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
+    </testcase>
+  </testsuite>
+  <testsuite name="AuthService access token contract" errors="0" failures="0" skipped="0" timestamp="2026-09-30T09:38:19" time="40.919" tests="12">
+    <testcase classname="AuthService access token contract issues a token with contract claims and 15-minute expiry" name="AuthService access token contract issues a token with contract claims and 15-minute expiry" time="0.019" file="src\auth\auth.service.spec.ts">
     </testcase>
     <testcase classname="AuthService access token contract creates a signature that verifies with the service key" name="AuthService access token contract creates a signature that verifies with the service key" time="0.002" file="src\auth\auth.service.spec.ts">
     </testcase>
-    <testcase classname="AuthService access token contract does not include claims outside the fixed contract set" name="AuthService access token contract does not include claims outside the fixed contract set" time="0.001" file="src\auth\auth.service.spec.ts">
+    <testcase classname="AuthService access token contract does not include claims outside the fixed contract set" name="AuthService access token contract does not include claims outside the fixed contract set" time="0.002" file="src\auth\auth.service.spec.ts">
     </testcase>
     <testcase classname="AuthService access token contract refresh token rotation returns a new access token and a new refresh token" name="AuthService access token contract refresh token rotation returns a new access token and a new refresh token" time="0.003" file="src\auth\auth.service.spec.ts">
     </testcase>
     <testcase classname="AuthService access token contract refresh token rotation reusing a previously presented refresh token returns AUTH-401" name="AuthService access token contract refresh token rotation reusing a previously presented refresh token returns AUTH-401" time="0.003" file="src\auth\auth.service.spec.ts">
     </testcase>
-    <testcase classname="AuthService access token contract refresh token rotation the newly issued refresh token remains usable for the next refresh" name="AuthService access token contract refresh token rotation the newly issued refresh token remains usable for the next refresh" time="0.001" file="src\auth\auth.service.spec.ts">
+    <testcase classname="AuthService access token contract refresh token rotation the newly issued refresh token remains usable for the next refresh" name="AuthService access token contract refresh token rotation the newly issued refresh token remains usable for the next refresh" time="0.002" file="src\auth\auth.service.spec.ts">
+    </testcase>
+    <testcase classname="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;priya.menon.long&quot;) as VAL-422" name="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;priya.menon.long&quot;) as VAL-422" time="0.003" file="src\auth\auth.service.spec.ts">
+    </testcase>
+    <testcase classname="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;PRIYA.MENON.LONG&quot;) as VAL-422" name="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;PRIYA.MENON.LONG&quot;) as VAL-422" time="0.001" file="src\auth\auth.service.spec.ts">
+    </testcase>
+    <testcase classname="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;  priya.menon.long  &quot;) as VAL-422" name="AuthService access token contract registration rules rejects priya.menon.long with a password equal to the username (&quot;  priya.menon.long  &quot;) as VAL-422" time="0.001" file="src\auth\auth.service.spec.ts">
     </testcase>
     <testcase classname="AuthService access token contract login hardening returns the same AUTH-401 status and body for unknown user and wrong password" name="AuthService access token contract login hardening returns the same AUTH-401 status and body for unknown user and wrong password" time="0.002" file="src\auth\auth.service.spec.ts">
     </testcase>
-    <testcase classname="AuthService access token contract login hardening does comparable work for unknown user and wrong password paths" name="AuthService access token contract login hardening does comparable work for unknown user and wrong password paths" time="0.001" file="src\auth\auth.service.spec.ts">
+    <testcase classname="AuthService access token contract login hardening does comparable work for unknown user and wrong password paths" name="AuthService access token contract login hardening does comparable work for unknown user and wrong password paths" time="0.002" file="src\auth\auth.service.spec.ts">
     </testcase>
     <testcase classname="AuthService access token contract login hardening returns AUTH-401 when throttle blocks the caller even with valid credentials" name="AuthService access token contract login hardening returns AUTH-401 when throttle blocks the caller even with valid credentials" time="0.001" file="src\auth\auth.service.spec.ts">
-    </testcase>
-  </testsuite>
-  <testsuite name="LoginThrottleService" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:37" time="0.957" tests="2">
-    <testcase classname="LoginThrottleService limits repeated failed attempts from one caller" name="LoginThrottleService limits repeated failed attempts from one caller" time="0.004" file="src\auth\login-throttle.service.spec.ts">
-    </testcase>
-    <testcase classname="LoginThrottleService unblocks caller after cooldown period" name="LoginThrottleService unblocks caller after cooldown period" time="0.001" file="src\auth\login-throttle.service.spec.ts">
-    </testcase>
-  </testsuite>
-  <testsuite name="JwtAuthGuard" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:38" time="1.203" tests="4">
-    <testcase classname="JwtAuthGuard accepts a valid token" name="JwtAuthGuard accepts a valid token" time="0.018" file="src\auth\jwt-auth.guard.spec.ts">
-    </testcase>
-    <testcase classname="JwtAuthGuard refuses an expired token signed with the right key" name="JwtAuthGuard refuses an expired token signed with the right key" time="0.022" file="src\auth\jwt-auth.guard.spec.ts">
-    </testcase>
-    <testcase classname="JwtAuthGuard refuses a wrong-signature token before reading claims" name="JwtAuthGuard refuses a wrong-signature token before reading claims" time="0.004" file="src\auth\jwt-auth.guard.spec.ts">
-    </testcase>
-    <testcase classname="JwtAuthGuard refuses a malformed authorization header" name="JwtAuthGuard refuses a malformed authorization header" time="0.001" file="src\auth\jwt-auth.guard.spec.ts">
-    </testcase>
-  </testsuite>
-  <testsuite name="RefreshTokensService" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:38" time="2.065" tests="3">
-    <testcase classname="RefreshTokensService stores refresh tokens as hashes, not plaintext tokens" name="RefreshTokensService stores refresh tokens as hashes, not plaintext tokens" time="0.004" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
-    </testcase>
-    <testcase classname="RefreshTokensService supports one-time-use semantics with rotation and revocation" name="RefreshTokensService supports one-time-use semantics with rotation and revocation" time="0.002" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
-    </testcase>
-    <testcase classname="RefreshTokensService rejects expired refresh tokens" name="RefreshTokensService rejects expired refresh tokens" time="0.001" file="src\refresh-tokens\refresh-tokens.service.spec.ts">
-    </testcase>
-  </testsuite>
-  <testsuite name="CredentialsService" errors="0" failures="0" skipped="0" timestamp="2026-09-25T10:20:26" time="14.722" tests="16">
-    <testcase classname="CredentialsService hashPassword should hash a password successfully" name="CredentialsService hashPassword should hash a password successfully" time="0.154" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService hashPassword should produce different hashes for the same password (salting)" name="CredentialsService hashPassword should produce different hashes for the same password (salting)" time="0.277" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService hashPassword should use Argon2id, not MD5 or SHA" name="CredentialsService hashPassword should use Argon2id, not MD5 or SHA" time="0.15" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService hashPassword should use Argon2id parameters with sufficient cost" name="CredentialsService hashPassword should use Argon2id parameters with sufficient cost" time="0.146" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService verifyPassword should verify a correct password" name="CredentialsService verifyPassword should verify a correct password" time="0.365" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService verifyPassword should reject an incorrect password" name="CredentialsService verifyPassword should reject an incorrect password" time="0.415" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService verifyPassword should reject empty password against non-empty hash" name="CredentialsService verifyPassword should reject empty password against non-empty hash" time="0.396" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService verifyPassword should handle invalid hash gracefully" name="CredentialsService verifyPassword should handle invalid hash gracefully" time="0.006" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService verifyPassword should implement timing-safe comparison (no fast-fail on first mismatch)" name="CredentialsService verifyPassword should implement timing-safe comparison (no fast-fail on first mismatch)" time="0.487" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService security requirements should never use MD5 hash algorithm" name="CredentialsService security requirements should never use MD5 hash algorithm" time="0.163" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService security requirements should never use SHA-256 hash algorithm" name="CredentialsService security requirements should never use SHA-256 hash algorithm" time="0.13" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService security requirements should use Argon2id for password hashing" name="CredentialsService security requirements should use Argon2id for password hashing" time="0.133" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService security requirements should use high memory cost to resist GPU attacks" name="CredentialsService security requirements should use high memory cost to resist GPU attacks" time="0.121" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService security requirements should use appropriate time cost to prevent DoS" name="CredentialsService security requirements should use appropriate time cost to prevent DoS" time="0.16" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService password hashing performance should complete password hashing in reasonable time (~100-200ms)" name="CredentialsService password hashing performance should complete password hashing in reasonable time (~100-200ms)" time="0.137" file="src\credentials\credentials.service.spec.ts">
-    </testcase>
-    <testcase classname="CredentialsService password hashing performance should complete password verification in reasonable time" name="CredentialsService password hashing performance should complete password verification in reasonable time" time="0.255" file="src\credentials\credentials.service.spec.ts">
     </testcase>
   </testsuite>
 </testsuites>

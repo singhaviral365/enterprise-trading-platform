@@ -11,6 +11,8 @@ public interface InstrumentMapper {
     Optional<Instrument> selectInstrumentById(
             @Param("instrumentId") int instrumentId);
 
+    List<Instrument> selectTradableInstruments();
+
     List<String> selectSymbolsForMarketPolling();
 }
 

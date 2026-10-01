@@ -47,6 +47,16 @@ export class UsersRepository {
     });
     return user !== null;
   }
+
+  /**
+   * Check if email already exists.
+   */
+  async emailExists(email: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { email },
+    });
+    return user !== null;
+  }
 }
 
 @Injectable()
@@ -60,10 +70,9 @@ export class UsersService {
     username: string,
     passwordHash: string,
     roles: string[] = ['CUSTOMER'],
+    email: string = `${username}@local.auth`,
   ): Promise<User> {
-    // Auto-generate email from username (required for NOT NULL constraint)
-    const email = `${username}@local.auth`;
-    
+    // Email is NOT NULL: callers that do not collect one get a placeholder derived from the username.
     return this.usersRepository.create({
       username,
       email,

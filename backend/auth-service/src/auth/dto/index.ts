@@ -9,38 +9,66 @@ import {
   IsEnum,
   IsNumber,
   Min,
+  IsEmail,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  PASSWORD_DIGIT,
+  PASSWORD_SYMBOL,
+  PASSWORD_UPPERCASE,
+  USERNAME_DIGIT,
+  USERNAME_PATTERN,
+  USERNAME_SYMBOL,
+} from '../credential-rules';
 
 /**
  * Register request DTO with validation per contracts/auth-api.yaml
  */
 export class RegisterDto {
   @ApiProperty({
-    example: 'priya.menon',
+    example: 'trader.one7',
     minLength: 3,
     maxLength: 64,
-    pattern: '^[a-zA-Z0-9._-]+$',
+    pattern: USERNAME_PATTERN.source,
+    description:
+      'Starts with a letter; letters, digits and single . _ - separators; cannot end with a separator; must include at least one number and one of . _ -',
   })
   @IsString()
   @MinLength(3)
   @MaxLength(64)
-  @Matches(/^[a-zA-Z0-9._-]+$/, {
+  @Matches(USERNAME_PATTERN, {
     message:
-      'Username must contain only alphanumeric characters, dots, underscores, and hyphens',
+      'Username must start with a letter and contain only letters, numbers and single dots, underscores or hyphens between them',
   })
+  @Matches(USERNAME_DIGIT, { message: 'Username must contain at least one number' })
+  @Matches(USERNAME_SYMBOL, { message: 'Username must contain at least one of . _ -' })
   username!: string;
 
   @ApiProperty({
-    example: 'correct horse battery staple',
+    example: 'Tr@ding-Desk-2026',
     minLength: 12,
     maxLength: 128,
     writeOnly: true,
+    description:
+      'At least one capital letter, one number and one special symbol; must differ from the username.',
   })
   @IsString()
   @MinLength(12)
   @MaxLength(128)
+  @Matches(PASSWORD_UPPERCASE, { message: 'Password must contain at least one capital letter' })
+  @Matches(PASSWORD_DIGIT, { message: 'Password must contain at least one number' })
+  @Matches(PASSWORD_SYMBOL, { message: 'Password must contain at least one special symbol' })
   password!: string;
+
+  @ApiPropertyOptional({
+    example: 'priya.menon@example.com',
+    maxLength: 255,
+    description: 'Defaults to <username>@local.auth when omitted.',
+  })
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(255)
+  email?: string;
 
   @ApiPropertyOptional({
     type: [String],
@@ -89,6 +117,9 @@ export class UserResponseDto {
 
   @ApiProperty({ example: 'priya.menon' })
   username!: string;
+
+  @ApiProperty({ example: 'priya.menon@example.com' })
+  email!: string;
 
   @ApiProperty({ type: [String], example: ['CUSTOMER'] })
   roles!: string[];

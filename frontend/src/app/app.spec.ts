@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
@@ -5,9 +7,10 @@ import { SessionService } from './core/session.service';
 
 describe('App', () => {
   beforeEach(async () => {
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
   });
 
@@ -30,7 +33,15 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-sidebar')).toBeNull();
 
-    TestBed.inject(SessionService).login();
+    TestBed.inject(SessionService).start('alice.trader', {
+      accessToken: 'a',
+      refreshToken: 'r',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+    });
+    // Signing in makes the header's account menu load the linked account.
+    const http = TestBed.inject(HttpTestingController);
+    (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({ linked: false, message: 'No linked account yet' });
     await fixture.whenStable();
     expect(compiled.querySelector('app-sidebar')).toBeTruthy();
   });

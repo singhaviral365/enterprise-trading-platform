@@ -259,6 +259,20 @@ describe('AuthService access token contract', () => {
     });
   });
 
+  describe('registration rules', () => {
+    it.each([
+      ['priya.menon.long', 'priya.menon.long'],
+      ['priya.menon.long', 'PRIYA.MENON.LONG'],
+      ['priya.menon.long', '  priya.menon.long  '],
+    ])('rejects %s with a password equal to the username (%p) as VAL-422', async (username, password) => {
+      await expect(service.register(username, password)).rejects.toMatchObject({
+        response: { errorCode: 'VAL-422', message: 'Password must be different from the username' },
+      });
+      expect(usersRepository.usernameExists).not.toHaveBeenCalled();
+      expect(credentialsService.hashPassword).not.toHaveBeenCalled();
+    });
+  });
+
   describe('login hardening', () => {
     async function captureUnauthorised(
       run: () => Promise<unknown>,

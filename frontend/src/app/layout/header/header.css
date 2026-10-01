@@ -3,34 +3,65 @@
   top: 0;
   z-index: var(--header-z);
   height: var(--header-height);
-  background: var(--accent-primary-background);
+  color: var(--shell-foreground);
+  background: var(--shell-background);
+  border-bottom: 1px solid var(--shell-border);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 5px;
 }
 
-/* The default focus ring colour has too little contrast on the green bar. */
+/* The default focus ring colour has too little contrast on the coloured bar. */
 .app-header :focus-visible {
-  outline-color: var(--accent-primary-foreground);
+  outline-color: var(--shell-foreground);
+}
+
+/* Icon buttons sit flat on the bar and only tint on hover, in both themes. */
+.app-header .btn.is-primary {
+  background: transparent;
+  color: var(--shell-foreground);
+  box-shadow: none;
+}
+
+.app-header .btn.is-primary:hover:not(:disabled) {
+  background: var(--shell-hover);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   margin-left: 8px;
 }
 
 .header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 18px;
   font-weight: 700;
-  color: var(--accent-primary-foreground);
+  letter-spacing: -0.01em;
+  color: var(--shell-foreground);
   text-decoration: none;
 }
 
 .header-logo:hover {
+  color: var(--shell-foreground);
+}
+
+.header-logo-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 14px;
   color: var(--accent-primary-foreground);
+  background: var(--accent-gradient);
+  box-shadow: var(--accent-glow);
 }
 
 .header-right {
@@ -38,4 +69,22 @@
   align-items: center;
   gap: 12px;
   margin-right: 16px;
+}
+
+.header-cta {
+  background: var(--accent-gradient);
+  color: var(--accent-primary-foreground);
+  box-shadow: var(--accent-glow);
+  font-weight: 600;
+}
+
+.header-cta:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* Logout is a quiet icon like the others; red only appears as a hint on hover. */
+.app-header .btn.header-logout:hover:not(:disabled) {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
 }

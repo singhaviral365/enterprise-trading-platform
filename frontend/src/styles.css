@@ -7,48 +7,49 @@
 }
 
 :root {
-  --surface-background: #F9F7F5;
+  /* Light theme: cool slate neutrals with the same emerald family as the dark theme. */
+  --surface-background: #F4F6FA;
   --surface-background-bright: #FFFFFF;
-  --surface-container-background: #F5F3F0;
-  --surface-container-background-low: #F9F7F5;
+  --surface-container-background: #EEF1F6;
+  --surface-container-background-low: #F8FAFC;
   --surface-container-background-medium: #FFFFFF;
   --surface-container-background-high: #FFFFFF;
-  --surface-foreground: #141414;
-  --surface-foreground-subtle: #525150;
-  --surface-line: #757473;
-  --surface-line-subtle: #E6E4E1;
-  --surface-foreground-link: #1D3986;
-  --surface-foreground-link-interaction: #132454;
+  --surface-foreground: #0F172A;
+  --surface-foreground-subtle: #5B6475;
+  --surface-line: #8A93A3;
+  --surface-line-subtle: #E4E8EF;
+  --surface-foreground-link: #047857;
+  --surface-foreground-link-interaction: #065F46;
 
-  --accent-primary-background: #368727;
-  --accent-primary-background-interaction: #1E6F1D;
+  --accent-primary-background: #047857;
+  --accent-primary-background-interaction: #065F46;
   --accent-primary-foreground: #FFFFFF;
-  --accent-primary-container-background: #044014;
-  --accent-primary-container-foreground: #403F3E;
+  --accent-primary-container-background: #ECFDF5;
+  --accent-primary-container-foreground: #5B6475;
 
-  --status-success-background: #1E6F1D;
+  --status-success-background: #047857;
   --status-success-foreground: #FFFFFF;
-  --status-success-container-bg: #EDFAEB;
-  --status-success-container-fg: #1E6F1D;
-  --status-success-container-line: #0F5319;
+  --status-success-container-bg: #ECFDF5;
+  --status-success-container-fg: #047857;
+  --status-success-container-line: #A7F3D0;
 
-  --status-info-background: #2751C2;
+  --status-info-background: #2563EB;
   --status-info-foreground: #FFFFFF;
-  --status-info-container-bg: #F5FAFF;
-  --status-info-container-fg: #2751C2;
-  --status-info-container-line: #1D3986;
+  --status-info-container-bg: #EFF6FF;
+  --status-info-container-fg: #1D4ED8;
+  --status-info-container-line: #BFDBFE;
 
-  --status-warning-background: #9D3B0F;
+  --status-warning-background: #B45309;
   --status-warning-foreground: #FFFFFF;
-  --status-warning-container-bg: #FFF8ED;
-  --status-warning-container-fg: #9D3B0F;
-  --status-warning-container-line: #7F330F;
+  --status-warning-container-bg: #FFFBEB;
+  --status-warning-container-fg: #92400E;
+  --status-warning-container-line: #FDE68A;
 
-  --status-error-background: #C31212;
+  --status-error-background: #DC2626;
   --status-error-foreground: #FFFFFF;
-  --status-error-container-bg: #FFF1F1;
-  --status-error-container-fg: #C31212;
-  --status-error-container-line: #A11313;
+  --status-error-container-bg: #FEF2F2;
+  --status-error-container-fg: #B91C1C;
+  --status-error-container-line: #FECACA;
 
   --data-categorical-1: #8CC1FD;
   --data-categorical-2: #8AD97C;
@@ -86,6 +87,26 @@
   --data-mono-neutral-5: #141414;
 
   --header-height: 60px;
+
+  /* App shell (header / footer): frosted glass over the page in both themes. */
+  --shell-background: rgb(255 255 255 / 0.78);
+  --shell-foreground: #0F172A;
+  --shell-border: #E4E8EF;
+  --shell-hover: rgb(15 23 42 / 0.06);
+  --shell-cta-background: #047857;
+  --shell-cta-foreground: #FFFFFF;
+  --shell-cta-hover: #065F46;
+  --page-glow:
+    radial-gradient(1100px 520px at 0% -10%, rgb(16 185 129 / 0.10), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgb(59 130 246 / 0.08), transparent 60%);
+  --card-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 10px 28px -14px rgb(15 23 42 / 0.16);
+  --card-shadow-hover: 0 2px 4px rgb(15 23 42 / 0.05), 0 22px 44px -18px rgb(15 23 42 / 0.28);
+  /* Gradients: every stop keeps white text above 4.5:1. */
+  --accent-gradient: linear-gradient(135deg, #047857 0%, #0F766E 100%);
+  --accent-glow: 0 8px 20px -8px rgb(4 120 87 / 0.55);
+  --hero-gradient: linear-gradient(135deg, #065F46 0%, #0F766E 45%, #1D4ED8 110%);
+  --hero-foreground: #FFFFFF;
+  --radius-card: 18px;
   --footer-height: 60px;
   --sidebar-width-open: 175px;
   --sidebar-width-closed: 50px;
@@ -98,48 +119,67 @@
 
 :root[data-theme="dark"],
 body[data-theme="dark"] {
-  --surface-background: #141414;
-  --surface-background-bright: #292928;
-  --surface-container-background: #1C1B1B;
-  --surface-container-background-low: #292928;
-  --surface-container-background-medium: #2F2F2F;
-  --surface-container-background-high: #323232;
-  --surface-foreground: #FFFFFF;
-  --surface-foreground-subtle: #D9D8D5;
-  --surface-line: #ABAAA8;
-  --surface-line-subtle: #403F3E;
-  --surface-foreground-link: #8CC1FD;
-  --surface-foreground-link-interaction: #B8D9FF;
+  /* Dark theme: deep slate surfaces with a bright emerald accent (dark text on accent fills). */
+  --surface-background: #0A0D12;
+  --surface-background-bright: #12161D;
+  --surface-container-background: #181D26;
+  --surface-container-background-low: #12161D;
+  --surface-container-background-medium: #181D26;
+  --surface-container-background-high: #1F2530;
+  --surface-foreground: #E8EAF0;
+  --surface-foreground-subtle: #9BA3B4;
+  --surface-line: #4A5364;
+  --surface-line-subtle: #252C38;
+  --surface-foreground-link: #6EE7B7;
+  --surface-foreground-link-interaction: #A7F3D0;
 
-  --accent-primary-background: #8AD97C;
-  --accent-primary-background-interaction: #BBEEB2;
-  --accent-primary-foreground: #141414;
-  --accent-primary-container-background: #EDFAEB;
-  --accent-primary-container-foreground: #ABAAA8;
+  --accent-primary-background: #34D399;
+  --accent-primary-background-interaction: #6EE7B7;
+  --accent-primary-foreground: #03241A;
+  --accent-primary-container-background: #0F2A22;
+  --accent-primary-container-foreground: #9BA3B4;
 
-  --status-success-background: #65C754;
-  --status-success-foreground: #141414;
-  --status-success-container-bg: #044014;
-  --status-success-container-fg: #65C754;
-  --status-success-container-line: #65C754;
+  --status-success-background: #34D399;
+  --status-success-foreground: #03241A;
+  --status-success-container-bg: #0F2A22;
+  --status-success-container-fg: #6EE7B7;
+  --status-success-container-line: #1F5E48;
 
   --status-info-background: #60A5FA;
-  --status-info-foreground: #141414;
-  --status-info-container-bg: #132454;
-  --status-info-container-fg: #60A5FA;
-  --status-info-container-line: #60A5FA;
+  --status-info-foreground: #0A1A33;
+  --status-info-container-bg: #0F1E36;
+  --status-info-container-fg: #93C5FD;
+  --status-info-container-line: #2B4C7E;
 
-  --status-warning-background: #FFC371;
-  --status-warning-foreground: #141414;
-  --status-warning-container-bg: #7F330F;
-  --status-warning-container-fg: #FFC371;
-  --status-warning-container-line: #FF9737;
+  --status-warning-background: #FBBF24;
+  --status-warning-foreground: #2A1A02;
+  --status-warning-container-bg: #2B2111;
+  --status-warning-container-fg: #FCD34D;
+  --status-warning-container-line: #6B5220;
 
-  --status-error-background: #FF6868;
-  --status-error-foreground: #141414;
-  --status-error-container-bg: #861616;
-  --status-error-container-fg: #FF9F9F;
-  --status-error-container-line: #FF6868;
+  --status-error-background: #F87171;
+  --status-error-foreground: #2A0707;
+  --status-error-container-bg: #2E1416;
+  --status-error-container-fg: #FCA5A5;
+  --status-error-container-line: #7A2A2E;
+
+  /* App shell (header / footer): translucent glass instead of a solid colour bar. */
+  --shell-background: rgb(10 13 18 / 0.72);
+  --shell-foreground: #E8EAF0;
+  --shell-border: #252C38;
+  --shell-hover: rgb(255 255 255 / 0.07);
+  --shell-cta-background: #34D399;
+  --shell-cta-foreground: #03241A;
+  --shell-cta-hover: #6EE7B7;
+  --page-glow:
+    radial-gradient(1100px 520px at 0% -10%, rgb(52 211 153 / 0.09), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgb(96 165 250 / 0.07), transparent 60%);
+  --card-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --card-shadow-hover: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -16px rgb(0 0 0 / 0.75);
+  --accent-gradient: linear-gradient(135deg, #34D399 0%, #2DD4BF 100%);
+  --accent-glow: 0 8px 22px -8px rgb(52 211 153 / 0.55);
+  --hero-gradient: linear-gradient(135deg, #065F46 0%, #0E7490 50%, #1E40AF 110%);
+  --hero-foreground: #FFFFFF;
 
   --data-categorical-1: #2751C2;
   --data-categorical-2: #1E6F1D;
@@ -234,7 +274,8 @@ app-root {
 html,
 body {
   font-family: 'Fidelity Sans', sans-serif;
-  background: var(--surface-background);
+  background: var(--page-glow), var(--surface-background);
+  background-attachment: fixed;
   color: var(--surface-foreground);
   min-height: 100vh;
   transition: background 0.3s ease, color 0.3s ease;
@@ -294,9 +335,9 @@ a:hover {
   font-weight: 500;
   font-family: inherit;
   border: none;
-  border-radius: 20px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   white-space: nowrap;
 }
 
@@ -306,12 +347,19 @@ a:hover {
 }
 
 .btn.is-primary {
-  background: var(--accent-primary-background);
+  background: var(--accent-gradient);
   color: var(--accent-primary-foreground);
+  box-shadow: var(--accent-glow);
 }
 
 .btn.is-primary:hover:not(:disabled) {
-  background: var(--accent-primary-background-interaction);
+  background: var(--accent-gradient);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn.is-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn.is-inverse {
@@ -461,7 +509,7 @@ a:hover {
   color: var(--surface-foreground);
   background: var(--surface-background-bright);
   border: 1px solid var(--surface-line-subtle);
-  border-radius: 8px;
+  border-radius: 10px;
   outline: none;
   transition: border-color 0.15s ease;
 }
@@ -629,7 +677,8 @@ a:hover {
 .card {
   background: var(--surface-background-bright);
   border: 1px solid var(--surface-line-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--card-shadow);
   padding: 24px;
 }
 
@@ -791,7 +840,7 @@ a:hover {
 
 .modal-content {
   background: var(--surface-background-bright);
-  border-radius: 12px;
+  border-radius: 18px;
   padding: 12px 0px;
   min-width: 400px;
   max-width: 600px;
@@ -863,9 +912,6 @@ a:hover {
   margin-left: var(--sidebar-width-closed);
 }
 
-.app-main.logged-in {
-  border-left: 2px solid var(--surface-line-subtle);
-}
 
 /* Utility */
 
@@ -1059,3 +1105,40 @@ a:hover {
   outline: 2px solid var(--surface-foreground-link);
   outline-offset: 2px;
 }
+
+/* Motion: cards rise into place, and interactive cards lift on hover. */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(var(--stagger, 0) * 70ms);
+}
+
+.card.is-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card.is-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+
+  .card.is-lift,
+  .card.is-lift:hover,
+  .btn:hover {
+    transform: none;
+    transition: none;
+  }
+}
+

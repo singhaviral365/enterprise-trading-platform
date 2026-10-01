@@ -21,7 +21,10 @@
       </app-tooltip>
     }
 
-    <a routerLink="/" class="header-logo">Trading Platform</a>
+    <a routerLink="/" class="header-logo">
+      <span class="header-logo-mark" aria-hidden="true"><i class="fas fa-chart-line"></i></span>
+      Trading Platform
+    </a>
   </div>
 
   <div class="header-right">
@@ -37,11 +40,23 @@
     </app-tooltip>
 
     @if (session.isLoggedIn()) {
+      <app-account-menu />
       <app-tooltip position="bottom" text="Logout">
-        <button type="button" class="btn is-icon-only is-error" aria-label="Logout" (click)="logout()">
+        <button type="button" class="btn is-primary is-icon-only header-logout" aria-label="Logout" data-testid="logout-button" (click)="logout()">
           <i class="fas fa-power-off" aria-hidden="true"></i>
         </button>
       </app-tooltip>
+    } @else {
+      <button
+        type="button"
+        class="btn header-cta"
+        aria-haspopup="dialog"
+        data-testid="open-auth-dialog"
+        (click)="authDialog.open('login')"
+      >
+        <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+        Login / Register
+      </button>
     }
   </div>
 </header>

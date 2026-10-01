@@ -2,6 +2,7 @@ import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { DialogService } from '../core/dialog.service';
 import { NotificationService } from '../core/notification.service';
+import { AuthDialogService } from '../core/auth-dialog.service';
 import { SessionService } from '../core/session.service';
 import { Dropdown, DropdownOption } from '../shared/ui/dropdown/dropdown';
 import { Multiselect, MultiselectOption } from '../shared/ui/multiselect/multiselect';
@@ -35,6 +36,7 @@ const PAGE_SIZE = 3;
 })
 export class Showcase {
   protected readonly session = inject(SessionService);
+  protected readonly authDialog = inject(AuthDialogService);
   private readonly dialog = inject(DialogService);
   private readonly notifications = inject(NotificationService);
 

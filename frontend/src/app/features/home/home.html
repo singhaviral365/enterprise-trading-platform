@@ -1,0 +1,63 @@
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-copy rise-in">
+    <p class="hero-eyebrow">Enterprise Trading Platform</p>
+    <h1 id="hero-title" class="hero-title">Trade with clarity.<br /><span class="hero-accent">Invest with confidence.</span></h1>
+    <p class="hero-text">
+      One place to place orders, follow the market and keep an eye on your portfolio.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn is-primary is-large" data-testid="hero-register" (click)="authDialog.open('register')">
+        Get started
+        <i class="fas fa-arrow-right" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="btn is-secondary is-large" data-testid="hero-login" (click)="authDialog.open('login')">
+        I already have an account
+      </button>
+    </div>
+  </div>
+
+  <!-- Decorative preview of the product; not real data. -->
+  <div class="hero-visual rise-in" style="--stagger: 2" aria-hidden="true">
+    <div class="preview-card">
+      <div class="preview-header">
+        <span class="preview-label">Portfolio value</span>
+        <span class="preview-chip">+2.4%</span>
+      </div>
+      <p class="preview-value">$128,450.20</p>
+      <svg class="preview-chart" viewBox="0 0 300 110" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hero-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="currentColor" stop-opacity="0.28" />
+            <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M0,88 L25,80 L50,84 L75,66 L100,70 L125,52 L150,58 L175,40 L200,46 L225,28 L250,34 L275,16 L300,20 L300,110 L0,110 Z"
+          fill="url(#hero-area)"
+        />
+        <path
+          d="M0,88 L25,80 L50,84 L75,66 L100,70 L125,52 L150,58 L175,40 L200,46 L225,28 L250,34 L275,16 L300,20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <div class="preview-rows">
+        <div class="preview-row"><span>AAPL</span><span class="up">+1.2%</span></div>
+        <div class="preview-row"><span>MSFT</span><span class="up">+0.8%</span></div>
+        <div class="preview-row"><span>TSLA</span><span class="down">−0.6%</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" aria-label="Platform features">
+  @for (feature of features; track feature.title; let i = $index) {
+    <article class="feature card is-lift rise-in" [style.--stagger]="i + 3">
+      <div class="feature-icon" aria-hidden="true"><i [class]="feature.icon"></i></div>
+      <h2 class="feature-title">{{ feature.title }}</h2>
+      <p class="feature-text">{{ feature.text }}</p>
+    </article>
+  }
+</section>

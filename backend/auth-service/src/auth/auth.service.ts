@@ -7,6 +7,7 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
 import {
   UnauthorisedException,
   RegistrationFailedException,
+  ValidationFailedException,
 } from '../common/exceptions';
 import { UserResponseDto, TokenResponseDto } from './dto';
 import { LoginThrottleService } from './login-throttle.service';
@@ -71,6 +72,7 @@ export class AuthService {
   async register(
     username: string,
     password: string,
+    email?: string,
   ): Promise<UserResponseDto> {
     this.redactingLogger.log(
       'AuthService',
@@ -78,8 +80,20 @@ export class AuthService {
       { username },
     );
 
-    // Check if username already taken
-    const exists = await this.usersRepository.usernameExists(username);
+    // Password must not simply repeat the username (compared case-insensitively)
+    if (password.trim().toLowerCase() === username.trim().toLowerCase()) {
+      this.redactingLogger.warn(
+        'AuthService',
+        'Registration rejected - password matches username',
+        { username },
+      );
+      throw new ValidationFailedException('Password must be different from the username');
+    }
+
+    // Check if username (or the chosen email) is already taken
+    const exists =
+      (await this.usersRepository.usernameExists(username)) ||
+      (email !== undefined && (await this.usersRepository.emailExists(email)));
     if (exists) {
       this.redactingLogger.warn(
         'AuthService',
@@ -98,6 +112,7 @@ export class AuthService {
       username,
       passwordHash,
       ['CUSTOMER'],
+      email,
     );
 
     this.redactingLogger.log(
@@ -228,6 +243,7 @@ export class AuthService {
     return {
       id: user.id,
       username: user.username,
+      email: user.email,
       roles: user.roles,
       createdOn: user.created_on,
     };

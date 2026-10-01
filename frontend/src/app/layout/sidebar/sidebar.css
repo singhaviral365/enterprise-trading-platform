@@ -4,7 +4,9 @@
   left: 0;
   bottom: var(--footer-height);
   width: var(--sidebar-width-closed);
-  background: var(--surface-background);
+  background: var(--surface-background-bright);
+  box-shadow: 4px 0 24px -18px rgb(15 23 42 / 0.25);
+  border-right: 1px solid var(--surface-line-subtle);
   z-index: var(--sidebar-z);
   transition: width 0.25s ease;
   overflow: hidden;
@@ -25,7 +27,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  margin: 0 6px;
+  padding: 10px;
+  border-radius: 10px;
   color: var(--surface-foreground);
   text-decoration: none;
   font-size: 14px;
@@ -48,8 +52,15 @@
 
 /* Active state uses the darker accent so text meets AA contrast on the sidebar background. */
 .sidebar-link.active {
-  color: var(--accent-primary-background-interaction);
+  color: var(--accent-primary-foreground);
+  background: var(--accent-gradient);
+  box-shadow: var(--accent-glow);
   font-weight: 700;
+}
+
+.sidebar-link.active:hover {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-gradient);
 }
 
 @media (prefers-reduced-motion: reduce) {

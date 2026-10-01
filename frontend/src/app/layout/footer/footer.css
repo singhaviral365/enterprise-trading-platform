@@ -4,16 +4,19 @@
   z-index: var(--footer-z);
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
   gap: 4px;
   height: var(--footer-height);
-  font-size: 16px;
-  color: var(--accent-primary-foreground);
-  border-top: 1px solid var(--surface-line);
-  background: var(--accent-primary-background);
+  font-size: 14px;
+  color: var(--shell-foreground);
+  border-top: 1px solid var(--shell-border);
+  background: var(--shell-background);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+  backdrop-filter: saturate(160%) blur(14px);
 }
 
 .footer-content {
-  text-align: right;
+  text-align: center;
   margin: 0 16px;
 }
