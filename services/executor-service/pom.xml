@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>org.example</groupId>
-    <artifactId>trade-executor</artifactId>
+    <artifactId>executor-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>trade-executor</name>
+    <name>executor-service</name>
     <description>Kafka order execution microservice</description>
 
     <properties>

@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.example</groupId>
-    <artifactId>trade-api</artifactId>
+    <artifactId>order-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>trade-api</name>
-    <description>Trade API</description>
+    <name>order-service</name>
+    <description>Kafka order placement microservice</description>
     <url/>
     <licenses>
         <license/>
