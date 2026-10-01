@@ -1,0 +1,305 @@
+:host {
+  display: block;
+  margin-top: 16px;
+  animation: ticket-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--surface-foreground);
+}
+
+/* Native radios stay in the DOM (keyboard + screen readers) but are visually replaced by the cards. */
+input[type='radio'] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* ---- Market / Limit cards ---- */
+.type-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.type-cards > legend {
+  grid-column: 1 / -1;
+}
+
+.type-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--surface-line-subtle);
+  border-radius: 14px;
+  background: var(--surface-background-bright);
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.type-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--card-shadow);
+}
+
+.type-card.is-active {
+  border-color: var(--accent-primary-background);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 18%, transparent);
+}
+
+.type-card:has(input:focus-visible) {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+.type-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--surface-foreground-subtle);
+  background: var(--surface-container-background);
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.type-card.is-active .type-icon {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-gradient);
+  box-shadow: var(--accent-glow);
+}
+
+.type-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.type-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.type-hint {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+/* ---- Inputs ---- */
+.ticket-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.ticket-fields.has-limit {
+  grid-template-columns: 1fr 1fr;
+}
+
+.ticket-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ticket-input:focus {
+  border-color: var(--accent-primary-background);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent);
+}
+
+.ticket-input.is-error {
+  border-color: var(--status-error-background);
+}
+
+.price-input {
+  position: relative;
+}
+
+.price-prefix {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}
+
+.price-input:has(.price-prefix) .ticket-input {
+  padding-left: 48px;
+}
+
+/* ---- Summary ---- */
+.ticket-summary {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface-container-background);
+}
+
+.ticket-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.ticket-summary dt {
+  color: var(--surface-foreground-subtle);
+}
+
+.ticket-summary dd {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ticket-summary .is-total {
+  padding-top: 8px;
+  margin-top: 4px;
+  border-top: 1px solid var(--surface-line-subtle);
+  font-size: 15px;
+}
+
+.ticket-summary .is-total dt {
+  color: var(--surface-foreground);
+  font-weight: 600;
+}
+
+.ticket-summary .is-total dd {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+/* ---- Notes ---- */
+.ticket-note {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--note-fg);
+  background: var(--note-bg);
+  border: 1px solid var(--note-line);
+}
+
+.ticket-note.is-warning {
+  --note-fg: var(--status-warning-container-fg);
+  --note-bg: var(--status-warning-container-bg);
+  --note-line: var(--status-warning-container-line);
+}
+
+.ticket-note.is-error {
+  --note-fg: var(--status-error-container-fg);
+  --note-bg: var(--status-error-container-bg);
+  --note-line: var(--status-error-container-line);
+}
+
+.ticket-note.is-info {
+  --note-fg: var(--status-info-container-fg);
+  --note-bg: var(--status-info-container-bg);
+  --note-line: var(--status-info-container-line);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---- Buttons ---- */
+.ticket-buttons {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+}
+
+.submit-btn {
+  font-weight: 700;
+  color: var(--status-success-foreground);
+  background: linear-gradient(135deg, var(--status-success-background), color-mix(in srgb, var(--status-success-background) 75%, #0f766e));
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--status-success-background) 80%, transparent);
+}
+
+.submit-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.submit-btn:disabled {
+  box-shadow: none;
+}
+
+@keyframes ticket-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 600px) {
+  .type-cards,
+  .ticket-fields.has-limit {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    animation: none;
+  }
+
+  .type-card,
+  .submit-btn {
+    transition: none;
+  }
+
+  .type-card:hover,
+  .submit-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}

@@ -1,0 +1,29 @@
+<section class="ticket-result" role="status" data-testid="order-confirmation">
+  <div class="result-icon" aria-hidden="true"><i class="fas fa-check"></i></div>
+  <h3 class="result-title">{{ order().side === 'BUY' ? 'Buy' : 'Sell' }} order placed</h3>
+  <p class="result-text">
+    {{ order().orderPricingType === 'MARKET' ? 'It will be filled at the live market price.' : 'It will be filled when the price reaches your limit.' }}
+  </p>
+  <dl class="result-summary">
+    <div><dt>Order</dt><dd data-testid="order-id">#{{ order().orderId }}</dd></div>
+    <div><dt>Status</dt><dd><span class="status-chip">{{ order().status }}</span></dd></div>
+    <div><dt>Type</dt><dd>{{ order().orderPricingType === 'MARKET' ? 'Market' : 'Limit' }}</dd></div>
+    <div><dt>Quantity</dt><dd>{{ order().quantity | number }}</dd></div>
+    <div>
+      <dt>Price</dt>
+      <dd>
+        @if (order().price === null) {
+          Market price
+        } @else if (currency(); as code) {
+          {{ order().price | currency: code }}
+        } @else {
+          {{ order().price | number: '1.2-4' }}
+        }
+      </dd>
+    </div>
+  </dl>
+  <div class="ticket-buttons">
+    <button type="button" class="btn is-secondary is-large" (click)="another.emit()">Place another</button>
+    <button type="button" class="btn is-primary is-large" data-testid="order-done" (click)="done.emit()">Done</button>
+  </div>
+</section>

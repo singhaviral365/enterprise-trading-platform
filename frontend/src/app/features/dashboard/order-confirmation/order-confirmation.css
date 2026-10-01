@@ -1,0 +1,102 @@
+:host {
+  display: block;
+  margin-top: 8px;
+}
+
+.ticket-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 0;
+  text-align: center;
+}
+
+.result-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 22px;
+  color: var(--status-success-foreground);
+  background: var(--status-success-background);
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--status-success-background) 80%, transparent);
+  animation: pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.result-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.result-text {
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.result-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.result-summary > div {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-container-background);
+}
+
+.result-summary dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.result-summary dd {
+  margin-top: 2px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.status-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--status-info-container-fg);
+  background: var(--status-info-container-bg);
+}
+
+.ticket-buttons {
+  display: grid;
+  gap: 12px;
+}
+
+.ticket-result .ticket-buttons {
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .result-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-icon {
+    animation: none;
+  }
+}
