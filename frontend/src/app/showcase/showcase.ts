@@ -5,6 +5,7 @@ import { NotificationService } from '../core/notification.service';
 import { AuthDialogService } from '../core/auth-dialog.service';
 import { SessionService } from '../core/session.service';
 import { Dropdown, DropdownOption } from '../shared/ui/dropdown/dropdown';
+import { MultiDropdown } from '../shared/ui/multi-dropdown/multi-dropdown';
 import { Multiselect, MultiselectOption } from '../shared/ui/multiselect/multiselect';
 import { Pagination } from '../shared/ui/pagination/pagination';
 import { Spinner } from '../shared/ui/spinner/spinner';
@@ -30,7 +31,7 @@ const PAGE_SIZE = 3;
 /** Preview of the shared UI components and global styles. Delete this folder and its route when no longer needed. */
 @Component({
   selector: 'app-showcase',
-  imports: [CurrencyPipe, Dropdown, Multiselect, Pagination, Spinner, Tooltip],
+  imports: [CurrencyPipe, Dropdown, MultiDropdown, Multiselect, Pagination, Spinner, Tooltip],
   templateUrl: './showcase.html',
   styleUrl: './showcase.css',
 })
@@ -47,6 +48,7 @@ export class Showcase {
     { value: 'health', label: 'Healthcare', disabled: true },
   ];
   protected readonly sector = signal('');
+  protected readonly sectorFilter = signal<readonly string[]>([]);
   protected readonly sectorInvalid = computed(() => this.submitted() && this.sector() === '');
 
   protected readonly symbols: readonly MultiselectOption[] = [
