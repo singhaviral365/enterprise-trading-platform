@@ -2,21 +2,21 @@
   <div>
     <h1 class="page-title" data-testid="orders-title">Order history</h1>
     <p class="form-hint" aria-live="polite" data-testid="orders-live-status">
-      @if (autoUpdating()) {
-        {{ workingCount() }} {{ workingCount() === 1 ? 'order is' : 'orders are' }} still working. This list updates automatically.
-      } @else if (paused()) {
-        Automatic updates paused while {{ workingCount() }} {{ workingCount() === 1 ? 'order is' : 'orders are' }} still working. Press Refresh to check again.
-      } @else if (history.hasValue() && rows().length) {
-        Newest first. Every order is listed, including rejected ones.
+      @if (store.polling()) {
+        {{ store.workingOrders() }} {{ store.workingOrders() === 1 ? 'order is' : 'orders are' }} still working. This list updates automatically.
+      } @else if (store.paused()) {
+        Automatic updates paused while {{ store.workingOrders() }} {{ store.workingOrders() === 1 ? 'order is' : 'orders are' }} still working. Press Refresh to check again.
+      } @else if (allOrders().length) {
+        Every order is listed, including rejected ones.
       }
     </p>
   </div>
   @if (store.linked()) {
     <div class="flex items-center gap-12">
-      @if (history.isLoading()) {
+      @if (store.data.isLoading()) {
         <app-spinner [inline]="true" label="Refreshing orders" />
       }
-      <button type="button" class="btn is-secondary" data-testid="orders-refresh" [disabled]="history.isLoading()" (click)="refresh()">
+      <button type="button" class="btn is-secondary" data-testid="orders-refresh" [disabled]="store.data.isLoading()" (click)="store.refresh()">
         <i class="fas fa-rotate" aria-hidden="true"></i>
         Refresh
       </button>
@@ -26,13 +26,13 @@
 
 @if (store.data.isLoading() && !store.data.hasValue()) {
   <div class="card history-card" aria-live="polite">
-    <app-spinner [inline]="true" label="Loading your account" />
-    <span>Loading your account…</span>
+    <app-spinner [inline]="true" label="Loading your orders" />
+    <span>Loading your orders…</span>
   </div>
 } @else if (store.errorMessage()) {
-  <div class="card history-card" role="alert">
+  <div class="card history-card" role="alert" data-testid="orders-error">
     <p>{{ store.errorMessage() }}</p>
-    <button type="button" class="btn is-secondary" (click)="store.reload()">Try again</button>
+    <button type="button" class="btn is-secondary" (click)="store.refresh()">Try again</button>
   </div>
 } @else if (!store.linked()) {
   <div class="card empty-state" data-testid="orders-no-account">
@@ -40,67 +40,89 @@
     <p class="empty-state-text">You don't have a trading account yet, so there are no orders to show.</p>
     <a class="btn is-primary mt-16" routerLink="/dashboard">Go to the dashboard</a>
   </div>
-} @else if (errorMessage()) {
-  <div class="card history-card" role="alert" data-testid="orders-error">
-    <p>{{ errorMessage() }}</p>
-    <button type="button" class="btn is-secondary" (click)="refresh()">Try again</button>
-  </div>
-} @else if (history.isLoading() && !history.hasValue()) {
-  <div class="card history-card" aria-live="polite">
-    <app-spinner [inline]="true" label="Loading orders" />
-    <span>Loading your orders…</span>
-  </div>
-} @else if (rows().length) {
-  <div class="table-container">
-    <table class="data-table is-striped">
-      <caption class="visually-hidden">Orders for this account, newest first</caption>
-      <thead>
-        <tr>
-          <th scope="col">Placed</th>
-          <th scope="col">Order</th>
-          <th scope="col">Symbol</th>
-          <th scope="col">Side</th>
-          <th scope="col">Type</th>
-          <th scope="col" class="is-numeric">Quantity</th>
-          <th scope="col" class="is-numeric">Price</th>
-          <th scope="col">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (order of pageRows(); track order.orderId) {
-          <tr data-testid="order-row">
-            <td>{{ order.createdOn | date: 'medium' }}</td>
-            <td><span [attr.title]="order.orderId">#{{ shortId(order.orderId) }}</span></td>
-            <th scope="row">{{ order.symbol }}</th>
-            <td>
-              <span [class]="order.side === OrderSide.Buy ? 'is-success' : 'is-error'">{{ order.side }}</span>
-            </td>
-            <td>{{ order.orderPricingType }}</td>
-            <td class="is-numeric">{{ order.quantity | number }}</td>
-            <td class="is-numeric">
-              @if (order.executedPrice ?? order.price; as price) {
-                @if (currency(); as code) {
-                  {{ price | currency: code }}
-                } @else {
-                  {{ price | number: '1.2-4' }}
-                }
-              } @else {
-                Market
-              }
-            </td>
-            <td><app-order-status [status]="order.status" /></td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  @if (totalPages() > 1) {
-    <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
-  }
-} @else {
+} @else if (allOrders().length === 0) {
   <div class="card empty-state" data-testid="orders-empty">
     <i class="fas fa-receipt" aria-hidden="true"></i>
     <p class="empty-state-text">You haven't placed any orders yet.</p>
     <a class="btn is-primary mt-16" routerLink="/dashboard">Find an instrument to trade</a>
   </div>
+} @else {
+  <div class="history-filters" role="group" aria-label="Filter orders">
+    <app-multi-dropdown data-testid="filter-side" label="Side" [options]="sideOptions" [(selected)]="sides" />
+    <app-multi-dropdown data-testid="filter-status" label="Status" [options]="statusOptions" [(selected)]="statuses" />
+    <app-tooltip text="Reset filters" position="bottom">
+      <button
+        type="button"
+        class="btn is-secondary is-icon-only"
+        aria-label="Reset filters"
+        data-testid="filters-reset"
+        [disabled]="!filtersActive()"
+        (click)="resetFilters()"
+      >
+        <i class="fas fa-rotate-left" aria-hidden="true"></i>
+      </button>
+    </app-tooltip>
+  </div>
+
+  @if (rows().length) {
+    <div class="table-container">
+      <table class="data-table is-striped">
+        <caption class="visually-hidden">Orders for this account</caption>
+        <thead>
+          <tr>
+            <th scope="col" [attr.aria-sort]="ariaSort('placed')">
+              <button type="button" class="sort-button" [class.is-sorted]="ariaSort('placed') !== 'none'" data-testid="sort-placed" (click)="sortBy('placed')">
+                Placed
+                <i [class]="sortIcon('placed')" aria-hidden="true"></i>
+              </button>
+            </th>
+            <th scope="col" [attr.aria-sort]="ariaSort('symbol')">
+              <button type="button" class="sort-button" [class.is-sorted]="ariaSort('symbol') !== 'none'" data-testid="sort-symbol" (click)="sortBy('symbol')">
+                Symbol
+                <i [class]="sortIcon('symbol')" aria-hidden="true"></i>
+              </button>
+            </th>
+            <th scope="col">Side</th>
+            <th scope="col">Type</th>
+            <th scope="col" class="is-numeric">Quantity</th>
+            <th scope="col" class="is-numeric">Price</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of pageRows(); track order.orderId) {
+            <tr data-testid="order-row">
+              <td>{{ order.createdOn | date: 'medium' }}</td>
+              <th scope="row">{{ order.symbol }}</th>
+              <td>
+                <span [class]="order.side === OrderSide.Buy ? 'is-success' : 'is-error'">{{ order.side }}</span>
+              </td>
+              <td>{{ order.orderPricingType }}</td>
+              <td class="is-numeric">{{ order.quantity | number }}</td>
+              <td class="is-numeric">
+                @if (order.executedPrice ?? order.price; as price) {
+                  @if (currency(); as code) {
+                    {{ price | currency: code }}
+                  } @else {
+                    {{ price | number: '1.2-4' }}
+                  }
+                } @else {
+                  Market
+                }
+              </td>
+              <td><app-order-status [status]="order.status" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (totalPages() > 1) {
+      <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
+    }
+  } @else {
+    <div class="card empty-state" data-testid="orders-no-match">
+      <i class="fas fa-filter" aria-hidden="true"></i>
+      <p class="empty-state-text">No orders match these filters.</p>
+    </div>
+  }
 }

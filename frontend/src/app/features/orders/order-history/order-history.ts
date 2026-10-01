@@ -1,104 +1,103 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { Component, InjectionToken, computed, effect, inject, resource, signal } from '@angular/core';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
-import { OrderSide } from '../../../api/generated/trade';
-import { TradeApi } from '../../../api/trade-api.service';
+import { OrderSide, OrderStatus } from '../../../api/generated/trade';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
-import { describeError } from '../../../core/errors/describe-error';
-import { isWorking, newestFirst } from '../../../core/order-history';
+import { OrderSortKey, SortDirection, sortOrders } from '../../../core/order-history';
+import { MultiDropdown } from '../../../shared/ui/multi-dropdown/multi-dropdown';
+import type { DropdownOption } from '../../../shared/ui/dropdown/dropdown';
 import { OrderStatusBadge } from '../../../shared/ui/order-status/order-status';
 import { Pagination } from '../../../shared/ui/pagination/pagination';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
-
-export interface OrderPollConfig {
-  /** Pause between re-reads while something is at NEW. */
-  readonly intervalMs: number;
-  /** Re-reads allowed before automatic updates pause; the Refresh button grants a fresh allowance. */
-  readonly maxPolls: number;
-}
-
-/** 12 re-reads, 5 seconds apart: about a minute of automatic updates, never an endless loop. */
-export const ORDER_POLL = new InjectionToken<OrderPollConfig>('ORDER_POLL', {
-  factory: () => ({ intervalMs: 5000, maxPolls: 12 }),
-});
+import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
 
 const PAGE_SIZE = 10;
 
 /**
- * The order blotter: every order for the linked account, newest first, rejections included.
- * It only ever reads (`GET /accounts/{id}/orders`). It never re-posts an order: the same idempotency
- * key would return a conflict and a new key would place a second order.
- *
- * While any order is at NEW the list is re-read on a bounded interval; it stops as soon as nothing is
- * working, or when the allowance runs out. The user can always press Refresh.
+ * The order blotter: every order for the linked account, rejections included, sorted by Placed (newest
+ * first by default) or Symbol, and filterable by side and status. It only ever reads: the account store
+ * loads the data and re-reads it on a bounded interval while anything is at NEW (see
+ * `AccountOverviewStore`). It never re-posts an order: the same idempotency key would return a conflict
+ * and a new key would place a second order.
  */
 @Component({
   selector: 'app-order-history',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, OrderStatusBadge, Pagination, RouterLink, Spinner],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, MultiDropdown, OrderStatusBadge, Pagination, RouterLink, Spinner, Tooltip],
   templateUrl: './order-history.html',
   styleUrl: './order-history.css',
 })
 export class OrderHistory {
   protected readonly OrderSide = OrderSide;
   protected readonly pageSize = PAGE_SIZE;
-
   protected readonly store = inject(AccountOverviewStore);
-  private readonly trade = inject(TradeApi);
-  private readonly poll = inject(ORDER_POLL);
 
-  private readonly accountId = computed(() => this.store.linked()?.overview.account.id ?? null);
+  protected readonly sideOptions: readonly DropdownOption[] = [
+    { value: OrderSide.Buy, label: 'Buy' },
+    { value: OrderSide.Sell, label: 'Sell' },
+  ];
+  protected readonly statusOptions: readonly DropdownOption[] = [
+    { value: OrderStatus.New, label: 'Working' },
+    { value: OrderStatus.Filled, label: 'Filled' },
+    { value: OrderStatus.Rejected, label: 'Rejected' },
+    { value: OrderStatus.Cancelled, label: 'Cancelled' },
+  ];
+
+  /** Empty means "no filter". */
+  protected readonly sides = signal<readonly string[]>([]);
+  protected readonly statuses = signal<readonly string[]>([]);
+  protected readonly filtersActive = computed(() => this.sides().length > 0 || this.statuses().length > 0);
+
+  protected readonly sort = signal<{ key: OrderSortKey; direction: SortDirection }>({ key: 'placed', direction: 'desc' });
+
+  protected readonly allOrders = computed(() => this.store.linked()?.overview.orders ?? []);
   protected readonly currency = computed(() => this.store.linked()?.overview.balance.currency ?? null);
 
-  protected readonly history = resource({
-    params: () => {
-      const id = this.accountId();
-      return id === null ? undefined : { id };
-    },
-    loader: ({ params }) => firstValueFrom(this.trade.orderHistory(params.id)),
+  protected readonly rows = computed(() => {
+    const sides = this.sides();
+    const statuses = this.statuses();
+    const { key, direction } = this.sort();
+    const matching = this.allOrders().filter(
+      (order) =>
+        (sides.length === 0 || sides.includes(order.side)) && (statuses.length === 0 || statuses.includes(order.status)),
+    );
+    return sortOrders(matching, key, direction);
   });
 
-  protected readonly rows = computed(() => (this.history.hasValue() ? newestFirst(this.history.value() ?? []) : []));
-  protected readonly workingCount = computed(() => this.rows().filter(isWorking).length);
-
-  private readonly pollsLeft = signal(this.poll.maxPolls);
-  protected readonly autoUpdating = computed(() => this.workingCount() > 0 && this.pollsLeft() > 0);
-  protected readonly paused = computed(() => this.workingCount() > 0 && this.pollsLeft() <= 0);
-
-  protected readonly page = signal(1);
+  /** Back to page 1 whenever the filters or the sort change. */
+  protected readonly page = linkedSignal<unknown, number>({
+    source: () => ({ sides: this.sides(), statuses: this.statuses(), sort: this.sort() }),
+    computation: () => 1,
+  });
   protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.rows().length / PAGE_SIZE)));
   protected readonly pageRows = computed(() => {
     const page = Math.min(this.page(), this.totalPages());
     return this.rows().slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   });
 
-  protected readonly errorMessage = computed(() => {
-    const error = this.history.error();
-    return error ? describeError(error) : '';
-  });
-
-  constructor() {
-    // Waits for each read to finish, then schedules the next one. Nothing is scheduled once no order
-    // is at NEW, the allowance is spent, or the component is gone (the cleanup clears the timer).
-    effect((onCleanup) => {
-      if (this.history.isLoading() || this.workingCount() === 0 || this.pollsLeft() <= 0) {
-        return;
-      }
-      const timer = setTimeout(() => {
-        this.pollsLeft.update((n) => n - 1);
-        this.history.reload();
-      }, this.poll.intervalMs);
-      onCleanup(() => clearTimeout(timer));
-    });
+  protected sortBy(key: OrderSortKey): void {
+    this.sort.update((current) =>
+      current.key === key
+        ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : // A new column starts the natural way round: newest first, A to Z.
+          { key, direction: key === 'placed' ? 'desc' : 'asc' },
+    );
   }
 
-  protected refresh(): void {
-    this.pollsLeft.set(this.poll.maxPolls);
-    this.history.reload();
+  protected ariaSort(key: OrderSortKey): 'ascending' | 'descending' | 'none' {
+    const { key: current, direction } = this.sort();
+    if (current !== key) {
+      return 'none';
+    }
+    return direction === 'asc' ? 'ascending' : 'descending';
   }
 
-  /** Orders are numbered by UUID; the first block is enough to recognise one. */
-  protected shortId(orderId: string): string {
-    return orderId.slice(0, 8).toUpperCase();
+  protected sortIcon(key: OrderSortKey): string {
+    const state = this.ariaSort(key);
+    return state === 'ascending' ? 'fas fa-sort-up' : state === 'descending' ? 'fas fa-sort-down' : 'fas fa-sort';
+  }
+
+  protected resetFilters(): void {
+    this.sides.set([]);
+    this.statuses.set([]);
   }
 }

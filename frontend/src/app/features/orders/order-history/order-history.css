@@ -22,3 +22,37 @@
   align-items: center;
   gap: 12px;
 }
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-filters .form-label {
+  margin-bottom: 6px;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.sort-button i {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.sort-button.is-sorted i {
+  color: var(--surface-foreground-link);
+}
