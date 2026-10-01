@@ -64,6 +64,24 @@
 
     </select>
 
+    <select id="selectTradableInstruments"
+            resultMap="InstrumentResultMap">
+
+        SELECT
+            instrument_id,
+            instrument_ticker,
+            instrument_name,
+            asset_class,
+            instrument_status
+
+        FROM instrument
+
+        WHERE instrument_status = 'TRADING'
+
+        ORDER BY instrument_ticker
+
+    </select>
+
         <select id="selectSymbolsForMarketPolling"
                         resultType="String">
 

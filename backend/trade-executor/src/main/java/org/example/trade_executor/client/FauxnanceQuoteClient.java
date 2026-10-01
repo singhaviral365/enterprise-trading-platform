@@ -137,7 +137,37 @@ public class FauxnanceQuoteClient implements QuoteClient {
         return fetchQuotes(quoteUri, String.join(",", cleanSymbols));
     }
 
+    @Override
+    public Map<String, QuoteDetails> getQuoteDetails(Collection<String> symbols) {
+        if (symbols == null) {
+            return Map.of();
+        }
+
+        List<String> cleanSymbols = symbols.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        if (cleanSymbols.isEmpty()) {
+            return Map.of();
+        }
+
+        URI quoteUri = resolveBatchQuoteUri(cleanSymbols);
+        return fetch(quoteUri, String.join(",", cleanSymbols), this::parseQuoteDetails, Map.of());
+    }
+
     private Map<String, LiveQuote> fetchQuotes(URI quoteUri, String symbolContext) {
+        return fetch(quoteUri, symbolContext, this::parseQuotes, Map.of());
+    }
+
+    @FunctionalInterface
+    private interface BodyParser<T> {
+        T parse(String body) throws IOException;
+    }
+
+    /** GET with the client's retry/backoff rules; {@code empty} is returned for 204/404. */
+    private <T> T fetch(URI quoteUri, String symbolContext, BodyParser<T> parser, T empty) {
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(quoteUri)
             .timeout(requestTimeout)
@@ -156,12 +186,12 @@ public class FauxnanceQuoteClient implements QuoteClient {
                         HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() == 200) {
-                    return parseQuotes(response.body());
+                    return parser.parse(response.body());
                 }
 
                 if (response.statusCode() == 404 || response.statusCode() == 204) {
                     LOGGER.info("No quote available for symbols {} (HTTP {})", symbolContext, response.statusCode());
-                    return Map.of();
+                    return empty;
                 }
 
                 if (isRetryable(response.statusCode()) && attempt < maxAttempts) {
@@ -229,6 +259,104 @@ public class FauxnanceQuoteClient implements QuoteClient {
         Map<String, LiveQuote> quotes = new LinkedHashMap<>();
         collectQuotes(root, quotes);
         return quotes;
+    }
+
+    private Map<String, QuoteDetails> parseQuoteDetails(String body) throws IOException {
+        if (body == null || body.isBlank()) {
+            return Map.of();
+        }
+
+        Map<String, QuoteDetails> details = new LinkedHashMap<>();
+        collectQuoteDetails(objectMapper.readTree(body), details);
+        return details;
+    }
+
+    /**
+     * Finds every quote in the response. Fauxnance wraps each one as
+     * {@code {"symbol", "source", "stale", "quote": {...}}} (or {@code {"symbol", "error": {...}}} when the
+     * symbol is unknown, which is skipped); a bare {@code {"symbol", "price", ...}} object is accepted too.
+     * The wrapper's {@code source} and {@code stale} are kept alongside the quote fields.
+     */
+    private void collectQuoteDetails(JsonNode node, Map<String, QuoteDetails> details) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isArray()) {
+            node.forEach(child -> collectQuoteDetails(child, details));
+            return;
+        }
+
+        if (!node.isObject()) {
+            return;
+        }
+
+        JsonNode inner = node.get("quote");
+        if (inner != null && inner.isObject() && addQuote(inner, node, details)) {
+            return;
+        }
+        if (addQuote(node, null, details)) {
+            return;
+        }
+
+        node.fields().forEachRemaining(entry -> collectQuoteDetails(entry.getValue(), details));
+    }
+
+    private boolean addQuote(JsonNode quote, JsonNode wrapper, Map<String, QuoteDetails> details) {
+        JsonNode symbolNode = quote.get("symbol");
+        if ((symbolNode == null || !symbolNode.isTextual()) && wrapper != null) {
+            symbolNode = wrapper.get("symbol");
+        }
+        BigDecimal price = extractPrice(quote.get("price"));
+        if (symbolNode == null || !symbolNode.isTextual() || price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        String symbol = symbolNode.asText().trim();
+        if (symbol.isBlank()) {
+            return false;
+        }
+
+        Map<String, Object> fields = new LinkedHashMap<>();
+        quote.fields().forEachRemaining(entry -> fields.put(entry.getKey(), toPlainValue(entry.getValue())));
+        if (wrapper != null) {
+            for (String key : List.of("source", "stale")) {
+                JsonNode value = wrapper.get(key);
+                if (value != null && !fields.containsKey(key)) {
+                    fields.put(key, toPlainValue(value));
+                }
+            }
+        }
+
+        details.putIfAbsent(symbol, new QuoteDetails(symbol, price, fields));
+        return true;
+    }
+
+    /** JSON value → plain Java value (numbers keep full precision as BigDecimal/Long). */
+    private Object toPlainValue(JsonNode value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isTextual()) {
+            return value.asText();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isIntegralNumber()) {
+            return value.canConvertToLong() ? value.asLong() : value.bigIntegerValue();
+        }
+        if (value.isNumber()) {
+            return value.decimalValue();
+        }
+        if (value.isArray()) {
+            List<Object> items = new java.util.ArrayList<>();
+            value.forEach(item -> items.add(toPlainValue(item)));
+            return items;
+        }
+        Map<String, Object> nested = new LinkedHashMap<>();
+        value.fields().forEachRemaining(entry -> nested.put(entry.getKey(), toPlainValue(entry.getValue())));
+        return nested;
     }
 
     private void collectQuotes(JsonNode node, Map<String, LiveQuote> quotes) {

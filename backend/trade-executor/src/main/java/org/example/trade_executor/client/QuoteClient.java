@@ -24,5 +24,20 @@ public interface QuoteClient {
 
         return quotes;
     }
+
+    /**
+     * Full quotes (all fields the API returned), keyed by symbol. Symbols the API could not quote
+     * are left out. The default only knows symbol and price; FauxnanceQuoteClient returns everything.
+     */
+    default Map<String, QuoteDetails> getQuoteDetails(Collection<String> symbols) {
+        Map<String, QuoteDetails> details = new LinkedHashMap<>();
+        getQuotes(symbols).forEach((symbol, quote) -> {
+            Map<String, Object> fields = new LinkedHashMap<>();
+            fields.put("symbol", quote.symbol());
+            fields.put("price", quote.price());
+            details.put(symbol, new QuoteDetails(quote.symbol(), quote.price(), fields));
+        });
+        return details;
+    }
 }
 
