@@ -90,14 +90,23 @@ describe('LoginForm', () => {
     expect(TestBed.inject(SessionService).isLoggedIn()).toBe(false);
   });
 
-  it('blocks submission and shows validation messages when the fields are empty', async () => {
-    byTestId<HTMLButtonElement>('login-submit')!.click();
+  it('keeps Sign in disabled while empty, shows messages once the fields are visited, and enables when filled', async () => {
+    const submit = byTestId<HTMLButtonElement>('login-submit')!;
+    expect(submit.disabled).toBe(true);
+
+    byTestId('login-username')!.dispatchEvent(new Event('blur'));
+    byTestId('login-password')!.dispatchEvent(new Event('blur'));
     await fixture.whenStable();
 
+    expect(submit.disabled).toBe(true);
     http.expectNone(LOGIN_URL);
     expect(byTestId('login-username-error')?.textContent).toContain('Enter your username.');
     expect(byTestId('login-password-error')?.textContent).toContain('Enter your password.');
     expect(byTestId('login-username')?.getAttribute('aria-invalid')).toBe('true');
+
+    await type('login-username', 'alice.trader');
+    await type('login-password', 'secret');
+    expect(submit.disabled).toBe(false);
   });
 });
 

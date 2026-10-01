@@ -444,8 +444,13 @@ and use the global table classes.
 
 - **Order history:** every order (rejections included), default sort Placed descending, sortable by
   Placed and Symbol (`aria-sort` on the header), filters for Side and Status (multi-select dropdowns) and
-  an icon-only Reset button. No order id column.
-- **Positions:** quantity, average cost and cost basis per symbol, a Symbol filter and a total row.
+  an icon-only Reset button at the right end of the filter row. No order id column.
+  **Cancelling:** rows at `NEW` ("Working") are `clickable-row`s (keyboard: Tab, Enter or Space) and can be
+  selected several at a time; a selected row is tinted and gets a check mark. While anything is selected an
+  icon-only `is-error` trash button appears left of Reset; it asks with `DialogService.confirm` (type
+  `warning`), then calls `DELETE /api/v1/orders/{id}` for each, reports successes and failures in toasts and
+  refreshes the store. Selections are dropped if the order stops being `NEW` or the filters hide it.
+- **Positions:** quantity, average cost and cost basis per symbol, and a total row (no filters).
   The dashboard's Positions card links here; its Recent orders panel shows the latest 5 with "View more".
 - **Live updates:** while any order is at `NEW` the store re-reads the account on a bounded interval
   (`ORDER_POLL` in `core/order-poll.ts`: 5 s, 12 times), then pauses; `store.refresh()` (the Refresh

@@ -83,7 +83,11 @@
   transform: translateY(-1px);
 }
 
-/* Logout is a quiet icon like the others; red only appears as a hint on hover. */
+/* Logout is red at rest so it reads as the way out; the hover only deepens the tint. */
+.app-header .btn.header-logout {
+  color: var(--status-error-container-fg);
+}
+
 .app-header .btn.header-logout:hover:not(:disabled) {
   color: var(--status-error-container-fg);
   background: var(--status-error-container-bg);

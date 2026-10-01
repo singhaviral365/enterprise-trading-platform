@@ -18,6 +18,7 @@ describe('AccountSetupForm', () => {
     const input = byTestId<HTMLInputElement>(testId)!;
     input.value = value;
     input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
     await fixture.whenStable();
   }
 
@@ -39,6 +40,13 @@ describe('AccountSetupForm', () => {
 
   it('pre-fills the email passed in from registration', () => {
     expect(byTestId<HTMLInputElement>('account-email')!.value).toBe('priya@example.com');
+  });
+
+  it('enables Open my account once the required details are valid', async () => {
+    await type('account-client-name', 'Priya Menon');
+    await type('account-phone', '5551234567');
+
+    expect(byTestId<HTMLButtonElement>('account-setup-submit')!.disabled).toBe(false);
   });
 
   it('creates the account without a balance so the 20,000 default applies', async () => {
@@ -74,11 +82,13 @@ describe('AccountSetupForm', () => {
   });
 
   it('blocks a balance below the 20,000 minimum and empty required fields', async () => {
+    expect(byTestId<HTMLButtonElement>('account-setup-submit')!.disabled).toBe(true);
     await type('account-balance', '500');
-    byTestId<HTMLButtonElement>('account-setup-submit')!.click();
+    byTestId('account-client-name')!.dispatchEvent(new Event('blur'));
+    byTestId('account-phone')!.dispatchEvent(new Event('blur'));
     await fixture.whenStable();
 
-    http.expectNone(CREATE_URL);
+    expect(byTestId<HTMLButtonElement>('account-setup-submit')!.disabled).toBe(true);
     expect(root.textContent).toContain('Enter your full name.');
     expect(root.textContent).toContain('Enter your phone number.');
     expect(root.textContent).toContain('Opening balance must be a number of at least 20,000.');

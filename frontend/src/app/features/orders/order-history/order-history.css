@@ -35,6 +35,26 @@
   margin-bottom: 6px;
 }
 
+/* Delete (when something is selected) and Reset sit together at the right end of the filter row. */
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Selected working orders: tinted like the destructive action they are about to get, plus a check mark so
+   colour is never the only signal. */
+.data-table tbody tr.is-selected th,
+.data-table tbody tr.is-selected td {
+  background: var(--status-error-container-bg);
+}
+
+.select-mark {
+  margin-right: 6px;
+  color: var(--status-error-container-fg);
+}
+
 .sort-button {
   display: inline-flex;
   align-items: center;

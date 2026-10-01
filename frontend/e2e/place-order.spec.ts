@@ -33,16 +33,34 @@ test.describe('place an order', () => {
     const ticket = await openTicket(page, 'buy');
     const quantity = ticket.getByTestId('order-quantity');
 
+    const submit = ticket.getByTestId('order-submit');
+
     await quantity.fill('0');
-    await ticket.getByTestId('order-submit').click();
+    await quantity.blur();
     await expect(ticket.getByText('Quantity must be a whole number of at least 1.')).toBeVisible();
+    await expect(submit).toBeDisabled();
 
     await quantity.fill('');
-    await ticket.getByTestId('order-submit').click();
+    await quantity.blur();
     await expect(ticket.getByText('Enter a quantity.')).toBeVisible();
+    await expect(submit).toBeDisabled();
 
     await expect(page.getByTestId('order-confirmation')).toHaveCount(0);
     expect(posts.count()).toBe(0);
+  });
+
+  test('the quantity buttons step the order size and stop at 1', async ({ page }) => {
+    await signInFromHome(page, userCredentials());
+    await openQuote(page, tradedSymbol());
+    const ticket = await openTicket(page, 'buy');
+    const quantity = ticket.getByTestId('order-quantity');
+
+    await expect(ticket.getByTestId('order-quantity-decrease')).toBeDisabled();
+    await ticket.getByTestId('order-quantity-increase').click();
+    await ticket.getByTestId('order-quantity-increase').click();
+    await expect(quantity).toHaveValue('3');
+    await ticket.getByTestId('order-quantity-decrease').click();
+    await expect(quantity).toHaveValue('2');
   });
 
   test('selling more than is held is blocked before submission', async ({ page }) => {

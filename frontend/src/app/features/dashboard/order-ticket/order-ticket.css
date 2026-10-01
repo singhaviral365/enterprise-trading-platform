@@ -144,8 +144,23 @@ input[type='radio'] {
   border-color: var(--status-error-background);
 }
 
-.price-input {
+.price-input,
+.quantity-input {
   position: relative;
+}
+
+/* - and + sit inside the right end of the quantity field. */
+.quantity-input .ticket-input {
+  padding-right: 84px;
+}
+
+.quantity-steppers {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  transform: translateY(-50%);
 }
 
 .price-prefix {
@@ -269,8 +284,13 @@ input[type='radio'] {
   transform: translateY(-1px);
 }
 
+/* The gradient above would otherwise hide the shared disabled look. */
 .submit-btn:disabled {
+  color: var(--surface-line);
+  background: var(--surface-line-subtle);
   box-shadow: none;
+  filter: none;
+  transform: none;
 }
 
 @keyframes ticket-in {

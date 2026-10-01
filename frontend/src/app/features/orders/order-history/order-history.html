@@ -50,18 +50,38 @@
   <div class="history-filters" role="group" aria-label="Filter orders">
     <app-multi-dropdown data-testid="filter-side" label="Side" [options]="sideOptions" [(selected)]="sides" />
     <app-multi-dropdown data-testid="filter-status" label="Status" [options]="statusOptions" [(selected)]="statuses" />
-    <app-tooltip text="Reset filters" position="bottom">
-      <button
-        type="button"
-        class="btn is-secondary is-icon-only"
-        aria-label="Reset filters"
-        data-testid="filters-reset"
-        [disabled]="!filtersActive()"
-        (click)="resetFilters()"
-      >
-        <i class="fas fa-rotate-left" aria-hidden="true"></i>
-      </button>
-    </app-tooltip>
+    <div class="history-actions">
+      @if (selectedIds().size) {
+        <app-tooltip [text]="cancelLabel()" position="bottom">
+          <button
+            type="button"
+            class="btn is-error is-icon-only"
+            [attr.aria-label]="cancelLabel()"
+            data-testid="orders-cancel-selected"
+            [disabled]="cancelling()"
+            (click)="cancelSelected()"
+          >
+            @if (cancelling()) {
+              <app-spinner [inline]="true" label="Cancelling orders" />
+            } @else {
+              <i class="fas fa-trash" aria-hidden="true"></i>
+            }
+          </button>
+        </app-tooltip>
+      }
+      <app-tooltip text="Reset filters" position="bottom">
+        <button
+          type="button"
+          class="btn is-secondary is-icon-only"
+          aria-label="Reset filters"
+          data-testid="filters-reset"
+          [disabled]="!filtersActive()"
+          (click)="resetFilters()"
+        >
+          <i class="fas fa-rotate-left" aria-hidden="true"></i>
+        </button>
+      </app-tooltip>
+    </div>
   </div>
 
   @if (rows().length) {
@@ -91,8 +111,23 @@
         </thead>
         <tbody>
           @for (order of pageRows(); track order.orderId) {
-            <tr data-testid="order-row">
-              <td>{{ order.createdOn | date: 'medium' }}</td>
+            <tr
+              data-testid="order-row"
+              [class.clickable-row]="isCancellable(order)"
+              [class.is-selected]="isSelected(order.orderId)"
+              [attr.tabindex]="isCancellable(order) ? 0 : null"
+              [attr.aria-selected]="isCancellable(order) ? isSelected(order.orderId) : null"
+              [attr.aria-label]="rowLabel(order)"
+              (click)="isCancellable(order) && toggle(order.orderId)"
+              (keydown.enter)="isCancellable(order) && toggle(order.orderId)"
+              (keydown.space)="onSpace($event, order)"
+            >
+              <td>
+                @if (isSelected(order.orderId)) {
+                  <i class="fas fa-circle-check select-mark" aria-hidden="true"></i>
+                }
+                {{ order.createdOn | date: 'medium' }}
+              </td>
               <th scope="row">{{ order.symbol }}</th>
               <td>
                 <span [class]="order.side === OrderSide.Buy ? 'is-success' : 'is-error'">{{ order.side }}</span>

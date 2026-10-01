@@ -98,6 +98,21 @@ export class OrderTicket {
     const raw = this.model().quantity.trim();
     return /^\d+$/.test(raw) ? Number(raw) : null;
   });
+  /** The stepper stays inside 1..MAX_QUANTITY; text that is not a number counts as 0, so plus gives 1. */
+  protected readonly canDecrease = computed(() => (this.quantityValue() ?? 0) > 1);
+  protected readonly canIncrease = computed(() => (this.quantityValue() ?? 0) < MAX_QUANTITY);
+
+  protected stepQuantity(delta: 1 | -1): void {
+    const next = Math.min(MAX_QUANTITY, Math.max(1, (this.quantityValue() ?? 0) + delta));
+    this.ticket.quantity().value.set(String(next));
+  }
+
+  /** Arrow keys step the quantity like a number input, without moving the caret. */
+  protected onQuantityArrow(event: Event, delta: 1 | -1): void {
+    event.preventDefault();
+    this.stepQuantity(delta);
+  }
+
   private readonly limitValue = computed(() => {
     const raw = this.model().limitPrice.replace(/,/g, '').trim();
     const value = Number(raw);

@@ -147,7 +147,7 @@
     type="submit"
     class="btn is-primary is-large full-width-btn"
     data-testid="register-submit"
-    [disabled]="registerForm().submitting()"
+    [disabled]="registerForm().invalid() || registerForm().submitting()"
   >
     @if (registerForm().submitting()) {
       <app-spinner [inline]="true" label="Creating account" />

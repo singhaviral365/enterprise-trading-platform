@@ -25,6 +25,7 @@ describe('OrderTicket', () => {
     const input = byTestId<HTMLInputElement>(testId)!;
     input.value = value;
     input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
     await fixture.whenStable();
   }
 
@@ -145,10 +146,9 @@ describe('OrderTicket', () => {
     await choose('order-type-limit');
     await type('order-limit-price', '');
     await type('order-quantity', '0');
-
-    byTestId<HTMLButtonElement>('order-submit')!.click();
     await fixture.whenStable();
 
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
     http.expectNone('/api/v1/orders');
     expect(root.textContent).toContain('Enter a limit price.');
     expect(root.textContent).toContain('Quantity must be a whole number of at least 1.');
@@ -238,5 +238,71 @@ describe('OrderTicket', () => {
       expect(byTestId('order-status')?.textContent).toContain('Filled');
     });
     expect(byTestId('order-explanation')?.textContent).toContain('has been filled');
+  });
+  describe('quantity stepper', () => {
+    const quantity = () => byTestId<HTMLInputElement>('order-quantity')!.value;
+    const press = async (id: string) => {
+      byTestId<HTMLButtonElement>(id)!.click();
+      await fixture.whenStable();
+    };
+
+    it('starts at 1 with minus disabled', () => {
+      expect(quantity()).toBe('1');
+      expect(byTestId<HTMLButtonElement>('order-quantity-decrease')!.disabled).toBe(true);
+      expect(byTestId<HTMLButtonElement>('order-quantity-increase')!.disabled).toBe(false);
+    });
+
+    it('steps up and down but never below 1', async () => {
+      await press('order-quantity-increase');
+      await press('order-quantity-increase');
+      expect(quantity()).toBe('3');
+      expect(byTestId('order-estimate')?.textContent).toContain('$600.00');
+
+      await press('order-quantity-decrease');
+      await press('order-quantity-decrease');
+      expect(quantity()).toBe('1');
+      expect(byTestId<HTMLButtonElement>('order-quantity-decrease')!.disabled).toBe(true);
+    });
+
+    it('turns an empty or invalid entry into a valid one', async () => {
+      await type('order-quantity', '');
+      await press('order-quantity-increase');
+      expect(quantity()).toBe('1');
+
+      await type('order-quantity', 'abc');
+      await press('order-quantity-increase');
+      expect(quantity()).toBe('1');
+    });
+
+    it('stops at the maximum quantity', async () => {
+      await type('order-quantity', '1000000');
+
+      expect(byTestId<HTMLButtonElement>('order-quantity-increase')!.disabled).toBe(true);
+      await type('order-quantity', '999999');
+      await press('order-quantity-increase');
+      expect(quantity()).toBe('1000000');
+    });
+
+    it('steps with the arrow keys without moving the caret', async () => {
+      const input = byTestId<HTMLInputElement>('order-quantity')!;
+      const up = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true });
+      input.dispatchEvent(up);
+      await fixture.whenStable();
+      expect(up.defaultPrevented).toBe(true);
+      expect(quantity()).toBe('2');
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+      await fixture.whenStable();
+      expect(quantity()).toBe('1');
+    });
+
+    it('re-enables a valid order after fixing a bad quantity with the stepper', async () => {
+      await type('order-quantity', '0');
+      expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+
+      await press('order-quantity-increase');
+
+      expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+    });
   });
 });

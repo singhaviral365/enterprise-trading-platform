@@ -72,7 +72,7 @@
     type="submit"
     class="btn is-primary is-large full-width-btn"
     data-testid="login-submit"
-    [disabled]="loginForm().submitting()"
+    [disabled]="loginForm().invalid() || loginForm().submitting()"
   >
     @if (loginForm().submitting()) {
       <app-spinner [inline]="true" label="Signing in" />

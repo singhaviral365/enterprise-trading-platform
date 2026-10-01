@@ -16,6 +16,7 @@ describe('RegisterForm', () => {
     const input = byTestId<HTMLInputElement>(testId)!;
     input.value = value;
     input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('blur'));
     await fixture.whenStable();
   }
 
@@ -37,10 +38,9 @@ describe('RegisterForm', () => {
     await type('register-email', 'trader@example.com');
     await type('register-password', 'Trader.One.Long1');
     await type('register-confirm-password', 'Trader.One.Long1');
-    byTestId<HTMLButtonElement>('register-submit')!.click();
     await fixture.whenStable();
 
-    http.expectNone('http://localhost:3000/auth/register');
+    expect(byTestId<HTMLButtonElement>('register-submit')!.disabled).toBe(true);
     expect(root.textContent).toContain('Password must be different from your username.');
   });
 
@@ -49,10 +49,9 @@ describe('RegisterForm', () => {
     await type('register-email', 'trader@example.com');
     await type('register-password', 'tradingdeskpass');
     await type('register-confirm-password', 'tradingdeskpass');
-    byTestId<HTMLButtonElement>('register-submit')!.click();
     await fixture.whenStable();
 
-    http.expectNone('http://localhost:3000/auth/register');
+    expect(byTestId<HTMLButtonElement>('register-submit')!.disabled).toBe(true);
     expect(root.textContent).toContain('Password needs one capital letter (A–Z).');
   });
 
@@ -61,10 +60,9 @@ describe('RegisterForm', () => {
     await type('register-email', 'trader@example.com');
     await type('register-password', 'Tr@dingDesk2026');
     await type('register-confirm-password', 'Tr@dingDesk2026');
-    byTestId<HTMLButtonElement>('register-submit')!.click();
     await fixture.whenStable();
 
-    http.expectNone('http://localhost:3000/auth/register');
+    expect(byTestId<HTMLButtonElement>('register-submit')!.disabled).toBe(true);
     expect(byTestId('register-username')?.getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -89,6 +87,15 @@ describe('RegisterForm', () => {
     await type('register-password', 'Tr@dingDesk2026');
     await type('register-confirm-password', 'Tr@dingDesk2026');
   }
+
+  it('keeps Create account disabled until every field is valid, then enables it', async () => {
+    const submit = byTestId<HTMLButtonElement>('register-submit')!;
+    expect(submit.disabled).toBe(true);
+
+    await fillValid();
+
+    expect(submit.disabled).toBe(false);
+  });
 
   it('registers, signs the new user in and reports who signed in', async () => {
     const signedIn = vi.fn();
@@ -122,10 +129,9 @@ describe('RegisterForm', () => {
   it('blocks submission when the two passwords differ', async () => {
     await fillValid();
     await type('register-confirm-password', 'Tr@dingDesk2027');
-    byTestId<HTMLButtonElement>('register-submit')!.click();
     await fixture.whenStable();
 
-    http.expectNone('http://localhost:3000/auth/register');
+    expect(byTestId<HTMLButtonElement>('register-submit')!.disabled).toBe(true);
     expect(root.textContent).toContain('Passwords do not match.');
   });
 });

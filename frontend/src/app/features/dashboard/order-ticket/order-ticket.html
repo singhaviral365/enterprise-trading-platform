@@ -28,18 +28,44 @@
     <div class="ticket-fields" [class.has-limit]="orderType() === OrderPricingType.Limit">
       <div class="ticket-field">
         <label class="field-label" for="order-quantity">Quantity</label>
-        <input
-          id="order-quantity"
-          class="ticket-input"
-          type="text"
-          inputmode="numeric"
-          autocomplete="off"
-          data-testid="order-quantity"
-          [formField]="ticket.quantity"
-          [class.is-error]="ticket.quantity().touched() && ticket.quantity().invalid()"
-          [attr.aria-invalid]="ticket.quantity().touched() && ticket.quantity().invalid()"
-          [attr.aria-describedby]="ticket.quantity().touched() && ticket.quantity().invalid() ? 'order-quantity-error' : null"
-        />
+        <div class="quantity-input">
+          <input
+            id="order-quantity"
+            class="ticket-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            data-testid="order-quantity"
+            [formField]="ticket.quantity"
+            [class.is-error]="ticket.quantity().touched() && ticket.quantity().invalid()"
+            [attr.aria-invalid]="ticket.quantity().touched() && ticket.quantity().invalid()"
+            [attr.aria-describedby]="ticket.quantity().touched() && ticket.quantity().invalid() ? 'order-quantity-error' : null"
+            (keydown.arrowup)="onQuantityArrow($event, 1)"
+            (keydown.arrowdown)="onQuantityArrow($event, -1)"
+          />
+          <div class="quantity-steppers">
+            <button
+              type="button"
+              class="btn is-secondary is-icon-only is-small"
+              aria-label="Decrease quantity"
+              data-testid="order-quantity-decrease"
+              [disabled]="!canDecrease() || ticket().submitting()"
+              (click)="stepQuantity(-1)"
+            >
+              <i class="fas fa-minus" aria-hidden="true"></i>
+            </button>
+            <button
+              type="button"
+              class="btn is-secondary is-icon-only is-small"
+              aria-label="Increase quantity"
+              data-testid="order-quantity-increase"
+              [disabled]="!canIncrease() || ticket().submitting()"
+              (click)="stepQuantity(1)"
+            >
+              <i class="fas fa-plus" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
         @if (ticket.quantity().touched() && ticket.quantity().invalid()) {
           <p id="order-quantity-error" class="form-error-text">{{ ticket.quantity().errors()[0].message }}</p>
         }
@@ -149,7 +175,7 @@
         type="submit"
         class="btn is-large submit-btn"
         data-testid="order-submit"
-        [disabled]="ticket().submitting() || !account() || !accountActive() || exceedsHolding()"
+        [disabled]="ticket().invalid() || ticket().submitting() || !account() || !accountActive() || exceedsHolding()"
       >
         @if (ticket().submitting()) {
           <app-spinner [inline]="true" label="Placing order" />
