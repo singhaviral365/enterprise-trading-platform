@@ -341,6 +341,19 @@ Inputs: `options` (required, `{ id, label }[]`), `readOnly`, `label` (accessible
 Two-way `[(selected)]` (array of ids). Output `touched` (after each toggle). Chips use
 `aria-pressed`.
 
+### 4.3b Multi-select dropdown (`shared/ui/multi-dropdown/multi-dropdown`)
+
+A dropdown with checkboxes, for filters. A button shows the choice ("All", the option's label, or
+"3 selected") and opens a native popover (light-dismiss, Esc and focus return come from the browser).
+
+```html
+<app-multi-dropdown label="Status" [options]="statusOptions" [(selected)]="statuses" />
+```
+
+Inputs: `options` (required, `DropdownOption[]`), `label` (required, also the accessible name),
+`placeholder` (default `All`). Two-way `[(selected)]` (array of values; empty = no filter). Use the chip
+`app-multiselect` for short always-visible sets and this one for filters.
+
 ### 4.4 Pagination (`shared/ui/pagination/pagination`)
 
 ```html
@@ -424,12 +437,20 @@ Buy / Sell segmented control on native radios: `<app-side-toggle [(side)]="side"
 icon as well as its colour, so it works for colour-blind users: NEW shows **Working**, then **Filled**,
 **Rejected**, **Cancelled**. Use it anywhere an order status is shown; never print the raw status.
 
-### 4.10c Order history page (`features/orders/order-history`)
+### 4.10c Order history and Positions pages (`features/orders`, `features/positions`)
 
-Route `/orders`, sidebar item "Order history". The order blotter: every order newest first (rejections
-included), paginated, built on the global table classes. It only reads. While an order is at `NEW` it
-re-reads on a bounded interval (`ORDER_POLL`: 5 s, 12 times), then pauses; Refresh restarts it. The
-dashboard's Recent orders panel shows the latest 5 with a "View more" link to it.
+Routes `/orders` and `/positions`, both in the sidebar. Both read from the shared `AccountOverviewStore`
+and use the global table classes.
+
+- **Order history:** every order (rejections included), default sort Placed descending, sortable by
+  Placed and Symbol (`aria-sort` on the header), filters for Side and Status (multi-select dropdowns) and
+  an icon-only Reset button. No order id column.
+- **Positions:** quantity, average cost and cost basis per symbol, a Symbol filter and a total row.
+  The dashboard's Positions card links here; its Recent orders panel shows the latest 5 with "View more".
+- **Live updates:** while any order is at `NEW` the store re-reads the account on a bounded interval
+  (`ORDER_POLL` in `core/order-poll.ts`: 5 s, 12 times), then pauses; `store.refresh()` (the Refresh
+  buttons, and placing an order) grants a new allowance. A fill therefore shows up on every page and in
+  the order ticket's confirmation without a reload. Never add another polling loop.
 
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
