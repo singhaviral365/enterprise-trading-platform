@@ -1,14 +1,15 @@
 # Market Poller Verification Guide
 
-This guide verifies that the Trade Executor market-data poller is running on schedule, batching quote requests, and publishing one Kafka message per symbol to `market-data`.
+This guide verifies that the executor-service market-data poller is running on schedule, batching quote requests, and publishing one Kafka message per symbol to `market-data`.
 
 ## What the poller does
 
-- Runs inside `trade_executor` as a scheduled Java component.
+- Runs inside `executor-service` (`services/executor-service`) as a scheduled Java component.
 - Reads interval from `POLL_INTERVAL_SECONDS`.
 - Polls symbols from:
   - held symbols (positions with quantity > 0)
   - symbols currently being watched by open `NEW` orders
+  - instruments on any customer watchlist (`watchlist_item`), so a watched instrument is priced even if nobody holds it. If the watchlist tables do not exist yet the poller logs a warning and carries on without them. The order-service watchlist module consumes these quotes; see `services/order-service/src/main/java/org/example/backend/watchlist/README.md`
   - optional `MARKET_DATA_WATCH_SYMBOLS` environment override
 - Calls Fauxnance batch endpoint `GET /quotes?symbols=A,B,C` with at most 25 symbols per request.
 - Publishes one `QUOTE` event per symbol to Kafka topic `market-data`, keyed by symbol.

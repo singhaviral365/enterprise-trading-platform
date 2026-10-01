@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.backend.watchlist.mapper.WatchlistMapper">
+
+    <resultMap id="WatchlistResultMap" type="org.example.backend.watchlist.model.Watchlist">
+        <constructor>
+            <idArg column="watchlist_id" javaType="_long" name="watchlistId"/>
+            <arg column="account_id" javaType="_long" name="accountId"/>
+            <arg column="name" javaType="String" name="name"/>
+            <arg column="created_at" javaType="java.time.OffsetDateTime" name="createdAt"/>
+            <arg column="updated_at" javaType="java.time.OffsetDateTime" name="updatedAt"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="WatchlistItemResultMap" type="org.example.backend.watchlist.model.WatchlistItem">
+        <constructor>
+            <idArg column="watchlist_id" javaType="_long" name="watchlistId"/>
+            <arg column="ticker_symbol" javaType="String" name="tickerSymbol"/>
+            <arg column="added_at" javaType="java.time.OffsetDateTime" name="addedAt"/>
+        </constructor>
+    </resultMap>
+
+    <select id="nextWatchlistId" resultType="long">
+        SELECT nextval(pg_get_serial_sequence('watchlist', 'watchlist_id'))
+    </select>
+
+    <!--
+      The cap check and the insert are a single statement: the row is only produced while the
+      account holds fewer than #{limit} watchlists. CASTs are needed because a bare bind
+      parameter in a SELECT list has no type for PostgreSQL to infer.
+    -->
+    <insert id="insertWatchlistIfUnderLimit">
+        INSERT INTO watchlist (
+            watchlist_id,
+            account_id,
+            name,
+            created_at,
+            updated_at
+        )
+        SELECT
+            CAST(#{watchlist.watchlistId} AS BIGINT),
+            CAST(#{watchlist.accountId} AS BIGINT),
+            CAST(#{watchlist.name} AS VARCHAR),
+            CAST(#{watchlist.createdAt} AS TIMESTAMPTZ),
+            CAST(#{watchlist.updatedAt} AS TIMESTAMPTZ)
+        WHERE (
+            SELECT COUNT(*)
+            FROM watchlist
+            WHERE account_id = #{watchlist.accountId}
+        ) &lt; #{limit}
+    </insert>
+
+    <select id="selectWatchlistsByAccountId" resultMap="WatchlistResultMap">
+        SELECT
+            watchlist_id,
+            account_id,
+            name,
+            created_at,
+            updated_at
+        FROM watchlist
+        WHERE account_id = #{accountId}
+        ORDER BY created_at ASC, watchlist_id ASC
+    </select>
+
+    <select id="selectWatchlistById" resultMap="WatchlistResultMap">
+        SELECT
+            watchlist_id,
+            account_id,
+            name,
+            created_at,
+            updated_at
+        FROM watchlist
+        WHERE watchlist_id = #{watchlistId}
+    </select>
+
+    <select id="selectWatchlistByAccountIdAndName" resultMap="WatchlistResultMap">
+        SELECT
+            watchlist_id,
+            account_id,
+            name,
+            created_at,
+            updated_at
+        FROM watchlist
+        WHERE account_id = #{accountId}
+          AND LOWER(name) = LOWER(#{name})
+    </select>
+
+    <update id="updateWatchlistName">
+        UPDATE watchlist
+        SET name = #{name},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE watchlist_id = #{watchlistId}
+    </update>
+
+    <delete id="deleteWatchlist">
+        DELETE FROM watchlist
+        WHERE watchlist_id = #{watchlistId}
+    </delete>
+
+    <select id="selectWatchlistItems" resultMap="WatchlistItemResultMap">
+        SELECT
+            watchlist_id,
+            ticker_symbol,
+            added_at
+        FROM watchlist_item
+        WHERE watchlist_id = #{watchlistId}
+        ORDER BY ticker_symbol ASC
+    </select>
+
+    <select id="selectItemsByAccountId" resultMap="WatchlistItemResultMap">
+        SELECT
+            wi.watchlist_id,
+            wi.ticker_symbol,
+            wi.added_at
+        FROM watchlist_item wi
+        JOIN watchlist w ON w.watchlist_id = wi.watchlist_id
+        WHERE w.account_id = #{accountId}
+        ORDER BY wi.watchlist_id ASC, wi.ticker_symbol ASC
+    </select>
+
+    <select id="watchlistItemExists" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM watchlist_item
+            WHERE watchlist_id = #{watchlistId}
+              AND ticker_symbol = #{tickerSymbol}
+        )
+    </select>
+
+    <insert id="insertWatchlistItemIfUnderLimit">
+        INSERT INTO watchlist_item (
+            watchlist_id,
+            ticker_symbol,
+            added_at
+        )
+        SELECT
+            CAST(#{item.watchlistId} AS BIGINT),
+            CAST(#{item.tickerSymbol} AS VARCHAR),
+            CAST(#{item.addedAt} AS TIMESTAMPTZ)
+        WHERE (
+            SELECT COUNT(*)
+            FROM watchlist_item
+            WHERE watchlist_id = #{item.watchlistId}
+        ) &lt; #{limit}
+    </insert>
+
+    <delete id="deleteWatchlistItem">
+        DELETE FROM watchlist_item
+        WHERE watchlist_id = #{watchlistId}
+          AND UPPER(ticker_symbol) = UPPER(#{tickerSymbol})
+    </delete>
+
+    <select id="selectTradableTicker" resultType="string">
+        SELECT instrument_ticker
+        FROM instrument
+        WHERE UPPER(instrument_ticker) = UPPER(#{tickerSymbol})
+          AND instrument_status = 'TRADING'
+    </select>
+
+</mapper>

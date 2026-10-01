@@ -8,6 +8,9 @@ erDiagram
     instrument ||--o{ orders : references
     account ||--o{ holdings : holds
     instrument ||--o{ holdings : appears_in
+    account ||--o{ watchlist : owns
+    watchlist ||--o{ watchlist_item : contains
+    instrument ||--o{ watchlist_item : watched_as
 
     advisor {
         int advisor_id PK
@@ -59,5 +62,19 @@ erDiagram
         numeric purchase_price
         int account_id FK
         int instrument_id FK
+    }
+
+    watchlist {
+        bigint watchlist_id PK
+        bigint account_id FK
+        varchar name "unique per account"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    watchlist_item {
+        bigint watchlist_id PK, FK
+        varchar ticker_symbol PK, FK "references instrument.instrument_ticker"
+        timestamp added_at
     }
 ```

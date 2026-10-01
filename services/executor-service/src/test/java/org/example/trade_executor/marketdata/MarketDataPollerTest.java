@@ -139,6 +139,40 @@ class MarketDataPollerTest {
         verify(quoteClient, times(2)).getQuotes(anyCollection());
     }
 
+    @Test
+    void aSymbolOnlyOnAWatchlistIsPolledToo() {
+        when(instrumentMapper.selectSymbolsForMarketPolling()).thenReturn(List.of("AAPL"));
+        when(instrumentMapper.selectWatchlistSymbolsForMarketPolling()).thenReturn(List.of("NVDA", "AAPL"));
+        when(quoteClient.getQuotes(anyCollection())).thenReturn(Map.of());
+
+        MarketDataPoller poller = new MarketDataPoller(
+                instrumentMapper, quoteClient, marketDataEventProducer, 60, "", clock);
+
+        poller.poll();
+
+        ArgumentCaptor<Collection<String>> batchCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(quoteClient).getQuotes(batchCaptor.capture());
+        // AAPL is held and watched, but is requested once; NVDA is watched only and is now included.
+        assertEquals(List.of("AAPL", "NVDA"), new ArrayList<>(batchCaptor.getValue()));
+    }
+
+    @Test
+    void aFailureReadingWatchlistsDoesNotStopHeldSymbolsBeingPriced() {
+        when(instrumentMapper.selectSymbolsForMarketPolling()).thenReturn(List.of("AAPL"));
+        when(instrumentMapper.selectWatchlistSymbolsForMarketPolling())
+                .thenThrow(new IllegalStateException("relation \"watchlist_item\" does not exist"));
+        when(quoteClient.getQuotes(anyCollection())).thenReturn(Map.of());
+
+        MarketDataPoller poller = new MarketDataPoller(
+                instrumentMapper, quoteClient, marketDataEventProducer, 60, "", clock);
+
+        poller.poll();
+
+        ArgumentCaptor<Collection<String>> batchCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(quoteClient).getQuotes(batchCaptor.capture());
+        assertEquals(List.of("AAPL"), new ArrayList<>(batchCaptor.getValue()));
+    }
+
     private static final class MutableClock extends Clock {
 
         private Instant now;
