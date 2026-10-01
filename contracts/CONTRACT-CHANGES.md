@@ -89,10 +89,10 @@ enum-typed client code.
 
 ## Known gaps, deliberately not changed
 - `LinkAccountRequest` (in the Java DTOs) has no controller endpoint, so it is not in the contract.
-- The read endpoints (`GET /accounts/{id}`, `/balance`, `/positions`, `/orders`) do not appear to
-  enforce the account link in the controller, only `POST /orders` and `DELETE /orders/{id}` do. This
-  looks like a security gap in the code (any logged-in user may read any account), not a contract
-  matter. Worth raising with the Trade API owners.
+- The read endpoints (`GET /accounts/{id}`, `/balance`, `/positions`, `/orders`) were thought not to
+  enforce the account link. They do: `TradeController` calls `assertAccess` on all four, as it does for
+  `POST /orders` and `DELETE /orders/{id}`, so a foreign account returns `ACC-409`. (An earlier version of
+  this note called it a security gap; it was a misreading of the controller.)
 - Trade `actuator` health endpoints are not described.
 - `sub` is signed as a JSON number, while RFC 7519 says a string. The contract follows the code; the
   auth and Trade teams may prefer to fix the code to emit a string, which would be a contract change.
