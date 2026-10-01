@@ -175,7 +175,7 @@
         type="submit"
         class="btn is-large submit-btn"
         data-testid="order-submit"
-        [disabled]="ticket().invalid() || ticket().submitting() || !account() || !accountActive() || exceedsHolding()"
+        [disabled]="!canSubmit()"
       >
         @if (ticket().submitting()) {
           <app-spinner [inline]="true" label="Placing order" />

@@ -157,6 +157,43 @@ describe('OrderTicket', () => {
   it('warns when a buy costs more than the available cash', async () => {
     await type('order-quantity', '200');
     expect(byTestId('order-warning')?.textContent).toContain('more than your available cash');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+    http.expectNone({ method: 'POST', url: '/api/v1/orders' });
+  });
+
+  it('allows a buy that exactly uses the available cash and disables it one share over', async () => {
+    await type('order-quantity', '125');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+
+    await type('order-quantity', '126');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+  });
+
+  it('disables a limit buy priced so the total exceeds the cash, and enables it when the price drops', async () => {
+    await choose('order-type-limit');
+    await type('order-quantity', '100');
+    await type('order-limit-price', '300');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+
+    await type('order-limit-price', '250');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+  });
+
+  it('disables a market order when the instrument has no live price', async () => {
+    fixture.componentRef.setInput('row', { ...ROW, quote: { ...ROW.quote, price: null } });
+    await fixture.whenStable();
+
+    expect(byTestId('order-warning')?.textContent).toContain('no live price');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+  });
+
+  it('never submits from a disabled state, even if the form is submitted directly', async () => {
+    await type('order-quantity', '200');
+
+    byTestId('order-ticket')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await fixture.whenStable();
+
+    http.expectNone({ method: 'POST', url: '/api/v1/orders' });
   });
 
   it('shows a readable error when the Trade API rejects the order', async () => {

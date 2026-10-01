@@ -127,12 +127,31 @@ export class OrderTicket {
     const price = this.unitPrice();
     return quantity !== null && price !== null ? quantity * price : null;
   });
-  /** Soft warnings: the Trade API / executor have the final say. */
-  protected readonly warning = computed(() => {
+  /** A buy that costs more than the available cash can only be rejected. */
+  protected readonly insufficientCash = computed(() => {
     const estimate = this.estimate();
     const cash = this.cash();
-    if (this.side() === OrderSide.Buy && estimate !== null && cash !== null && estimate > cash) {
-      return 'This is more than your available cash, so the order may be rejected.';
+    return this.side() === OrderSide.Buy && estimate !== null && cash !== null && estimate > cash;
+  });
+  /** Selling more than is held can only be rejected. */
+  protected readonly exceedsHolding = computed(() => {
+    const quantity = this.quantityValue();
+    return this.side() === OrderSide.Sell && quantity !== null && quantity > this.held();
+  });
+  /** A market order needs a live quote to fill at; without one there is nothing to price it with. */
+  protected readonly noLivePrice = computed(
+    () => this.orderType() === OrderPricingType.Market && this.row().quote.price === null,
+  );
+  /**
+   * Every condition the form can foresee as a certain rejection. Each one shows a reason below and keeps
+   * Place order disabled; the Trade API still has the final say on everything else.
+   */
+  protected readonly warning = computed(() => {
+    if (this.noLivePrice()) {
+      return "There is no live price for this instrument right now, so a market order can't be placed.";
+    }
+    if (this.insufficientCash()) {
+      return "This is more than your available cash, so the order can't be placed.";
     }
     if (this.exceedsHolding()) {
       return this.held() === 0
@@ -141,11 +160,15 @@ export class OrderTicket {
     }
     return '';
   });
-  /** Selling more than is held can only be rejected, so the Place order button stays disabled. */
-  protected readonly exceedsHolding = computed(() => {
-    const quantity = this.quantityValue();
-    return this.side() === OrderSide.Sell && quantity !== null && quantity > this.held();
-  });
+  /** Place order is enabled only when nothing above (or in the fields) rules the order out. */
+  protected readonly canSubmit = computed(
+    () =>
+      !this.ticket().invalid() &&
+      !this.ticket().submitting() &&
+      !!this.account() &&
+      this.accountActive() &&
+      !this.warning(),
+  );
   /**
    * The placed order with its status kept current: the store re-reads the account while anything is at
    * NEW, so the confirmation moves from "Working" to "Filled" (or "Rejected") without a reload.
@@ -177,7 +200,7 @@ export class OrderTicket {
     event.preventDefault();
     this.serverError.set('');
     const account = this.account();
-    if (!account || !this.accountActive() || this.exceedsHolding()) {
+    if (!account || !this.canSubmit()) {
       return;
     }
     await submit(this.ticket, async () => {
