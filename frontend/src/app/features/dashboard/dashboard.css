@@ -314,3 +314,33 @@
   font-size: 14px;
   font-weight: 600;
 }
+
+/* The whole Positions card is the link: the anchor's ::after stretches over it. */
+.stat.is-link {
+  position: relative;
+}
+
+.stat-link {
+  color: inherit;
+}
+
+.stat-link:hover {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.stat-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.stat-link:focus-visible {
+  outline: none;
+}
+
+.stat-link:focus-visible::after {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}

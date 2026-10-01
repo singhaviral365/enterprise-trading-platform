@@ -47,10 +47,10 @@
         <p class="stat-value">{{ investedValue() | currency: info.overview.balance.currency }}</p>
       </div>
     </article>
-    <article class="stat card is-lift rise-in" style="--stagger: 2">
+    <article class="stat is-link card is-lift rise-in" style="--stagger: 2">
       <div class="stat-icon" aria-hidden="true"><i class="fas fa-layer-group"></i></div>
       <div>
-        <h2 class="stat-label">Positions</h2>
+        <h2 class="stat-label"><a class="stat-link" routerLink="/positions" data-testid="positions-link">Positions</a></h2>
         <p class="stat-value">{{ info.overview.positions.length }}</p>
       </div>
     </article>
