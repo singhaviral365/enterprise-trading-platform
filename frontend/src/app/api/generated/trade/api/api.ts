@@ -1,0 +1,10 @@
+export * from './accounts.service';
+import { AccountsService } from './accounts.service';
+export * from './accounts.serviceInterface';
+export * from './onboarding.service';
+import { OnboardingService } from './onboarding.service';
+export * from './onboarding.serviceInterface';
+export * from './orders.service';
+import { OrdersService } from './orders.service';
+export * from './orders.serviceInterface';
+export const APIS = [AccountsService, OnboardingService, OrdersService];
