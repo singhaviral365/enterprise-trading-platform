@@ -1,0 +1,195 @@
+:host {
+  position: relative;
+  display: inline-block;
+}
+
+.account-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--shell-foreground);
+  background: var(--shell-hover);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded='true'] {
+  border-color: var(--shell-border);
+  background: var(--surface-background-bright);
+}
+
+.account-trigger:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+.chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.account-trigger[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Popover card below the chip. A transparent bridge (::before) keeps hover alive across the gap. */
+.account-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: calc(var(--header-z) + 1);
+  width: 300px;
+  padding: 14px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 18px;
+  box-shadow:
+    0 2px 6px rgb(15 23 42 / 0.08),
+    0 24px 48px -16px rgb(15 23 42 / 0.35);
+  transform-origin: top right;
+}
+
+.account-panel::before {
+  content: '';
+  position: absolute;
+  inset: -12px 0 auto 0;
+  height: 12px;
+}
+
+.account-panel.is-open {
+  animation: pop-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.panel-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  color: var(--hero-foreground);
+  background: var(--hero-gradient);
+  box-shadow: 0 12px 24px -14px rgb(6 95 70 / 0.7);
+}
+
+.hero-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.85);
+}
+
+.hero-number {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hero-balance {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-balance-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(255 255 255 / 0.85);
+}
+
+.panel-details {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.panel-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px;
+  font-size: 13px;
+}
+
+.panel-details dt {
+  color: var(--surface-foreground-subtle);
+}
+
+.panel-details dd {
+  font-weight: 600;
+  text-align: right;
+}
+
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.status-badge.is-active {
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+}
+
+.status-badge.is-suspended {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
+
+.status-badge.is-closed {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+}
+
+.panel-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 8px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--surface-foreground-subtle);
+}
+
+.panel-state.is-error {
+  color: var(--status-error-container-fg);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
+@media (max-width: 520px) {
+  .account-name {
+    display: none;
+  }
+
+  .account-panel {
+    width: min(300px, calc(100vw - 32px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-panel.is-open,
+  .chevron {
+    animation: none;
+    transition: none;
+  }
+}
