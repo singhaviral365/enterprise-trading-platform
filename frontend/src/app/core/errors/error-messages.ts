@@ -42,3 +42,22 @@ export const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 export function isKnownErrorCode(code: unknown): code is ErrorCode {
   return typeof code === 'string' && Object.hasOwn(ERROR_MESSAGES, code);
 }
+
+export const TOO_MANY_REQUESTS_MESSAGE = 'Too many attempts. Please wait a moment and try again.';
+
+/**
+ * Context-specific sentences that beat the generic code-based ones for a given HTTP status. Pass one
+ * as `describeError(error, { byStatus: LOGIN_ERRORS })`. A rejected login is `AUTH-401`, whose
+ * catalogue sentence talks about an expired session, which would be wrong on the sign-in form.
+ */
+export type StatusMessages = Readonly<Partial<Record<number, string>>>;
+
+export const LOGIN_ERRORS: StatusMessages = {
+  400: 'Please check your username and password.',
+  401: 'Incorrect username or password.',
+  422: 'Please check your username and password.',
+};
+
+export const REGISTER_ERRORS: StatusMessages = {
+  409: 'That username or email is already registered. Please choose another.',
+};

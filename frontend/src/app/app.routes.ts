@@ -22,6 +22,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
       },
       {
+        path: 'orders',
+        title: 'Order history | Trading Platform',
+        loadComponent: () => import('./features/orders/order-history/order-history').then((m) => m.OrderHistory),
+      },
+      {
         // Preview page for the shared UI components. Safe to delete along with ./showcase.
         path: 'showcase',
         title: 'Component showcase',

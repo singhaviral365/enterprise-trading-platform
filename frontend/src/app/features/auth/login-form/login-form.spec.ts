@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideApiClients } from '../../../api/api.config';
 import { SESSION_STORAGE_KEY, SessionService } from '../../../core/session.service';
 import { LoginForm } from './login-form';
 
@@ -26,7 +27,7 @@ describe('LoginForm', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [LoginForm],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginForm);
@@ -104,7 +105,7 @@ describe('LoginForm password field', () => {
   it('prevents pasting into the password field', async () => {
     await TestBed.configureTestingModule({
       imports: [LoginForm],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
     const fixture = TestBed.createComponent(LoginForm);
     await fixture.whenStable();

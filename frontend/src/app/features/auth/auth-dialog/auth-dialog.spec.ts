@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { provideApiClients } from '../../../api/api.config';
 import { AuthDialogService } from '../../../core/auth-dialog.service';
 import { AuthDialog } from './auth-dialog';
 
@@ -56,6 +57,7 @@ describe('AuthDialog', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideApiClients(),
         provideRouter([{ path: 'dashboard', component: DashboardStub }]),
       ],
     }).compileComponents();

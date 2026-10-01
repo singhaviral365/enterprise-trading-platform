@@ -7,16 +7,16 @@
     <!-- Market / Limit -->
     <fieldset class="type-cards">
       <legend class="field-label">Order type</legend>
-      <label class="type-card" [class.is-active]="orderType() === 'MARKET'">
-        <input type="radio" name="order-type" value="MARKET" data-testid="order-type-market" [checked]="orderType() === 'MARKET'" (change)="setOrderType('MARKET')" />
+      <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Market">
+        <input type="radio" name="order-type" value="MARKET" data-testid="order-type-market" [checked]="orderType() === OrderPricingType.Market" (change)="setOrderType(OrderPricingType.Market)" />
         <span class="type-icon" aria-hidden="true"><i class="fas fa-bolt"></i></span>
         <span class="type-text">
           <span class="type-title">Market</span>
           <span class="type-hint">Fill now at the live price</span>
         </span>
       </label>
-      <label class="type-card" [class.is-active]="orderType() === 'LIMIT'">
-        <input type="radio" name="order-type" value="LIMIT" data-testid="order-type-limit" [checked]="orderType() === 'LIMIT'" (change)="setOrderType('LIMIT')" />
+      <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Limit">
+        <input type="radio" name="order-type" value="LIMIT" data-testid="order-type-limit" [checked]="orderType() === OrderPricingType.Limit" (change)="setOrderType(OrderPricingType.Limit)" />
         <span class="type-icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
         <span class="type-text">
           <span class="type-title">Limit</span>
@@ -25,7 +25,7 @@
       </label>
     </fieldset>
 
-    <div class="ticket-fields" [class.has-limit]="orderType() === 'LIMIT'">
+    <div class="ticket-fields" [class.has-limit]="orderType() === OrderPricingType.Limit">
       <div class="ticket-field">
         <label class="field-label" for="order-quantity">Quantity</label>
         <input
@@ -45,7 +45,7 @@
         }
       </div>
 
-      @if (orderType() === 'LIMIT') {
+      @if (orderType() === OrderPricingType.Limit) {
         <div class="ticket-field">
           <label class="field-label" for="order-limit-price">Limit price</label>
           <div class="price-input">
@@ -69,7 +69,7 @@
             <p id="order-limit-price-error" class="form-error-text">{{ ticket.limitPrice().errors()[0].message }}</p>
           } @else {
             <p id="order-limit-price-hint" class="form-hint">
-              {{ side() === 'BUY' ? 'The most you will pay per share.' : 'The least you will accept per share.' }}
+              {{ side() === OrderSide.Buy ? 'The most you will pay per share.' : 'The least you will accept per share.' }}
             </p>
           }
         </div>
@@ -79,7 +79,7 @@
     <!-- Summary -->
     <dl class="ticket-summary" data-testid="order-summary">
       <div>
-        <dt>{{ orderType() === 'LIMIT' ? 'Limit price' : 'Live price' }}</dt>
+        <dt>{{ orderType() === OrderPricingType.Limit ? 'Limit price' : 'Live price' }}</dt>
         <dd>
           @if (unitPrice(); as price) {
             @if (row().currency; as currency) { {{ price | currency: currency }} } @else { {{ price | number: '1.2-4' }} }
@@ -89,7 +89,7 @@
         </dd>
       </div>
       <div class="is-total">
-        <dt>Estimated {{ side() === 'BUY' ? 'cost' : 'proceeds' }}</dt>
+        <dt>Estimated {{ side() === OrderSide.Buy ? 'cost' : 'proceeds' }}</dt>
         <dd data-testid="order-estimate">
           @if (estimate(); as total) {
             @if (row().currency; as currency) { {{ total | currency: currency }} } @else { {{ total | number: '1.2-2' }} }
@@ -98,12 +98,12 @@
           }
         </dd>
       </div>
-      @if (side() === 'BUY' && cash() !== null) {
+      @if (side() === OrderSide.Buy && cash() !== null) {
         <div>
           <dt>Available cash</dt>
           <dd>{{ cash() | currency: accountCurrency() ?? 'USD' }}</dd>
         </div>
-      } @else if (side() === 'SELL' && account()) {
+      } @else if (side() === OrderSide.Sell && account()) {
         <div>
           <dt>You hold</dt>
           <dd>{{ held() | number }}</dd>
@@ -155,7 +155,7 @@
           <app-spinner [inline]="true" label="Placing order" />
           Placing order…
         } @else {
-          Place {{ side() === 'BUY' ? 'buy' : 'sell' }} order
+          Place {{ side() === OrderSide.Buy ? 'buy' : 'sell' }} order
         }
       </button>
     </div>

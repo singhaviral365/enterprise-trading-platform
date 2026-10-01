@@ -8,8 +8,11 @@ import { ApiErrorNotifier } from './api-error-notifier';
 import { describeError, errorCodeOf } from './describe-error';
 import {
   ERROR_MESSAGES,
+  LOGIN_ERRORS,
   NETWORK_ERROR_MESSAGE,
+  REGISTER_ERRORS,
   SERVER_ERROR_MESSAGE,
+  TOO_MANY_REQUESTS_MESSAGE,
   UNKNOWN_ERROR_MESSAGE,
 } from './error-messages';
 
@@ -79,6 +82,24 @@ describe('error catalogue messages', () => {
     );
     expect(message).toBe(NETWORK_ERROR_MESSAGE);
     expect(message.length).toBeGreaterThan(20);
+  });
+
+  it('lets a screen override the sentence for a status (rejected login is not an expired session)', () => {
+    const rejected = failure(401, { errorCode: 'AUTH-401', message: 'Unauthorised' });
+    expect(describeError(rejected)).toBe(ERROR_MESSAGES['AUTH-401']);
+    expect(describeError(rejected, { byStatus: LOGIN_ERRORS })).toBe('Incorrect username or password.');
+    expect(describeError(failure(409, { errorCode: 'AUTH-409' }), { byStatus: REGISTER_ERRORS })).toContain(
+      'already registered',
+    );
+  });
+
+  it('keeps the generic sentence for statuses a screen does not override', () => {
+    const message = describeError(failure(500, { errorCode: 'SRV-500' }), { byStatus: LOGIN_ERRORS });
+    expect(message).toBe(ERROR_MESSAGES['SRV-500']);
+  });
+
+  it('asks the user to wait after a 429', () => {
+    expect(describeError(failure(429, null))).toBe(TOO_MANY_REQUESTS_MESSAGE);
   });
 
   it('extracts the code for callers that branch on it', () => {

@@ -1,16 +1,13 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, model, output, signal } from '@angular/core';
 import { FormField, form, required, submit, validate } from '@angular/forms/signals';
+import { firstValueFrom } from 'rxjs';
+import { AccountStatus, OrderPricingType, OrderResponse, OrderSide } from '../../../api/generated/trade';
+import { TradeApi } from '../../../api/trade-api.service';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthDialogService } from '../../../core/auth-dialog.service';
-import {
-  OrderError,
-  OrderPricingType,
-  OrderService,
-  OrderSide,
-  PlacedOrder,
-  newIdempotencyKey,
-} from '../../../core/order.service';
+import { describeError } from '../../../core/errors/describe-error';
+import { newIdempotencyKey } from '../../../core/idempotency-key';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import type { MarketRow } from '../market-board/market-board';
 import { OrderConfirmation } from '../order-confirmation/order-confirmation';
@@ -25,8 +22,8 @@ const MAX_QUANTITY = 1_000_000;
 
 /**
  * Order entry for one instrument, shown inside the quote dialog. MARKET orders go in without a
- * price and fill at the live price; LIMIT orders need a limit price. Submits to the Trade API's
- * `POST /orders`, then shows the placed order.
+ * price and fill at the live price; LIMIT orders need a limit price. Submits through the generated Trade client
+ * (`POST /api/v1/orders`), then shows the placed order.
  */
 @Component({
   selector: 'app-order-ticket',
@@ -35,21 +32,25 @@ const MAX_QUANTITY = 1_000_000;
   styleUrl: './order-ticket.css',
 })
 export class OrderTicket {
-  private readonly orders = inject(OrderService);
+  private readonly trade = inject(TradeApi);
   private readonly authDialog = inject(AuthDialogService);
   protected readonly store = inject(AccountOverviewStore);
+
+  /** Exposed so the template compares against the generated enums, never string literals. */
+  protected readonly OrderSide = OrderSide;
+  protected readonly OrderPricingType = OrderPricingType;
 
   /** The instrument being traded. */
   readonly row = input.required<MarketRow>();
   /** Buy or sell; two-way bound so the dialog can open the ticket on either side. */
-  readonly side = model<OrderSide>('BUY');
+  readonly side = model<OrderSide>(OrderSide.Buy);
   /** "Back" from the ticket to the quote view. */
   readonly cancelled = output<void>();
   /** The user dismissed the confirmation of a placed order. */
-  readonly done = output<PlacedOrder>();
+  readonly done = output<OrderResponse>();
 
-  protected readonly orderType = signal<OrderPricingType>('MARKET');
-  protected readonly placed = signal<PlacedOrder | null>(null);
+  protected readonly orderType = signal<OrderPricingType>(OrderPricingType.Market);
+  protected readonly placed = signal<OrderResponse | null>(null);
   protected readonly serverError = signal('');
   /** One key per order attempt, so a retry after a network error cannot create a second order. */
   private idempotencyKey = newIdempotencyKey();
@@ -70,7 +71,7 @@ export class OrderTicket {
         : undefined;
     });
     validate(path.limitPrice, ({ value }) => {
-      if (this.orderType() !== 'LIMIT') {
+      if (this.orderType() !== OrderPricingType.Limit) {
         return undefined;
       }
       const raw = value().replace(/,/g, '').trim();
@@ -85,7 +86,7 @@ export class OrderTicket {
 
   /** The linked account (null while loading or when the user has none). */
   protected readonly account = computed(() => this.store.linked());
-  protected readonly accountActive = computed(() => this.account()?.overview.account.status === 'ACTIVE');
+  protected readonly accountActive = computed(() => this.account()?.overview.account.status === AccountStatus.Active);
   protected readonly cash = computed(() => this.account()?.overview.balance.cashBalance ?? null);
   protected readonly accountCurrency = computed(() => this.account()?.overview.balance.currency ?? null);
   /** How much of this instrument the user holds (for sells). */
@@ -104,7 +105,7 @@ export class OrderTicket {
   });
   /** Price the estimate uses: the limit for LIMIT orders, the live price for MARKET orders. */
   protected readonly unitPrice = computed(() =>
-    this.orderType() === 'LIMIT' ? this.limitValue() : this.row().quote.price,
+    this.orderType() === OrderPricingType.Limit ? this.limitValue() : this.row().quote.price,
   );
   protected readonly estimate = computed(() => {
     const quantity = this.quantityValue();
@@ -115,11 +116,11 @@ export class OrderTicket {
   protected readonly warning = computed(() => {
     const estimate = this.estimate();
     const cash = this.cash();
-    if (this.side() === 'BUY' && estimate !== null && cash !== null && estimate > cash) {
+    if (this.side() === OrderSide.Buy && estimate !== null && cash !== null && estimate > cash) {
       return 'This is more than your available cash, so the order may be rejected.';
     }
     const quantity = this.quantityValue();
-    if (this.side() === 'SELL' && quantity !== null && quantity > this.held()) {
+    if (this.side() === OrderSide.Sell && quantity !== null && quantity > this.held()) {
       return this.held() === 0
         ? "You don't hold this instrument yet, so a sell order may be rejected."
         : `You hold ${this.held().toLocaleString('en-US')}, so selling more may be rejected.`;
@@ -132,7 +133,7 @@ export class OrderTicket {
     this.serverError.set('');
     // Start a limit order at the live price so the user only has to adjust it.
     const price = this.row().quote.price;
-    if (type === 'LIMIT' && !this.model().limitPrice && price !== null) {
+    if (type === OrderPricingType.Limit && !this.model().limitPrice && price !== null) {
       this.ticket.limitPrice().value.set(price.toFixed(2));
     }
   }
@@ -151,23 +152,23 @@ export class OrderTicket {
     await submit(this.ticket, async () => {
       const limit = this.limitValue();
       try {
-        const placed = await this.orders.placeOrder({
-          accountId: account.overview.account.id,
-          symbol: this.row().quote.symbol,
-          side: this.side(),
-          orderPricingType: this.orderType(),
-          quantity: this.quantityValue() ?? 0,
-          ...(this.orderType() === 'LIMIT' && limit !== null ? { price: limit } : {}),
-          idempotencyKey: this.idempotencyKey,
-        });
+        const placed = await firstValueFrom(
+          this.trade.placeOrder({
+            accountId: account.overview.account.id,
+            symbol: this.row().quote.symbol,
+            side: this.side(),
+            orderPricingType: this.orderType(),
+            quantity: this.quantityValue() ?? 0,
+            ...(this.orderType() === OrderPricingType.Limit && limit !== null ? { price: limit } : {}),
+            idempotencyKey: this.idempotencyKey,
+          }),
+        );
         this.placed.set(placed);
         this.idempotencyKey = newIdempotencyKey();
         // Refresh balances and the Recent orders list on the dashboard.
         this.store.reload();
       } catch (error) {
-        this.serverError.set(
-          error instanceof OrderError ? error.message : 'Something went wrong placing your order. Please try again.',
-        );
+        this.serverError.set(describeError(error));
       }
       return undefined;
     });
@@ -178,6 +179,6 @@ export class OrderTicket {
     this.serverError.set('');
     this.model.set({ quantity: '1', limitPrice: '' });
     this.ticket().reset();
-    this.orderType.set('MARKET');
+    this.orderType.set(OrderPricingType.Market);
   }
 }

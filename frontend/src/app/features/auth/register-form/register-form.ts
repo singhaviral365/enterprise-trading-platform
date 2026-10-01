@@ -9,7 +9,9 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
-import { AuthError, AuthService } from '../../../core/auth.service';
+import { AuthService } from '../../../core/auth.service';
+import { describeError } from '../../../core/errors/describe-error';
+import { REGISTER_ERRORS } from '../../../core/errors/error-messages';
 import { NoClipboard } from '../../../shared/directives/no-clipboard';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import {
@@ -103,13 +105,11 @@ export class RegisterForm {
       const password = this.model().password;
       const emailAddress = this.model().email.trim();
       try {
-        await this.auth.register(username, password, emailAddress);
+        await this.auth.register({ username, password, email: emailAddress });
         await this.auth.login(username, password);
         this.signedIn.emit({ username, email: emailAddress });
       } catch (error) {
-        this.serverError.set(
-          error instanceof AuthError ? error.message : 'Something went wrong. Please try again.',
-        );
+        this.serverError.set(describeError(error, { byStatus: REGISTER_ERRORS }));
       }
       return undefined;
     });

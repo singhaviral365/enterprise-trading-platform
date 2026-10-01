@@ -4,6 +4,8 @@ import {
   ERROR_MESSAGES,
   NETWORK_ERROR_MESSAGE,
   SERVER_ERROR_MESSAGE,
+  StatusMessages,
+  TOO_MANY_REQUESTS_MESSAGE,
   UNKNOWN_ERROR_MESSAGE,
   isKnownErrorCode,
 } from './error-messages';
@@ -21,14 +23,25 @@ export function errorCodeOf(error: unknown): string | undefined {
   return undefined;
 }
 
+export interface DescribeErrorOptions {
+  /** Sentences for specific HTTP statuses on this screen; they win over the generic code-based ones. */
+  readonly byStatus?: StatusMessages;
+}
+
 /**
- * Turns any failure into a sentence for the user. Branches on the contract's `errorCode`,
- * never on the server's `message`. Always returns text, never an empty string.
+ * Turns any failure into a sentence for the user. Branches on the contract's `errorCode`
+ * (or, for `options.byStatus`, the HTTP status), never on the server's `message`.
+ * Always returns text, never an empty string.
  */
-export function describeError(error: unknown): string {
+export function describeError(error: unknown, options: DescribeErrorOptions = {}): string {
   if (error instanceof HttpErrorResponse && error.status === 0) {
     // No response at all: service down, connection lost, or a CORS rule blocking this origin.
     return NETWORK_ERROR_MESSAGE;
+  }
+
+  const override = error instanceof HttpErrorResponse ? options.byStatus?.[error.status] : undefined;
+  if (override) {
+    return override;
   }
 
   const code = errorCodeOf(error);
@@ -36,6 +49,9 @@ export function describeError(error: unknown): string {
     return ERROR_MESSAGES[code];
   }
 
+  if (error instanceof HttpErrorResponse && error.status === 429) {
+    return TOO_MANY_REQUESTS_MESSAGE;
+  }
   if (error instanceof HttpErrorResponse && error.status >= 500) {
     return code ? `${SERVER_ERROR_MESSAGE} (reference: ${code})` : SERVER_ERROR_MESSAGE;
   }

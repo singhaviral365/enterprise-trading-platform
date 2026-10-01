@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideApiClients } from '../../../api/api.config';
 import { RegisterForm } from './register-form';
 
 describe('RegisterForm', () => {
@@ -21,7 +22,7 @@ describe('RegisterForm', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RegisterForm],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
     fixture = TestBed.createComponent(RegisterForm);
     http = TestBed.inject(HttpTestingController);

@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import {
   FormField,
@@ -10,8 +11,10 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
-import { AccountError, AccountService, CreateAccountRequest } from '../../../core/account.service';
+import { CreateAccountRequest } from '../../../api/generated/trade';
+import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthService } from '../../../core/auth.service';
+import { describeError } from '../../../core/errors/describe-error';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 
 interface AccountSetupModel {
@@ -36,7 +39,7 @@ export const MIN_OPENING_BALANCE = 20000;
   styleUrl: '../auth-form.css',
 })
 export class AccountSetupForm implements OnInit {
-  private readonly accounts = inject(AccountService);
+  private readonly accounts = inject(AccountOverviewStore);
   private readonly auth = inject(AuthService);
 
   /** Pre-fills the email field, e.g. with the address just used to register. */
@@ -106,13 +109,12 @@ export class AccountSetupForm implements OnInit {
         await this.accounts.createAccount(this.toRequest());
         this.completed.emit();
       } catch (error) {
-        if (error instanceof AccountError && error.status === 409) {
+        if (error instanceof HttpErrorResponse && error.status === 409) {
           // Already linked (e.g. created in another tab): nothing left to set up.
+          this.accounts.reload();
           this.completed.emit();
         } else {
-          this.serverError.set(
-            error instanceof AccountError ? error.message : 'Something went wrong. Please try again.',
-          );
+          this.serverError.set(describeError(error));
         }
       }
       return undefined;

@@ -26,6 +26,13 @@ service, then regenerate.
 | `/auth/register` description | "links it to an existing trading account" | user is created only; account is opened via the Trade API afterwards | `AuthService.register` creates a `CUSTOMER` user and nothing else. |
 | `/auth/me` description | "learn which account to address" | points to `GET /api/v1/accounts/link` | `getUser` returns no account information. |
 
+### Added: `email`
+
+| What | Why / evidence |
+|---|---|
+| `RegisterRequest.email` (optional, `format: email`, max 255) | `RegisterDto.email` in `src/auth/dto/index.ts`; the service defaults it to `<username>@local.auth`. With `forbidNonWhitelisted`, a client that cannot send it is forced to use that default. The UI sends the real address. |
+| `UserResponse.email` (required) | `AuthService.userToResponseDto` returns it; `/auth/me` uses it to pre-fill account setup. |
+
 ### Why `accountId` mattered
 The old contract made `accountId` a required field at registration and a required claim in every
 token. The implementation instead links a user to an account **inside the Trade API** (by user id,

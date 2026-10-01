@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, effect, inject, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { AccountService } from '../../../core/account.service';
+import { firstValueFrom } from 'rxjs';
+import { TradeApi } from '../../../api/trade-api.service';
 import { AuthDialogService, AuthMode } from '../../../core/auth-dialog.service';
 import { NotificationService } from '../../../core/notification.service';
 import { SessionService } from '../../../core/session.service';
@@ -33,7 +34,7 @@ const HEADINGS: Record<AuthMode, { title: string; subtitle: string }> = {
 })
 export class AuthDialog {
   protected readonly authDialog = inject(AuthDialogService);
-  private readonly accounts = inject(AccountService);
+  private readonly trade = inject(TradeApi);
   private readonly session = inject(SessionService);
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
@@ -64,7 +65,7 @@ export class AuthDialog {
   protected async onSignedIn({ username, email }: SignedInEvent): Promise<void> {
     let linked = true;
     try {
-      linked = (await this.accounts.getLinkStatus()).linked;
+      linked = (await firstValueFrom(this.trade.accountLink())).linked;
     } catch {
       // Trade API unavailable: carry on to the dashboard, which reports the problem and can retry.
     }

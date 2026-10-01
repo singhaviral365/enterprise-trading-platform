@@ -19,7 +19,7 @@
     <button type="button" class="btn is-secondary" (click)="data.reload()">Try again</button>
   </div>
 } @else if (linked(); as info) {
-  @if (info.overview.account.status !== 'ACTIVE') {
+  @if (info.overview.account.status !== AccountStatus.Active) {
     <div class="notice" role="status" data-testid="dashboard-status-notice">
       <i class="fas fa-circle-info" aria-hidden="true"></i>
       This account is {{ info.overview.account.status.toLowerCase() }}, so new orders cannot be placed.
@@ -108,12 +108,12 @@
               </tr>
             </thead>
             <tbody>
-              @for (order of info.overview.orders; track order.orderId) {
+              @for (order of recentOrders(); track order.orderId) {
                 <tr>
                   <td>{{ order.createdOn | date: 'mediumDate' }}</td>
                   <th scope="row">{{ order.symbol }}</th>
                   <td>
-                    <span class="side" [class.is-buy]="order.side === 'BUY'" [class.is-sell]="order.side === 'SELL'">
+                    <span class="side" [class.is-buy]="order.side === OrderSide.Buy" [class.is-sell]="order.side === OrderSide.Sell">
                       {{ order.side }}
                     </span>
                   </td>
@@ -126,11 +126,17 @@
                       Market
                     }
                   </td>
-                  <td><span class="order-status">{{ order.status }}</span></td>
+                  <td><app-order-status [status]="order.status" /></td>
                 </tr>
               }
             </tbody>
           </table>
+        </div>
+        <div class="panel-footer">
+          <a class="view-more" routerLink="/orders" data-testid="orders-view-more">
+            View more
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
         </div>
       } @else {
         <div class="empty-state">

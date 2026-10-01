@@ -9,8 +9,7 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { ACCESS_TOKEN_PROVIDER } from './core/auth/access-token.provider';
-import { authInterceptor } from './core/auth.interceptor';
-import { authInterceptor as platformApiInterceptor } from './core/interceptors/auth.interceptor';
+import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { SessionService } from './core/session.service';
 import { ThemeService } from './core/theme.service';
 import { provideApiClients } from './api/api.config';
@@ -19,7 +18,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch(), withInterceptors([authInterceptor, platformApiInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideApiClients(),
     // The generated API clients and their guard read the token from the signed-in session.
     {

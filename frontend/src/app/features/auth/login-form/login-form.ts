@@ -1,6 +1,8 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { FormField, form, required, submit } from '@angular/forms/signals';
-import { AuthError, AuthService } from '../../../core/auth.service';
+import { AuthService } from '../../../core/auth.service';
+import { describeError } from '../../../core/errors/describe-error';
+import { LOGIN_ERRORS } from '../../../core/errors/error-messages';
 import { NoClipboard } from '../../../shared/directives/no-clipboard';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { SignedInEvent } from '../signed-in-event';
@@ -45,9 +47,7 @@ export class LoginForm {
         await this.auth.login(username.trim(), password);
         this.signedIn.emit({ username: username.trim() });
       } catch (error) {
-        this.serverError.set(
-          error instanceof AuthError ? error.message : 'Something went wrong. Please try again.',
-        );
+        this.serverError.set(describeError(error, { byStatus: LOGIN_ERRORS }));
       }
       return undefined;
     });

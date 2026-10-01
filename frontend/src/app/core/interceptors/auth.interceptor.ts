@@ -1,6 +1,7 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 
+import { AUTH_API_BASE_URL, TRADE_API_BASE_URL } from '../../api/api.config';
 import { ACCESS_TOKEN_PROVIDER } from '../auth/access-token.provider';
 
 export interface ProtectedApi {
@@ -9,13 +10,19 @@ export interface ProtectedApi {
   pathPrefixes?: readonly string[];
 }
 
-/** Allow-list: the token is sent only to these platform APIs, nothing else. */
-export const PROTECTED_APIS: readonly ProtectedApi[] = [
-  // Trade REST API
-  { origin: 'http://localhost:8080', pathPrefixes: ['/api/v1/'] },
-  // Auth API: only the protected route; login/register/refresh take no header
-  { origin: 'http://localhost:3000', pathPrefixes: ['/auth/me'] },
-];
+/**
+ * Allow-list: the token is sent only to these platform APIs, nothing else. Built from the same base
+ * URLs the generated clients use, so the two cannot drift apart. A relative base URL (the Trade API
+ * behind the dev proxy) resolves to the page's own origin.
+ */
+export function protectedApis(): readonly ProtectedApi[] {
+  return [
+    // Trade REST API, and the market endpoint that lives under the same prefix
+    { origin: new URL(TRADE_API_BASE_URL, window.location.origin).origin, pathPrefixes: ['/api/v1/'] },
+    // Auth API: only the protected route; login/register/refresh take no header
+    { origin: new URL(AUTH_API_BASE_URL, window.location.origin).origin, pathPrefixes: ['/auth/me'] },
+  ];
+}
 
 function isProtected(rawUrl: string): boolean {
   let url: URL;
@@ -24,7 +31,7 @@ function isProtected(rawUrl: string): boolean {
   } catch {
     return false;
   }
-  return PROTECTED_APIS.some(
+  return protectedApis().some(
     (api) =>
       api.origin === url.origin &&
       (!api.pathPrefixes || api.pathPrefixes.some((p) => url.pathname.startsWith(p))),

@@ -1,6 +1,6 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, ElementRef, computed, effect, input, linkedSignal, output, signal, viewChild } from '@angular/core';
-import { OrderSide } from '../../../core/order.service';
+import { OrderSide } from '../../../api/generated/trade';
 import type { MarketRow } from '../market-board/market-board';
 import { OrderTicket } from '../order-ticket/order-ticket';
 
@@ -26,7 +26,9 @@ export class QuoteDialog {
     source: this.row,
     computation: () => 'quote',
   });
-  protected readonly side = signal<OrderSide>('BUY');
+  /** Exposed so the template passes the generated enum, never a string literal. */
+  protected readonly OrderSide = OrderSide;
+  protected readonly side = signal<OrderSide>(OrderSide.Buy);
 
   protected openTicket(side: OrderSide): void {
     this.side.set(side);

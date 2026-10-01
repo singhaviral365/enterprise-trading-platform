@@ -17,6 +17,10 @@ export interface RegisterRequest {
      */
     password: string;
     /**
+     * Optional. The service defaults it to `<username>@local.auth` when omitted.
+     */
+    email?: string;
+    /**
      * Optional. Defaults to `[\"CUSTOMER\"]`. Ignore this field on a public registration route unless the caller already holds an `ADMIN` token. Accepting a self-declared role is a privilege-escalation bug, and the Sprint 8 security review looks for it. 
      */
     roles?: Array<Role>;

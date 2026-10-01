@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideApiClients } from '../../../api/api.config';
 import { AccountSetupForm } from './account-setup-form';
 
 const CREATE_URL = '/api/v1/accounts/create';
@@ -23,7 +24,7 @@ describe('AccountSetupForm', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AccountSetupForm],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
     fixture = TestBed.createComponent(AccountSetupForm);
     fixture.componentRef.setInput('email', 'priya@example.com');

@@ -5,8 +5,8 @@ Typed Angular clients for the two platform contracts, **generated** from
 
 | Contract | Output | Base URL |
 |---|---|---|
-| `documentation/contracts/auth-api.yaml` | `generated/auth` | `http://localhost:3000` |
-| `documentation/contracts/trade-api.yaml` | `generated/trade` | `http://localhost:8080` |
+| `contracts/auth-api.yaml` | `generated/auth` | `http://localhost:3000` |
+| `contracts/trade-api.yaml` | `generated/trade` | same origin (`''`), proxied to the order-service by `ng serve` |
 
 ## Regenerate
 
@@ -43,8 +43,18 @@ Everything lives in [`frontend/openapitools.json`](../../../openapitools.json): 
 - If a generated shape is awkward, wrap it outside the tree. See `auth-api.service.ts` and `trade-api.service.ts`.
 - The generated packages export same-named symbols (`Configuration`, `BASE_PATH`, `provideApi`), so import from
   `./generated/auth` or `./generated/trade` explicitly, never from a shared barrel.
-- Base URLs are wired in `api.config.ts` (`provideApiClients()` in `app.config.ts`). The existing auth interceptor
-  attaches the bearer token to these requests.
+- Base URLs are wired in `api.config.ts` (`provideApiClients()` in `app.config.ts`). The Trade base URL is empty so
+  calls stay same-origin and `ng serve` proxies `/api` to the order-service (it has no CORS); the Auth service
+  enables CORS for `localhost:4200` and is called directly.
+- `core/interceptors/auth.interceptor.ts` is the only place the bearer token is attached. Its allow-list is built from
+  the same base URLs, so changing a base URL in `api.config.ts` updates it too.
+- **Every API call in the UI goes through these clients** (`AuthApi`, `TradeApi`). Do not add `HttpClient` calls for
+  them. The one exception is market data (`core/market.service.ts`): the trade-executor has no contract yet.
+  When it gets one, add it to `contracts/`, regenerate, and delete the hand-written service.
+- Failures reach callers as the client's `HttpErrorResponse`. Turn them into a sentence with `describeError`
+  (`core/errors`), passing `byStatus` for screen-specific wording (see `LOGIN_ERRORS`).
+- Compare against the generated enums (`OrderSide.Buy`, `OrderPricingType.Limit`, `AccountStatus.Active`), never
+  string literals. In a template, expose the enum as a protected field first.
 
 ## Usage
 

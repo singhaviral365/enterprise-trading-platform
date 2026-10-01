@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideApiClients } from '../../../api/api.config';
 import { SessionService } from '../../../core/session.service';
 import type { MarketRow } from '../market-board/market-board';
 import { OrderTicket } from './order-ticket';
@@ -61,7 +62,7 @@ describe('OrderTicket', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [OrderTicket],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
     TestBed.inject(SessionService).start('alice.trader', {
       accessToken: 'a',
@@ -167,7 +168,7 @@ describe('OrderTicket', () => {
 
     await vi.waitFor(async () => {
       await fixture.whenStable();
-      expect(byTestId('order-error')?.textContent).toContain("You don't have enough cash for this order.");
+      expect(byTestId('order-error')?.textContent).toContain('You do not have enough cash for this order.');
     });
   });
 });
