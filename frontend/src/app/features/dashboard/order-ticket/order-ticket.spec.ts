@@ -171,4 +171,67 @@ describe('OrderTicket', () => {
       expect(byTestId('order-error')?.textContent).toContain('You do not have enough cash for this order.');
     });
   });
+  it('disables Place order when selling more than is held, and enables it at the holding', async () => {
+    await choose('order-side-sell');
+    await type('order-quantity', '60');
+
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+    expect(byTestId('order-warning')?.textContent).toContain("can't sell more than that");
+
+    await type('order-quantity', '50');
+    expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+    expect(byTestId('order-warning')).toBeNull();
+  });
+
+  it('moves the confirmation from Working to Filled when the account is re-read', async () => {
+    byTestId<HTMLButtonElement>('order-submit')!.click();
+    (await vi.waitFor(() => http.expectOne({ method: 'POST', url: '/api/v1/orders' }))).flush({
+      orderId: '77',
+      status: 'NEW',
+      message: 'Order placed successfully',
+      symbol: 'AAPL',
+      side: 'BUY',
+      orderPricingType: 'MARKET',
+      quantity: 1,
+      price: null,
+    });
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(byTestId('order-status')?.textContent).toContain('Working');
+    });
+
+    // Placing the order re-reads the account straight away; the executor has filled it by then.
+    const base = '/api/v1/accounts/1001';
+    (await vi.waitFor(() => http.expectOne(base))).flush({
+      id: 1001,
+      accountId: 'ACC000001001',
+      holderName: 'USER-1000',
+      cashBalance: 24800,
+      status: 'ACTIVE',
+      version: 2,
+      lastUpdated: '2026-10-01T00:00:00Z',
+    });
+    http.expectOne(`${base}/balance`).flush({ accountId: 1001, cashBalance: 24800, currency: 'USD', asOf: '' });
+    http.expectOne(`${base}/positions`).flush([]);
+    http.expectOne(`${base}/orders`).flush([
+      {
+        orderId: '77',
+        accountId: 1001,
+        symbol: 'AAPL',
+        side: 'BUY',
+        orderPricingType: 'MARKET',
+        quantity: 1,
+        price: null,
+        executedPrice: 200,
+        status: 'FILLED',
+        createdOn: '2026-10-01T00:00:00Z',
+      },
+    ]);
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(byTestId('order-status')?.textContent).toContain('Filled');
+    });
+    expect(byTestId('order-explanation')?.textContent).toContain('has been filled');
+  });
 });

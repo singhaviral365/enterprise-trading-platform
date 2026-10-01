@@ -119,13 +119,29 @@ export class OrderTicket {
     if (this.side() === OrderSide.Buy && estimate !== null && cash !== null && estimate > cash) {
       return 'This is more than your available cash, so the order may be rejected.';
     }
-    const quantity = this.quantityValue();
-    if (this.side() === OrderSide.Sell && quantity !== null && quantity > this.held()) {
+    if (this.exceedsHolding()) {
       return this.held() === 0
-        ? "You don't hold this instrument yet, so a sell order may be rejected."
-        : `You hold ${this.held().toLocaleString('en-US')}, so selling more may be rejected.`;
+        ? "You don't hold this instrument, so there is nothing to sell."
+        : `You hold ${this.held().toLocaleString('en-US')}, so you can't sell more than that.`;
     }
     return '';
+  });
+  /** Selling more than is held can only be rejected, so the Place order button stays disabled. */
+  protected readonly exceedsHolding = computed(() => {
+    const quantity = this.quantityValue();
+    return this.side() === OrderSide.Sell && quantity !== null && quantity > this.held();
+  });
+  /**
+   * The placed order with its status kept current: the store re-reads the account while anything is at
+   * NEW, so the confirmation moves from "Working" to "Filled" (or "Rejected") without a reload.
+   */
+  protected readonly liveOrder = computed(() => {
+    const placed = this.placed();
+    if (!placed) {
+      return null;
+    }
+    const latest = this.store.linked()?.overview.orders.find((order) => order.orderId === placed.orderId);
+    return latest ? { ...placed, status: latest.status } : placed;
   });
 
   protected setOrderType(type: OrderPricingType): void {
@@ -146,7 +162,7 @@ export class OrderTicket {
     event.preventDefault();
     this.serverError.set('');
     const account = this.account();
-    if (!account || !this.accountActive()) {
+    if (!account || !this.accountActive() || this.exceedsHolding()) {
       return;
     }
     await submit(this.ticket, async () => {
@@ -165,8 +181,8 @@ export class OrderTicket {
         );
         this.placed.set(placed);
         this.idempotencyKey = newIdempotencyKey();
-        // Refresh balances and the Recent orders list on the dashboard.
-        this.store.reload();
+        // Refresh balances and orders now, and keep re-reading while the order is working.
+        this.store.refresh();
       } catch (error) {
         this.serverError.set(describeError(error));
       }

@@ -1,4 +1,4 @@
-@if (placed(); as order) {
+@if (liveOrder(); as order) {
   <app-order-confirmation [order]="order" [currency]="row().currency" (another)="placeAnother()" (done)="done.emit(order)" />
 } @else {
   <form class="ticket" novalidate (submit)="onSubmit($event)" data-testid="order-ticket">
@@ -149,7 +149,7 @@
         type="submit"
         class="btn is-large submit-btn"
         data-testid="order-submit"
-        [disabled]="ticket().submitting() || !account() || !accountActive()"
+        [disabled]="ticket().submitting() || !account() || !accountActive() || exceedsHolding()"
       >
         @if (ticket().submitting()) {
           <app-spinner [inline]="true" label="Placing order" />
