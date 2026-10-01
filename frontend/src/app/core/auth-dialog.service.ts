@@ -9,14 +9,20 @@ export class AuthDialogService {
   private readonly openState = signal(false);
   private readonly modeState = signal<AuthMode>('login');
   private readonly emailState = signal('');
+  private readonly returnUrlState = signal<string | null>(null);
 
   readonly isOpen = this.openState.asReadonly();
   readonly mode = this.modeState.asReadonly();
   /** Email to pre-fill in the account step (the one just used to register, if any). */
   readonly prefillEmail = this.emailState.asReadonly();
+  /** Page the guard interrupted; the dialog sends the user there after sign-in. Null means the dashboard. */
+  readonly returnUrl = this.returnUrlState.asReadonly();
 
-  open(mode: AuthMode = 'login'): void {
+  open(mode: AuthMode = 'login', returnUrl: string | null = null): void {
     this.modeState.set(mode);
+    if (mode !== 'account') {
+      this.returnUrlState.set(returnUrl);
+    }
     if (mode !== 'account') {
       this.emailState.set('');
     }
@@ -33,5 +39,6 @@ export class AuthDialogService {
 
   close(): void {
     this.openState.set(false);
+    this.returnUrlState.set(null);
   }
 }

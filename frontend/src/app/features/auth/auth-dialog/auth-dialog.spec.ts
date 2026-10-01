@@ -24,8 +24,8 @@ describe('AuthDialog', () => {
   const byTestId = <T extends HTMLElement>(id: string) =>
     root.querySelector<T>(`[data-testid="${id}"]`);
 
-  async function signIn(): Promise<void> {
-    dialogs.open('login');
+  async function signIn(returnUrl: string | null = null): Promise<void> {
+    dialogs.open('login', returnUrl);
     await fixture.whenStable();
     for (const [id, value] of [
       ['login-username', 'alice.trader'],
@@ -78,6 +78,24 @@ describe('AuthDialog', () => {
 
     await vi.waitFor(() => expect(router.url).toBe('/dashboard'));
     expect(dialogs.isOpen()).toBe(false);
+  });
+
+  it('sends the user to the page the guard interrupted, not the dashboard', async () => {
+    TestBed.inject(Router).resetConfig([
+      { path: 'dashboard', component: DashboardStub },
+      { path: 'orders', component: DashboardStub },
+    ]);
+    await signIn('/orders');
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: true, message: 'Linked account found' });
+
+    await vi.waitFor(() => expect(router.url).toBe('/orders'));
+  });
+
+  it('ignores a return address that leaves this site', async () => {
+    await signIn('//evil.example/phish');
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: true, message: 'Linked account found' });
+
+    await vi.waitFor(() => expect(router.url).toBe('/dashboard'));
   });
 
   it('asks a user without a linked account for the account details', async () => {

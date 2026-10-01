@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { TradeApi } from '../../../api/trade-api.service';
 import { AuthDialogService, AuthMode } from '../../../core/auth-dialog.service';
 import { NotificationService } from '../../../core/notification.service';
+import { safeReturnUrl } from '../../../core/guards/return-url';
 import { SessionService } from '../../../core/session.service';
 import { AccountSetupForm } from '../account-setup-form/account-setup-form';
 import { LoginForm } from '../login-form/login-form';
@@ -93,8 +94,9 @@ export class AuthDialog {
   }
 
   private async finish(): Promise<void> {
+    const target = safeReturnUrl(this.authDialog.returnUrl()) ?? '/dashboard';
     this.authDialog.close();
-    await this.router.navigateByUrl('/dashboard');
+    await this.router.navigateByUrl(target);
   }
 
   /** Arrow keys move between the two tabs, as in the WAI-ARIA tabs pattern. */
