@@ -1,12 +1,17 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth.guards';
 
-import { authGuard } from './core/guards/auth.guard';
-
 export const routes: Routes = [
-  // Sign-in is the only unguarded route. Its component belongs to the sign-in story.
-  { path: 'sign-in', children: [] },
-  // Every other route goes under here so the guard runs for all of them.
+  // The public home page comes first: the empty-path guarded group below would otherwise match '/'
+  // with no child and leave the page blank.
+  {
+    path: '',
+    pathMatch: 'full',
+    title: 'Trading Platform',
+    canActivate: [guestGuard],
+    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+  },
+  // Signed-in pages: the guard runs for every child route.
   {
     path: '',
     canActivateChild: [authGuard],
@@ -23,13 +28,6 @@ export const routes: Routes = [
         loadComponent: () => import('./showcase/showcase').then((m) => m.Showcase),
       },
     ],
-  },
-  {
-    path: '',
-    pathMatch: 'full',
-    title: 'Trading Platform',
-    canActivate: [guestGuard],
-    loadComponent: () => import('./features/home/home').then((m) => m.Home),
   },
   { path: '**', redirectTo: '' },
 ];
