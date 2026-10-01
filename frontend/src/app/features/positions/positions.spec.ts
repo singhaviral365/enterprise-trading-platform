@@ -72,19 +72,29 @@ describe('Positions', () => {
     expect(byTestId('positions-total')?.textContent).toContain('12,750.00');
   });
 
-  it('filters by symbol and resets the filter', async () => {
+  it('has no filter controls and shows every position', async () => {
     await start(HELD);
 
-    const box = root.querySelector<HTMLInputElement>('[data-testid="filter-symbol"] input[data-value="MSFT"]')!;
-    box.checked = true;
-    box.dispatchEvent(new Event('change'));
-    await render();
-    expect(symbols()).toEqual(['MSFT']);
-    expect(byTestId('positions-total')?.textContent).toContain('4,000.00');
-
-    byTestId<HTMLButtonElement>('filters-reset')!.click();
-    await render();
+    expect(byTestId('filter-symbol')).toBeNull();
+    expect(byTestId('filters-reset')).toBeNull();
     expect(symbols()).toEqual(['AAPL', 'MSFT']);
+  });
+
+  it('pages through more than ten positions and keeps the total across all of them', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      accountId: 1001,
+      symbol: `S${String(i).padStart(2, '0')}`,
+      quantity: 1,
+      averageCost: 10,
+    }));
+    await start(many);
+
+    expect(symbols()).toHaveLength(10);
+    expect(byTestId('positions-total')?.textContent).toContain('120.00');
+
+    root.querySelector<HTMLButtonElement>('button[aria-label="Next page"]')!.click();
+    await render();
+    expect(symbols()).toEqual(['S10', 'S11']);
   });
 
   it('handles an account with no positions', async () => {

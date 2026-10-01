@@ -39,22 +39,6 @@
     <a class="btn is-primary mt-16" routerLink="/dashboard">Find an instrument to trade</a>
   </div>
 } @else {
-  <div class="positions-filters" role="group" aria-label="Filter positions">
-    <app-multi-dropdown data-testid="filter-symbol" label="Symbol" [options]="symbolOptions()" [(selected)]="symbols" />
-    <app-tooltip text="Reset filters" position="bottom">
-      <button
-        type="button"
-        class="btn is-secondary is-icon-only"
-        aria-label="Reset filters"
-        data-testid="filters-reset"
-        [disabled]="symbols().length === 0"
-        (click)="resetFilters()"
-      >
-        <i class="fas fa-rotate-left" aria-hidden="true"></i>
-      </button>
-    </app-tooltip>
-  </div>
-
   <div class="table-container">
     <table class="data-table is-striped">
       <caption class="visually-hidden">Positions held in this account</caption>
@@ -78,7 +62,7 @@
       </tbody>
       <tfoot>
         <tr>
-          <th scope="row" colspan="3">Total cost basis{{ symbols().length ? ' (filtered)' : '' }}</th>
+          <th scope="row" colspan="3">Total cost basis</th>
           <td class="is-numeric" data-testid="positions-total">{{ totalCostBasis() | currency: (currency() ?? 'USD') }}</td>
         </tr>
       </tfoot>

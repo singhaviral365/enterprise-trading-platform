@@ -22,15 +22,3 @@
   align-items: center;
   gap: 12px;
 }
-
-.positions-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.positions-filters .form-label {
-  margin-bottom: 6px;
-}
