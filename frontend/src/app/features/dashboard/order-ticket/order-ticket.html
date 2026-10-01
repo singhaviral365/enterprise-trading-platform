@@ -46,7 +46,7 @@
           <div class="quantity-steppers">
             <button
               type="button"
-              class="btn is-secondary is-icon-only is-small"
+              class="btn is-secondary is-icon-only"
               aria-label="Decrease quantity"
               data-testid="order-quantity-decrease"
               [disabled]="!canDecrease() || ticket().submitting()"
@@ -56,7 +56,7 @@
             </button>
             <button
               type="button"
-              class="btn is-secondary is-icon-only is-small"
+              class="btn is-secondary is-icon-only"
               aria-label="Increase quantity"
               data-testid="order-quantity-increase"
               [disabled]="!canIncrease() || ticket().submitting()"

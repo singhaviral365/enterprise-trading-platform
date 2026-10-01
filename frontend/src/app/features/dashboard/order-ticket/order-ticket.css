@@ -144,23 +144,30 @@ input[type='radio'] {
   border-color: var(--status-error-background);
 }
 
-.price-input,
-.quantity-input {
+.price-input {
   position: relative;
 }
 
-/* - and + sit inside the right end of the quantity field. */
+/* Quantity: the field takes the width that is left; - and + are normal buttons beside it, as tall as it. */
+.quantity-input {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .quantity-input .ticket-input {
-  padding-right: 84px;
+  flex: 1;
+  min-width: 0;
 }
 
 .quantity-steppers {
-  position: absolute;
-  top: 50%;
-  right: 6px;
   display: flex;
-  gap: 4px;
-  transform: translateY(-50%);
+  gap: 8px;
+}
+
+.quantity-steppers .btn {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .price-prefix {
