@@ -21,6 +21,7 @@ export class App {
   /** Placeholder navigation: replace with the real routes as feature pages are added. */
   protected readonly navItems: readonly SidebarItem[] = [
     { route: '/dashboard', label: 'Dashboard', icon: 'fas fa-gauge-high' },
+    { route: '/positions', label: 'Positions', icon: 'fas fa-layer-group' },
     { route: '/orders', label: 'Order history', icon: 'fas fa-clock-rotate-left' },
     { route: '/showcase', label: 'Components', icon: 'fas fa-puzzle-piece' },
   ];
