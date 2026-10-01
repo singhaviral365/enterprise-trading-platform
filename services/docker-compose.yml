@@ -54,7 +54,7 @@ services:
     networks:
       - trading-net
     volumes:
-      - ./infra/kafka/create-topics.sh:/kafka-scripts/create-topics.sh
+      - ../infra/kafka/create-topics.sh:/kafka-scripts/create-topics.sh
 
   auth-db:
     image: postgres:16-alpine
