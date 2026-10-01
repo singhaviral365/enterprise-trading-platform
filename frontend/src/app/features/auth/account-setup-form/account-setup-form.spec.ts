@@ -22,6 +22,8 @@ describe('AccountSetupForm', () => {
   }
 
   beforeEach(async () => {
+    // A session left in localStorage by another spec would make the store fire an unanswered account lookup.
+    localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [AccountSetupForm],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],

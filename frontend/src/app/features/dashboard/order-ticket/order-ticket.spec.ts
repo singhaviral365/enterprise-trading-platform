@@ -201,6 +201,11 @@ describe('OrderTicket', () => {
     });
 
     // Placing the order re-reads the account straight away; the executor has filled it by then.
+    (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({
+      linked: true,
+      message: 'Linked account found',
+      accountNumber: 'ACC000001001',
+    });
     const base = '/api/v1/accounts/1001';
     (await vi.waitFor(() => http.expectOne(base))).flush({
       id: 1001,

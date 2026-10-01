@@ -4,6 +4,7 @@ import {
   CHANGE_FIELDS,
   CHANGE_PERCENT_FIELDS,
   CURRENCY_FIELDS,
+  MarketBoard,
   MarketError,
   MarketQuote,
   MarketService,
@@ -40,10 +41,18 @@ export class MarketBoardPanel {
   private readonly market = inject(MarketService);
 
   protected readonly board = resource({ loader: () => this.market.getBoard() });
+  /**
+   * The last board that loaded. A failed refresh leaves `board` without a value, so this keeps the
+   * previous prices on screen (with a note) instead of replacing the table with an error.
+   */
+  protected readonly latest = linkedSignal<MarketBoard | undefined, MarketBoard | undefined>({
+    source: () => (this.board.hasValue() ? this.board.value() : undefined),
+    computation: (current, previous) => current ?? previous?.value,
+  });
   protected readonly selected = signal<MarketRow | null>(null);
 
   protected readonly rows = computed<readonly MarketRow[]>(() => {
-    const quotes = this.board.hasValue() ? this.board.value().quotes : [];
+    const quotes = this.latest()?.quotes ?? [];
     return quotes.map((quote) => {
       const currency = quoteField(quote, CURRENCY_FIELDS);
       return {

@@ -102,15 +102,24 @@ describe('AuthDialog', () => {
     await signIn();
     (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: false, message: 'No linked account yet' });
 
-    await vi.waitFor(async () => {
-      await fixture.whenStable();
-      expect(byTestId('account-setup-form')).toBeTruthy();
+    // The form pulls in the shared account store (a second link lookup) and, with no email from
+    // registration, asks the Auth service for the profile. The fixture is not stable while either request
+    // is open, so answer both before waiting on the render.
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: false, message: 'No linked account yet' });
+    (await vi.waitFor(() => http.expectOne('http://localhost:3000/auth/me'))).flush({
+      id: 1,
+      username: 'alice.trader',
+      email: 'alice@example.com',
+      roles: [],
+      createdOn: '',
     });
+    await fixture.whenStable();
+
+    expect(byTestId('account-setup-form')).toBeTruthy();
     expect(dialogs.mode()).toBe('account');
     expect(dialogs.isOpen()).toBe(true);
     expect(router.url).toBe('/');
-    // With no email from registration, the form asks the Auth service for the profile.
-    http.expectOne('http://localhost:3000/auth/me').flush({ id: 1, username: 'alice.trader', email: 'alice@example.com', roles: [], createdOn: '' });
+    expect(byTestId<HTMLInputElement>('account-email')!.value).toBe('alice@example.com');
   });
 
   it('switches between the sign-in and register forms', async () => {
@@ -123,5 +132,68 @@ describe('AuthDialog', () => {
     expect(byTestId('register-form')).toBeTruthy();
     expect(byTestId('login-form')).toBeNull();
     expect(byTestId('auth-tab-register')?.getAttribute('aria-selected')).toBe('true');
+  });
+  it('moves between the tabs with the arrow, Home and End keys', async () => {
+    dialogs.open('login');
+    await fixture.whenStable();
+    const tabs = byTestId('auth-tab-login')!.parentElement!;
+
+    tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(dialogs.mode()).toBe('register');
+    tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(dialogs.mode()).toBe('login');
+    tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(dialogs.mode()).toBe('register');
+    tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    expect(dialogs.mode()).toBe('login');
+
+    tabs.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(dialogs.mode()).toBe('login');
+  });
+
+  it.each([
+    ['the close button', () => byTestId<HTMLButtonElement>('auth-dialog-close')!.click()],
+    ['Esc', () => byTestId('auth-dialog')!.dispatchEvent(new Event('cancel', { cancelable: true }))],
+    ['a click on the backdrop', () => byTestId('auth-dialog')!.click()],
+  ])('closes without signing in from %s', async (_name, act) => {
+    dialogs.open('login');
+    await fixture.whenStable();
+
+    act();
+    await fixture.whenStable();
+
+    expect(dialogs.isOpen()).toBe(false);
+    expect(router.url).toBe('/');
+  });
+
+  it('does not close when the panel itself is clicked', async () => {
+    dialogs.open('login');
+    await fixture.whenStable();
+
+    root.querySelector<HTMLElement>('.auth-panel')!.click();
+
+    expect(dialogs.isOpen()).toBe(true);
+  });
+
+  it('still lands a signed-in user without an account on the dashboard when they skip the account step', async () => {
+    await signIn();
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: false, message: 'No linked account yet' });
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush({ linked: false, message: 'No linked account yet' });
+    (await vi.waitFor(() => http.expectOne('http://localhost:3000/auth/me'))).flush({
+      id: 1, username: 'alice.trader', email: 'alice@example.com', roles: [], createdOn: '',
+    });
+    await fixture.whenStable();
+
+    byTestId<HTMLButtonElement>('auth-dialog-close')!.click();
+
+    await vi.waitFor(() => expect(router.url).toBe('/dashboard'));
+    expect(dialogs.isOpen()).toBe(false);
+  });
+
+  it('carries on to the dashboard when the account lookup fails', async () => {
+    await signIn();
+    (await vi.waitFor(() => http.expectOne(LINK_URL))).flush(null, { status: 500, statusText: 'x' });
+
+    await vi.waitFor(() => expect(router.url).toBe('/dashboard'));
   });
 });

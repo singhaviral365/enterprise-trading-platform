@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideApiClients } from './api/api.config';
 import { App } from './app';
 import { SessionService } from './core/session.service';
 
@@ -10,13 +11,24 @@ describe('App', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
   });
 
   it('should create the app', () => {
     const fixture = TestBed.createComponent(App);
     expect(fixture.componentInstance).toBeTruthy();
+  });
+
+  it('opens and closes the sidebar from the header toggle', () => {
+    const fixture = TestBed.createComponent(App);
+    const app = fixture.componentInstance as unknown as { sidebarOpen(): boolean; toggleSidebar(): void };
+
+    expect(app.sidebarOpen()).toBe(false);
+    app.toggleSidebar();
+    expect(app.sidebarOpen()).toBe(true);
+    app.toggleSidebar();
+    expect(app.sidebarOpen()).toBe(false);
   });
 
   it('should render the header title and footer', async () => {

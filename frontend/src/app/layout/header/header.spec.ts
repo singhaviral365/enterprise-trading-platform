@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AuthDialogService } from '../../core/auth-dialog.service';
 import { SESSION_STORAGE_KEY, SessionService } from '../../core/session.service';
+import { provideApiClients } from '../../api/api.config';
 import { Header } from './header';
 
 describe('Header', () => {
@@ -11,7 +12,7 @@ describe('Header', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [Header],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients(), provideRouter([])],
     }).compileComponents();
   });
 

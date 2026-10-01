@@ -1,13 +1,13 @@
 <div class="market-head">
   <h2 id="market-title" class="card-title">Market</h2>
   <div class="market-status" aria-live="polite">
-    @if (board.hasValue()) {
-      @if (board.value().stale) {
+    @if (latest(); as current) {
+      @if (current.stale) {
         <span class="badge is-delayed" data-testid="market-delayed"><i class="fas fa-clock" aria-hidden="true"></i> Delayed</span>
       } @else {
         <span class="badge is-live"><span class="live-dot" aria-hidden="true"></span> Live</span>
       }
-      <span class="updated">Updated {{ board.value().asOf | date: 'mediumTime' }}</span>
+      <span class="updated">Updated {{ current.asOf | date: 'mediumTime' }}</span>
     }
     <button
       type="button"
@@ -21,12 +21,12 @@
   </div>
 </div>
 
-@if (board.isLoading() && !board.hasValue()) {
+@if (board.isLoading() && !latest()) {
   <div class="market-empty" aria-live="polite">
     <app-spinner [inline]="true" label="Loading market data" />
     <span>Loading market data…</span>
   </div>
-} @else if (errorMessage() && !board.hasValue()) {
+} @else if (errorMessage() && !latest()) {
   <div class="market-empty is-error" role="alert" data-testid="market-error">
     <i class="fas fa-plug-circle-xmark" aria-hidden="true"></i>
     <p>{{ errorMessage() }}</p>

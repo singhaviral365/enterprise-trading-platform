@@ -11,7 +11,10 @@
     "api:check": "npm run api:generate && git diff --exit-code -- src/app/api/generated",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "test:ci": "ng test --watch=false --coverage",
+    "test:report": "vite preview --outDir test-reports/html --open",
+    "coverage:report": "vite preview --outDir coverage/frontend --open"
   },
   "private": true,
   "packageManager": "npm@11.16.0",
@@ -31,6 +34,8 @@
     "@angular/compiler-cli": "^22.0.0",
     "@openapitools/openapi-generator-cli": "2.41.0",
     "@playwright/test": "^1.55.0",
+    "@vitest/coverage-istanbul": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",

@@ -16,7 +16,11 @@ describe('Positions', () => {
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
   const symbols = () =>
     Array.from(root.querySelectorAll('[data-testid="position-row"]')).map((row) => row.querySelector('th')?.textContent?.trim());
-  const render = () => vi.waitFor(() => fixture.detectChanges());
+  /** Lets the resource settle, then paints it. */
+  const render = async () => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
 
   async function start(positions: unknown[]): Promise<void> {
     (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({

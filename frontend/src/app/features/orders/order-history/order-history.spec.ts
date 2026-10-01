@@ -33,11 +33,20 @@ describe('OrderHistory', () => {
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
   const rowSymbols = () =>
     Array.from(root.querySelectorAll('[data-testid="order-row"]')).map((row) => row.querySelector('th')?.textContent?.trim());
-  const render = () => vi.waitFor(() => fixture.detectChanges());
+  /** Lets the resource settle, then paints it. */
+  const render = async () => {
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  /** The store reads the account in four parallel requests; the order list is one of them. */
+  /** Every read of the account starts with the link lookup, then fires four parallel requests; the order list is one. */
   async function answerAccountReads(orders: unknown[]): Promise<void> {
+    (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({
+      linked: true,
+      message: 'Linked account found',
+      accountNumber: 'ACC000001001',
+    });
     (await vi.waitFor(() => http.expectOne(BASE))).flush({
       id: 1001,
       accountId: 'ACC000001001',
@@ -54,11 +63,6 @@ describe('OrderHistory', () => {
   }
 
   async function start(orders: unknown[]): Promise<void> {
-    (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({
-      linked: true,
-      message: 'Linked account found',
-      accountNumber: 'ACC000001001',
-    });
     await answerAccountReads(orders);
   }
 
