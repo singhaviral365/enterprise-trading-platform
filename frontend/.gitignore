@@ -46,3 +46,8 @@ Thumbs.db
 # Generated API clients (src/app/api/generated) are COMMITTED on purpose, so do not ignore them.
 # Regenerate with `npm run api:generate` whenever documentation/contracts changes; never edit by hand.
 !/src/app/api/generated/
+
+# Playwright e2e: local credentials and reports
+/.env.e2e
+/playwright-report
+/test-results
