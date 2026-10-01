@@ -470,7 +470,8 @@ drag on password fields (autofill still works) and emits so the form can say why
 | `NotificationService` | Toasts |
 | `DialogService` | Promise-based confirmations |
 | `AuthDialogService` | Open the sign-in / register dialog |
-| `SessionService` | `isLoggedIn()`, `username()`, `accessToken()`, `start()`, `clear()` |
+| `SessionService` | `isLoggedIn()`, `username()`, `accessToken()`, `start()`, `renew()`, `clear()`; persists to localStorage and follows other tabs |
+| `TokenRefresher` | `refresh(staleToken)`, `endSession()`. Single-flight (refresh tokens rotate; reuse revokes the chain). Used by `authInterceptor`: refreshes before a call when the token is about to expire, and once on a 401, then retries. If the refresh token is refused it clears the session, shows a toast and navigates to `/` |
 | `describeError(err)` (`core/errors`) | Turns any HTTP failure into a user-facing sentence from the contract's `errorCode` |
 
 ## 6. Recipes
