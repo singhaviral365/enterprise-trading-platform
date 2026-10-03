@@ -85,25 +85,13 @@
         <select id="selectSymbolsForMarketPolling"
                         resultType="String">
 
-                SELECT DISTINCT i.instrument_ticker
+                SELECT DISTINCT instrument_ticker
 
-                FROM instrument i
+                FROM instrument
 
-                LEFT JOIN holdings h
-                        ON h.instrument_id = i.instrument_id
-                     AND h.quantity > 0
+                WHERE instrument_status = 'TRADING'
 
-                LEFT JOIN orders o
-                        ON o.instrument_id = i.instrument_id
-                     AND o.order_status = 'NEW'
-
-                WHERE i.instrument_status = 'TRADING'
-                    AND (
-                        h.holding_id IS NOT NULL
-                        OR o.order_id IS NOT NULL
-                    )
-
-                ORDER BY i.instrument_ticker
+                ORDER BY instrument_ticker
 
         </select>
 
