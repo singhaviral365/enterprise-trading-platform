@@ -40,5 +40,15 @@
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
     "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "basic-ftp": "^6.2.1"
+  },
+  "allowScripts": {
+    "@openapitools/openapi-generator-cli@2.41.0": true,
+    "@parcel/watcher@2.6.0": true,
+    "esbuild@0.28.2": true,
+    "lmdb@3.5.6": true,
+    "msgpackr-extract@3.0.4": true
   }
 }
