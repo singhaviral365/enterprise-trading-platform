@@ -3,6 +3,9 @@ param (
     [switch]$dual
 )
 
+if ($args -contains "--windows") { $windows = $true }
+if ($args -contains "--dual") { $dual = $true }
+
 if (-not $windows -and -not $dual) {
     Write-Host "Please specify either --windows or --dual"
     Write-Host "Usage: .\run-app.ps1 --windows"
@@ -13,20 +16,20 @@ if (-not $windows -and -not $dual) {
 $rootDir = $PSScriptRoot
 
 Write-Host "Starting frontend..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$rootDir\frontend`"; ng serve"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\frontend'; npm run start"
 
 Write-Host "Starting auth-service..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$rootDir\services\auth-service`"; ; npm run build; npm run start:dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\auth-service'; npm run build; npm run start"
 
 Write-Host "Starting order-service..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$rootDir\services\order-service`"; mvn spring-boot:run"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\order-service'; mvn spring-boot:run"
 
 Write-Host "Starting executor-service..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$rootDir\services\executor-service`"; mvn spring-boot:run"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\executor-service'; mvn spring-boot:run"
 
 if ($windows) {
     Write-Host "Starting Docker services (windows config)..."
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd `"$rootDir\services`"; docker compose --env-file .env -f docker-compose.yml up -d kafka kafka-init"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services'; docker compose --env-file .env -f docker-compose.yml up -d kafka kafka-init"
     Write-Host "All 5 services started in separate terminals."
 }
 
