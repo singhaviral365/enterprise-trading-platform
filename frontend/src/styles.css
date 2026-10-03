@@ -109,7 +109,7 @@
   --radius-card: 18px;
   --footer-height: 60px;
   --sidebar-width-open: 175px;
-  --sidebar-width-closed: 50px;
+  --sidebar-width-closed: 60px;
   --notification-z: 9999;
   --modal-z: 9998;
   --sidebar-z: 100;
@@ -335,9 +335,9 @@ a:hover {
   font-weight: 500;
   font-family: inherit;
   border: none;
-  border-radius: 12px;
+  border-radius: 20px;
   cursor: pointer;
-  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
 }
 
@@ -349,7 +349,7 @@ a:hover {
 .btn.is-primary {
   background: var(--accent-gradient);
   color: var(--accent-primary-foreground);
-  box-shadow: var(--accent-glow);
+  /* box-shadow: var(--accent-glow); */
 }
 
 .btn.is-primary:hover:not(:disabled) {
@@ -397,7 +397,7 @@ a:hover {
 }
 
 .btn.is-success:hover:not(:disabled) {
-  background: var(--status-success-container-line);
+  background: var(--status-success-container-fg);
 }
 
 .btn.is-info {
@@ -406,7 +406,7 @@ a:hover {
 }
 
 .btn.is-info:hover:not(:disabled) {
-  background: var(--status-info-container-line);
+  background: var(--status-info-container-fg);
 }
 
 .btn.is-error {
@@ -415,7 +415,7 @@ a:hover {
 }
 
 .btn.is-error:hover:not(:disabled) {
-  background: var(--status-error-container-line);
+  background: var(--status-error-container-fg);
 }
 
 .btn.is-warning {
@@ -424,7 +424,7 @@ a:hover {
 }
 
 .btn.is-warning:hover:not(:disabled) {
-  background: var(--status-warning-container-line);
+  background: var(--status-warning-container-fg);
 }
 
 .btn:disabled {
@@ -446,6 +446,7 @@ a:hover {
   min-height: 44px;
   padding: 10px 24px;
   font-size: 15px;
+  border-radius: 50px;
 }
 
 .btn.is-transparent {
@@ -478,6 +479,14 @@ a:hover {
   width: 20px;
   height: 20px;
   font-size: 12px;
+}
+
+.btn.is-icon-only.is-unclickable {
+  cursor: default;
+}
+
+.btn.is-icon-only.is-unclickable:hover:not(:disabled) {
+  background: inherit;
 }
 
 /* Form Elements */
@@ -678,7 +687,6 @@ a:hover {
   background: var(--surface-background-bright);
   border: 1px solid var(--surface-line-subtle);
   border-radius: var(--radius-card);
-  box-shadow: var(--card-shadow);
   padding: 24px;
 }
 
@@ -915,101 +923,30 @@ a:hover {
 
 /* Utility */
 
-.flex {
-  display: flex;
-}
-
-.flex-1 {
-  flex: 1;
-}
-
-.flex-2 {
-  flex: 2;
-}
-
-.flex-3 {
-  flex: 3;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.wrap {
-  flex-wrap: wrap;
-}
-
-.gap-8 {
-  gap: 8px;
-}
-
-.gap-12 {
-  gap: 12px;
-}
-
-.gap-16 {
-  gap: 16px;
-}
-
-.gap-24 {
-  gap: 24px;
-}
-
-.mt-4 {
-  margin-top: 4px;
-}
-
-.mt-8 {
-  margin-top: 8px;
-}
-
-.mt-16 {
-  margin-top: 16px;
-}
-
-.mt-24 {
-  margin-top: 24px;
-}
-
-.mt-32 {
-  margin-top: 32px;
-}
-
-.mb-4 {
-  margin-bottom: 4px;
-}
-
-.mb-8 {
-  margin-bottom: 8px;
-}
-
-.mb-16 {
-  margin-bottom: 16px;
-}
-
-.mb-24 {
-  margin-bottom: 24px;
-}
-
-.mb-32 {
-  margin-bottom: 32px;
-}
-
-.full-width {
-  width: 100%;
-}
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.flex-3 { flex: 3; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.wrap { flex-wrap: wrap;}
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-24 { gap: 24px; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mt-32 { margin-top: 32px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+.full-width { width: 100%; }
 
 /* Auth Page */
 
@@ -1126,7 +1063,7 @@ a:hover {
 
 .card.is-lift:hover {
   transform: translateY(-3px);
-  box-shadow: var(--card-shadow-hover);
+  /* box-shadow: var(--card-shadow-hover); */
 }
 
 @media (prefers-reduced-motion: reduce) {

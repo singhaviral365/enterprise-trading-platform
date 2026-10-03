@@ -25,12 +25,12 @@
   height: 44px;
   padding-left: 40px;
   border-color: var(--surface-line);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  /* transition: border-color 0.15s ease, box-shadow 0.15s ease; */
 }
 
 .input-with-icon .form-input:focus {
   border-color: var(--accent-primary-background);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent);
+  /* box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent); */
 }
 
 .input-with-icon .form-input.is-error {
@@ -121,7 +121,7 @@
 }
 
 .plain-input:focus {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent);
+  /* box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent); */
 }
 
 .optional {

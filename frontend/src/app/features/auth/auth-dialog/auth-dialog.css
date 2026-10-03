@@ -30,11 +30,11 @@
   border: 1px solid var(--surface-line-subtle);
   border-radius: 20px;
   /* Stacked shadows: a tight contact shadow plus a wide soft one give the lifted, 3D look. */
-  box-shadow:
+  /* box-shadow:
     0 1px 0 0 rgb(255 255 255 / 0.06) inset,
     0 2px 4px rgb(0 0 0 / 0.08),
     0 12px 24px rgb(0 0 0 / 0.14),
-    0 32px 64px -12px rgb(0 0 0 / 0.35);
+    0 32px 64px -12px rgb(0 0 0 / 0.35); */
   transform-origin: 50% 100%;
   animation: panel-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -44,14 +44,14 @@
 }
 
 /* Accent strip along the top edge of the card. */
-.auth-panel::before {
+/* .auth-panel::before {
   content: '';
   position: absolute;
   inset: 0 0 auto 0;
   height: 4px;
   border-radius: 20px 20px 0 0;
   background: linear-gradient(90deg, var(--accent-primary-background), var(--data-mono-blue-3));
-}
+} */
 
 .auth-panel-header {
   display: flex;
@@ -70,7 +70,7 @@
   font-size: 18px;
   color: var(--accent-primary-foreground);
   background: var(--accent-gradient);
-  box-shadow: var(--accent-glow);
+  /* box-shadow: var(--accent-glow); */
 }
 
 .auth-heading {
@@ -126,6 +126,7 @@
 .auth-tab.is-active {
   background: var(--surface-background-bright);
   color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
 }
 

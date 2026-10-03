@@ -14,22 +14,6 @@
   padding: 0 5px;
 }
 
-/* The default focus ring colour has too little contrast on the coloured bar. */
-.app-header :focus-visible {
-  outline-color: var(--shell-foreground);
-}
-
-/* Icon buttons sit flat on the bar and only tint on hover, in both themes. */
-.app-header .btn.is-primary {
-  background: transparent;
-  color: var(--shell-foreground);
-  box-shadow: none;
-}
-
-.app-header .btn.is-primary:hover:not(:disabled) {
-  background: var(--shell-hover);
-}
-
 .header-left {
   display: flex;
   align-items: center;
@@ -69,26 +53,4 @@
   align-items: center;
   gap: 12px;
   margin-right: 16px;
-}
-
-.header-cta {
-  background: var(--accent-gradient);
-  color: var(--accent-primary-foreground);
-  box-shadow: var(--accent-glow);
-  font-weight: 600;
-}
-
-.header-cta:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-
-/* Logout is red at rest so it reads as the way out; the hover only deepens the tint. */
-.app-header .btn.header-logout {
-  color: var(--status-error-container-fg);
-}
-
-.app-header .btn.header-logout:hover:not(:disabled) {
-  color: var(--status-error-container-fg);
-  background: var(--status-error-container-bg);
 }

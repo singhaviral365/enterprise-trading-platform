@@ -232,9 +232,9 @@
   color: var(--hero-foreground);
   background: var(--hero-gradient);
   border-color: transparent;
-  box-shadow:
+  /* box-shadow:
     0 1px 0 rgb(255 255 255 / 0.18) inset,
-    0 18px 36px -16px rgb(6 95 70 / 0.65);
+    0 18px 36px -16px rgb(6 95 70 / 0.65); */
   transform-style: preserve-3d;
   transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
 }
@@ -252,9 +252,9 @@
 
 .stat.is-featured:hover {
   transform: perspective(900px) rotateX(4deg) rotateY(-5deg) translateY(-3px);
-  box-shadow:
+  /* box-shadow:
     0 1px 0 rgb(255 255 255 / 0.18) inset,
-    0 28px 48px -18px rgb(6 95 70 / 0.75);
+    0 28px 48px -18px rgb(6 95 70 / 0.75); */
 }
 
 .stat.is-featured .stat-label,

@@ -25,10 +25,10 @@
         [attr.aria-describedby]="registerForm.username().touched() && registerForm.username().invalid() ? 'register-username-error register-username-rules' : 'register-username-rules'"
       />
     </div>
-    <!-- @if (registerForm.username().touched() && registerForm.username().invalid()) {
+    @if (registerForm.username().touched() && registerForm.username().invalid()) {
       <p id="register-username-error" class="form-error-text">{{ registerForm.username().errors()[0].message }}</p>
     }
-    <ul id="register-username-rules" class="rule-list" aria-label="Username requirements" data-testid="register-username-rules">
+    <!-- <ul id="register-username-rules" class="rule-list" aria-label="Username requirements" data-testid="register-username-rules">
       @for (rule of usernameChecklist(); track rule.id) {
         <li
           class="rule"

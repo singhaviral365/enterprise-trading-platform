@@ -55,7 +55,7 @@
 <section class="features" aria-label="Platform features">
   @for (feature of features; track feature.title; let i = $index) {
     <article class="feature card is-lift rise-in" [style.--stagger]="i + 3">
-      <div class="feature-icon" aria-hidden="true"><i [class]="feature.icon"></i></div>
+      <btn class="btn is-primary is-icon-only is-unclickable mb-16"><i [class]="feature.icon"></i></btn>
       <h2 class="feature-title">{{ feature.title }}</h2>
       <p class="feature-text">{{ feature.text }}</p>
     </article>
