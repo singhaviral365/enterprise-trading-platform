@@ -11,7 +11,11 @@ http:
     data: |-
       {
         "username": "stephen.fmri",
-        "password": "AliceTrader123!@#"
+        "password": "AliceTrader123!@#",
+        "email": "stephen123@email.com",
+        "roles": [
+          "CUSTOMER"
+        ]
       }
   auth: inherit
 
