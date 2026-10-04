@@ -2,18 +2,23 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UnauthorisedException } from '../common/exceptions';
+import { ACCESS_TOKEN_COOKIE, readCookie } from './auth-cookies';
 
 const DEFAULT_JWT_ISSUER = 'auth-service';
 
 /**
  * JWT Strategy for Passport.
- * Validates JWT tokens in Bearer Authorization header.
+ * Validates the JWT from the Bearer Authorization header or, for browser sessions, the HttpOnly access_token cookie.
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request: { headers?: Record<string, string | string[] | undefined> }) =>
+          readCookie(request?.headers?.cookie, ACCESS_TOKEN_COOKIE) ?? null,
+      ]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || 'dev-only-change-me-this-secret-is-not-for-production-use',
       algorithms: ['HS256'],

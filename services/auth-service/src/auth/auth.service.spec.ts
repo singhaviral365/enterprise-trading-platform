@@ -72,6 +72,7 @@ describe('AuthService access token contract', () => {
     refreshTokensService = {
       createRefreshToken: jest.fn(),
       verifyAndConsumeRefreshToken: jest.fn(),
+      revokeRefreshToken: jest.fn(),
     };
     redactingLogger = {
       log: jest.fn(),
@@ -358,7 +359,12 @@ describe('AuthService access token contract', () => {
       expect(loginThrottleService.reset).not.toHaveBeenCalled();
     });
   });
+
+  describe('logout', () => {
+    it('revokes the presented refresh token', async () => {
+      await service.logout('presented-refresh-token');
+
+      expect(refreshTokensService.revokeRefreshToken).toHaveBeenCalledWith('presented-refresh-token');
+    });
+  });
 });
-
-
-

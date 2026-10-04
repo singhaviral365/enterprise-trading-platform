@@ -45,6 +45,25 @@ info:
     Lifetimes: access token 15 minutes, refresh token 7 days. Access tokens are not revocable, which
     is why they are short. Refresh tokens are stored and can be revoked.
 
+    ## Browser sessions: HttpOnly cookies
+
+    `POST /auth/login` and `POST /auth/refresh` also put the token pair into cookies, so a browser app never
+    has to keep a token in JavaScript-readable storage (an XSS bug cannot steal what script cannot read):
+
+    | Cookie | Value | Path | Lifetime |
+    |---|---|---|---|
+    | `access_token` | the access JWT | `/` | 15 minutes |
+    | `refresh_token` | the opaque refresh token | `/auth` (only refresh and logout ever receive it) | 7 days |
+
+    Both are `HttpOnly`, `SameSite=Strict` by default and `Secure` in production (`AUTH_COOKIE_SECURE`,
+    `AUTH_COOKIE_SAMESITE`). The Trade REST API accepts the `access_token` cookie when there is no
+    `Authorization` header. Because a browser attaches cookies to any request, a state-changing request
+    authenticated by a cookie alone must carry an `X-Requested-With` header, which a cross-site form cannot
+    add. The response body is unchanged, so clients that prefer an `Authorization: Bearer` header keep working.
+
+    A cookie is not encrypted. It is a transport and storage choice: `HttpOnly` hides it from scripts and
+    `Secure` keeps it off plain HTTP. The JWT is signed, not encrypted, whatever carries it.
+
     ## Security rules
 
     These are assessed in the Sprint 8 security review.
@@ -128,7 +147,8 @@ paths:
       summary: Log in and receive tokens
       description: |
         Verifies the credentials and issues an access token and a refresh token. Every failure,
-        whatever its cause, returns the same `AUTH-401` body.
+        whatever its cause, returns the same `AUTH-401` body. The pair is also set as HttpOnly
+        `access_token` and `refresh_token` cookies.
       requestBody:
         required: true
         content:
@@ -143,6 +163,11 @@ paths:
       responses:
         '200':
           description: Authenticated.
+          headers:
+            Set-Cookie:
+              description: The `access_token` and `refresh_token` HttpOnly cookies (two header lines).
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -162,8 +187,12 @@ paths:
         Consumes the presented refresh token and issues a new pair. The presented token stops working
         immediately. Presenting a token that has already been consumed is treated as theft: revoke
         every refresh token for that user and return `AUTH-401`.
+
+        A browser sends no body: the token is read from the HttpOnly `refresh_token` cookie, and the
+        request must carry an `X-Requested-With` header. A client without cookies sends the token in
+        the body instead. Either way the new pair is set as cookies again.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -171,6 +200,11 @@ paths:
       responses:
         '200':
           description: A new token pair.
+          headers:
+            Set-Cookie:
+              description: The rotated `access_token` and `refresh_token` HttpOnly cookies (two header lines).
+              schema:
+                type: string
           content:
             application/json:
               schema:
@@ -179,6 +213,34 @@ paths:
           $ref: '#/components/responses/Unauthorised'
         '422':
           $ref: '#/components/responses/InvalidInput'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      security: []
+      summary: Log out
+      description: |
+        Revokes the refresh token (the HttpOnly cookie, or the body for a client without cookies) and
+        clears both session cookies. Always `204`, so it cannot be used to probe whether a token
+        existed. The access token is a stateless JWT: it stops working when it expires, within 15
+        minutes. A cookie-only request must carry an `X-Requested-With` header, otherwise `AUTH-401`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Signed out.
+          headers:
+            Set-Cookie:
+              description: Expires the `access_token` and `refresh_token` cookies (two header lines).
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorised'
 
   /auth/me:
     get:
@@ -309,11 +371,12 @@ components:
     RefreshRequest:
       type: object
       additionalProperties: false
-      required: [refreshToken]
       properties:
         refreshToken:
           type: string
-          description: The refresh token issued by the previous login or refresh.
+          description: |
+            The refresh token issued by the previous login or refresh. Omit it to use the HttpOnly
+            `refresh_token` cookie (what a browser does).
 
     TokenResponse:
       type: object

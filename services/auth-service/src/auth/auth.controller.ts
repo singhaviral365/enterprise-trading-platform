@@ -7,11 +7,13 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  Res,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -30,7 +32,14 @@ import {
 import { UnauthorisedException } from '../common/exceptions';
 import { JwtAuthGuard, AuthenticatedUser } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
-import { Request } from 'express';
+import { Request, Response } from 'express';
+import {
+  REFRESH_TOKEN_COOKIE,
+  clearAuthCookies,
+  hasCsrfHeader,
+  readCookie,
+  setAuthCookies,
+} from './auth-cookies';
 
 /**
  * Auth controller implementing contracts/auth-api.yaml
@@ -85,12 +94,16 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<TokenResponseDto> {
-    return this.authService.login(
+    const tokens = await this.authService.login(
       loginDto.username,
       loginDto.password,
       this.resolveCallerId(request),
     );
+    // The browser keeps the session in HttpOnly cookies; the body stays as the contract describes it.
+    setAuthCookies(response, tokens);
+    return tokens;
   }
 
   /**
@@ -111,8 +124,40 @@ export class AuthController {
   @ApiUnprocessableEntityResponse({ type: ErrorResponseDto })
   async refresh(
     @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<TokenResponseDto> {
-    return this.authService.refresh(refreshTokenDto.refreshToken);
+    const presented = this.presentedRefreshToken(refreshTokenDto, request);
+    const tokens = await this.authService.refresh(presented);
+    setAuthCookies(response, tokens);
+    return tokens;
+  }
+
+  /**
+   * POST /auth/logout
+   * Public endpoint: end the session. Revokes the refresh token (cookie, or body for API clients) and clears
+   * both cookies. Always 204, so it cannot be used to probe whether a token existed.
+   */
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Log out: revoke the refresh token and clear the session cookies' })
+  @ApiNoContentResponse({ description: 'Session ended.' })
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const cookieToken = readCookie(request.headers.cookie, REFRESH_TOKEN_COOKIE);
+    const bodyToken = refreshTokenDto.refreshToken;
+    // Cookie-authenticated, state-changing: needs the CSRF header (the body token is a credential in itself).
+    if (!bodyToken && cookieToken && !hasCsrfHeader(request.headers)) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+    const token = bodyToken ?? cookieToken;
+    if (token) {
+      await this.authService.logout(token);
+    }
+    clearAuthCookies(response);
   }
 
   /**
@@ -138,6 +183,21 @@ export class AuthController {
       throw new UnauthorisedException('Unauthorised');
     }
     return this.authService.getUser(user.userId);
+  }
+
+  /**
+   * The refresh token from the body (API clients) or the HttpOnly cookie (browsers). A cookie alone must come with
+   * the CSRF header, because the browser attaches cookies to any request, whoever started it.
+   */
+  private presentedRefreshToken(dto: RefreshTokenDto, request: Request): string {
+    if (dto.refreshToken) {
+      return dto.refreshToken;
+    }
+    const cookieToken = readCookie(request.headers.cookie, REFRESH_TOKEN_COOKIE);
+    if (!cookieToken || !hasCsrfHeader(request.headers)) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+    return cookieToken;
   }
 
   private resolveCallerId(request: Request): string {

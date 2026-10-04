@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import * as jsonwebtoken from 'jsonwebtoken';
 import { UnauthorisedException } from '../common/exceptions';
+import { ACCESS_TOKEN_COOKIE, readCookie } from './auth-cookies';
 
 const DEFAULT_JWT_ISSUER = 'auth-service';
 
@@ -31,7 +32,7 @@ export class JwtAuthGuard implements CanActivate {
       user?: AuthenticatedUser;
     }>();
 
-    const token = this.extractBearerToken(request.headers?.authorization);
+    const token = this.extractToken(request.headers);
     const payload = this.verifyAccessToken(token);
     request.user = this.buildAuthenticatedUser(payload);
 
@@ -45,6 +46,22 @@ export class JwtAuthGuard implements CanActivate {
       iat: payload.iat,
       exp: payload.exp,
     };
+  }
+
+  /**
+   * An Authorization header wins (API clients, Swagger). Otherwise the HttpOnly access_token cookie the browser
+   * session uses. A malformed header is rejected rather than silently falling back to the cookie.
+   */
+  private extractToken(headers: Record<string, string | string[] | undefined> | undefined): string {
+    const authorizationHeader = headers?.authorization;
+    if (authorizationHeader === undefined) {
+      const cookieToken = readCookie(headers?.cookie, ACCESS_TOKEN_COOKIE);
+      if (!cookieToken) {
+        throw new UnauthorisedException('Unauthorised');
+      }
+      return cookieToken;
+    }
+    return this.extractBearerToken(authorizationHeader);
   }
 
   private extractBearerToken(authorizationHeader: string | string[] | undefined): string {

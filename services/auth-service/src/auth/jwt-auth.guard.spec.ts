@@ -102,6 +102,51 @@ describe('JwtAuthGuard', () => {
 
     expect(() => guard.canActivate(context)).toThrow(UnauthorisedException);
   });
+
+  describe('browser sessions (HttpOnly cookie)', () => {
+    it('accepts the access_token cookie when there is no Authorization header', () => {
+      const token = createAccessToken();
+      const { context, request } = createHttpExecutionContext({
+        cookie: `theme=dark; access_token=${token}`,
+      });
+
+      expect(guard.canActivate(context)).toBe(true);
+      expect(request.user).toMatchObject({ userId: 1000 });
+    });
+
+    it('prefers the Authorization header over the cookie', () => {
+      const { context } = createHttpExecutionContext({
+        authorization: `Bearer ${createAccessToken({ secret: wrongJwtSecret })}`,
+        cookie: `access_token=${createAccessToken()}`,
+      });
+
+      expect(() => guard.canActivate(context)).toThrow(UnauthorisedException);
+    });
+
+    it('rejects a malformed Authorization header instead of falling back to the cookie', () => {
+      const { context } = createHttpExecutionContext({
+        authorization: 'Token nope',
+        cookie: `access_token=${createAccessToken()}`,
+      });
+
+      expect(() => guard.canActivate(context)).toThrow(UnauthorisedException);
+    });
+
+    it('refuses a forged or expired cookie token like any other token', () => {
+      const now = Math.floor(Date.now() / 1000);
+      const forged = createHttpExecutionContext({ cookie: `access_token=${createAccessToken({ secret: wrongJwtSecret })}` });
+      const expired = createHttpExecutionContext({
+        cookie: `access_token=${createAccessToken({ iat: now - 3600, exp: now - 60 })}`,
+      });
+
+      expect(() => guard.canActivate(forged.context)).toThrow(UnauthorisedException);
+      expect(() => guard.canActivate(expired.context)).toThrow(UnauthorisedException);
+    });
+
+    it('refuses a request with neither header nor cookie', () => {
+      const { context } = createHttpExecutionContext({ cookie: 'theme=dark' });
+
+      expect(() => guard.canActivate(context)).toThrow(UnauthorisedException);
+    });
+  });
 });
-
-

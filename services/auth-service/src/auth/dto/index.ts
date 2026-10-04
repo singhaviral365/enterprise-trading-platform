@@ -98,14 +98,17 @@ export class LoginDto {
 }
 
 /**
- * Refresh token request DTO
+ * Refresh / logout request DTO. A browser sends no body: the refresh token travels in the HttpOnly
+ * `refresh_token` cookie. API clients without cookies may still send it in the body.
  */
 export class RefreshTokenDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '9c1f7a2e4b6d8e0a2c4e6a8c0e2a4c6e8a0c2e4a6c8e0a2c',
+    description: 'Omit to use the HttpOnly refresh_token cookie.',
   })
+  @IsOptional()
   @IsString()
-  refreshToken!: string;
+  refreshToken?: string;
 }
 
 /**

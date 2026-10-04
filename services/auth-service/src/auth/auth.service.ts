@@ -225,6 +225,14 @@ export class AuthService {
   }
 
   /**
+   * Logout: revoke the presented refresh token so it cannot be exchanged again. The access token is a
+   * stateless JWT and simply expires (15 minutes); the controller clears both cookies.
+   */
+  async logout(refreshToken: string): Promise<void> {
+    await this.refreshTokensService.revokeRefreshToken(refreshToken);
+  }
+
+  /**
    * GetUser: Return the authenticated user profile.
    * Called after JWT validation by the JwtGuard.
    */

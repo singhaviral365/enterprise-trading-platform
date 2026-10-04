@@ -88,5 +88,16 @@ describe('RefreshTokensService', () => {
     const result = await service.verifyAndConsumeRefreshToken(issued.token);
     expect(result).toBeNull();
   });
-});
 
+  it('revokes a token on logout so it can no longer be exchanged', async () => {
+    const issued = await service.createRefreshToken(userId, 3600);
+
+    await service.revokeRefreshToken(issued.token);
+
+    expect(await service.verifyAndConsumeRefreshToken(issued.token)).toBeNull();
+  });
+
+  it('treats revoking an unknown token as a no-op', async () => {
+    await expect(service.revokeRefreshToken('never-issued')).resolves.toBeUndefined();
+  });
+});

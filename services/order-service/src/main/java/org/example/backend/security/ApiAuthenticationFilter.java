@@ -2,6 +2,7 @@ package org.example.backend.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.backend.dto.ErrorResponse;
@@ -15,10 +16,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Set;
 
 /**
- * Authenticates all /api/v1/* requests by verifying JWT Bearer token.
- * 
+ * Authenticates all /api/v1/* requests by verifying a signed JWT.
+ *
+ * <p>The token comes from the {@code Authorization: Bearer} header (API clients) or, when there is no such
+ * header, from the HttpOnly {@code access_token} cookie the Auth service sets for browser sessions. A cookie is
+ * attached by the browser to any request, whoever started it, so a state-changing request authenticated by a
+ * cookie alone must also carry an {@code X-Requested-With} header (which a cross-site form cannot add); this
+ * backs up the cookie's SameSite attribute.
+ *
  * Check order: signature → expiry → algorithm (per story requirements).
  * The user id always comes from a JWT signed by the Auth service. Unsigned shortcut tokens
  * (dev-user-N / dev-account-N / a bare number) let the caller pick any user id, so they are only
@@ -29,6 +37,10 @@ import java.io.IOException;
 public class ApiAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(ApiAuthenticationFilter.class);
+    /** Name of the cookie the Auth service puts the access JWT in. */
+    static final String ACCESS_TOKEN_COOKIE = "access_token";
+    static final String CSRF_HEADER = "X-Requested-With";
+    private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
     private static final String DEV_USER_TOKEN_PREFIX = "dev-user-";
     private static final String DEV_TOKEN_PREFIX = "dev-account-";
 
@@ -60,15 +72,30 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
-        
-        // Check header presence and scheme
-        if (header == null || !header.startsWith("Bearer ")) {
+        String token;
+
+        if (header != null) {
+            // Check scheme. A malformed header is never papered over by falling back to a cookie.
+            if (!header.startsWith("Bearer ")) {
+                logger.warn("Missing or invalid Authorization header");
+                reject(response);
+                return;
+            }
+            token = header.substring(7).trim();
+        } else {
+            token = readAccessTokenCookie(request);
+            if (token != null && isStateChanging(request) && !hasCsrfHeader(request)) {
+                logger.warn("Cookie-authenticated {} without the {} header", request.getMethod(), CSRF_HEADER);
+                reject(response);
+                return;
+            }
+        }
+
+        if (token == null) {
             logger.warn("Missing or invalid Authorization header");
             reject(response);
             return;
         }
-
-        String token = header.substring(7).trim();
         if (token.isEmpty()) {
             logger.warn("Empty Bearer token");
             reject(response);
@@ -86,6 +113,30 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
         // Backward-compatible attribute for older tests/utilities.
         request.setAttribute(AuthContext.ACCOUNT_ID_ATTRIBUTE, userId);
         filterChain.doFilter(request, response);
+    }
+
+    private static String readAccessTokenCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (ACCESS_TOKEN_COOKIE.equals(cookie.getName())) {
+                String value = cookie.getValue();
+                return value == null ? null : value.trim();
+            }
+        }
+        return null;
+    }
+
+    private static boolean isStateChanging(HttpServletRequest request) {
+        String method = request.getMethod();
+        return method == null || !SAFE_METHODS.contains(method.toUpperCase());
+    }
+
+    private static boolean hasCsrfHeader(HttpServletRequest request) {
+        String value = request.getHeader(CSRF_HEADER);
+        return value != null && !value.isBlank();
     }
 
     /**
