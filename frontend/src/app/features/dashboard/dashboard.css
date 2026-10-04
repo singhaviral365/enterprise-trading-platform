@@ -50,7 +50,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
 }
 
@@ -90,6 +90,28 @@
   grid-template-columns: 2fr 1fr;
   gap: 20px;
   margin-top: 20px;
+}
+
+.growth-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.growth-hint {
+  margin-top: 8px;
+}
+
+.allocation-panel {
+  align-items: stretch;
+}
+
+.allocation-panel .panel-footer {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.orders-panel {
+  grid-column: 1 / 2;
 }
 
 .panel {
@@ -205,6 +227,12 @@
   margin-bottom: 8px;
 }
 
+@media (max-width: 1100px) {
+  .stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 1000px) {
   .stats {
     grid-template-columns: repeat(2, 1fr);
@@ -212,6 +240,10 @@
 
   .panels {
     grid-template-columns: 1fr;
+  }
+
+  .orders-panel {
+    grid-column: auto;
   }
 }
 
@@ -236,7 +268,7 @@
     0 1px 0 rgb(255 255 255 / 0.18) inset,
     0 18px 36px -16px rgb(6 95 70 / 0.65); */
   transform-style: preserve-3d;
-  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .stat.is-featured::after {
@@ -265,7 +297,6 @@
 .stat.is-featured .stat-icon {
   color: var(--hero-foreground);
   background: rgb(255 255 255 / 0.18);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset;
 }
 
 .stat-meta {
@@ -287,10 +318,6 @@
 .stat.is-featured > div {
   position: relative;
   z-index: 1;
-}
-
-.stat-icon {
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -315,7 +342,7 @@
   font-weight: 600;
 }
 
-/* The whole Positions card is the link: the anchor's ::after stretches over it. */
+/* The whole stat card is the link: the anchor's ::after stretches over it. */
 .stat.is-link {
   position: relative;
 }
