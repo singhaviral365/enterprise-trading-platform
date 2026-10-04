@@ -1,10 +1,14 @@
 import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { AuthService } from '../core/auth.service';
 import { DialogService } from '../core/dialog.service';
 import { NotificationService } from '../core/notification.service';
 import { AuthDialogService } from '../core/auth-dialog.service';
 import { SessionService } from '../core/session.service';
+import { DonutChart, DonutSlice } from '../shared/ui/donut-chart/donut-chart';
 import { Dropdown, DropdownOption } from '../shared/ui/dropdown/dropdown';
+import { InstrumentIcon } from '../shared/ui/instrument-icon/instrument-icon';
+import { InstrumentLabel } from '../shared/ui/instrument-label/instrument-label';
 import { MultiDropdown } from '../shared/ui/multi-dropdown/multi-dropdown';
 import { Multiselect, MultiselectOption } from '../shared/ui/multiselect/multiselect';
 import { Pagination } from '../shared/ui/pagination/pagination';
@@ -31,13 +35,25 @@ const PAGE_SIZE = 3;
 /** Preview of the shared UI components and global styles. Delete this folder and its route when no longer needed. */
 @Component({
   selector: 'app-showcase',
-  imports: [CurrencyPipe, Dropdown, MultiDropdown, Multiselect, Pagination, Spinner, Tooltip],
+  imports: [
+    CurrencyPipe,
+    DonutChart,
+    Dropdown,
+    InstrumentIcon,
+    InstrumentLabel,
+    MultiDropdown,
+    Multiselect,
+    Pagination,
+    Spinner,
+    Tooltip,
+  ],
   templateUrl: './showcase.html',
   styleUrl: './showcase.css',
 })
 export class Showcase {
   protected readonly session = inject(SessionService);
   protected readonly authDialog = inject(AuthDialogService);
+  private readonly auth = inject(AuthService);
   private readonly dialog = inject(DialogService);
   private readonly notifications = inject(NotificationService);
 
@@ -74,6 +90,30 @@ export class Showcase {
     const start = (this.page() - 1) * PAGE_SIZE;
     return this.trades.slice(start, start + PAGE_SIZE);
   });
+
+  /** Rows-per-page pagination: the same component as above with a size selector and a range. */
+  protected readonly pageSizes = [2, 4, 8] as const;
+  protected readonly sizedPageSize = signal<number>(this.pageSizes[0]);
+  protected readonly sizedPage = signal(1);
+  protected readonly sizedTotalPages = computed(() => Math.max(1, Math.ceil(this.trades.length / this.sizedPageSize())));
+  protected readonly sizedRows = computed(() => {
+    const start = (this.sizedPage() - 1) * this.sizedPageSize();
+    return this.trades.slice(start, start + this.sizedPageSize());
+  });
+  protected readonly tradeCount = this.trades.length;
+
+  protected readonly allocation: readonly DonutSlice[] = [
+    { name: 'AAPL', detail: 'Apple Inc.', value: 8750 },
+    { name: 'MSFT', detail: 'Microsoft Corporation', value: 4000 },
+    { name: 'INFY.NS', detail: 'Infosys Ltd', value: 2280 },
+    { name: 'TSLA', detail: 'Tesla Inc.', value: 1920 },
+  ];
+  protected readonly formatUsd = (value: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+  protected signOut(): void {
+    this.auth.logout();
+  }
 
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);

@@ -9,7 +9,7 @@
     <h2 id="session-heading" class="card-title">Session</h2>
     <p class="form-hint mb-16">The sidebar only appears after login.</p>
     @if (session.isLoggedIn()) {
-      <button type="button" class="btn is-secondary" (click)="session.clear()">Sign out</button>
+      <button type="button" class="btn is-secondary" (click)="signOut()">Sign out</button>
     } @else {
       <button type="button" class="btn is-primary" (click)="authDialog.open()">Sign in</button>
     }
@@ -92,5 +92,51 @@
       </table>
     </div>
     <app-pagination [totalPages]="totalPages" [(currentPage)]="page" />
+  </section>
+
+  <section class="card mb-24" aria-labelledby="sized-pagination-heading">
+    <h2 id="sized-pagination-heading" class="card-title">Pagination with rows per page</h2>
+    <p class="form-hint mb-16">
+      Give the pagination <code>pageSizeOptions</code>, <code>[(pageSize)]</code> and <code>totalItems</code> and it adds the
+      compact dropdown and the range.
+    </p>
+    <ul class="showcase-list">
+      @for (trade of sizedRows(); track trade.id) {
+        <li>{{ trade.symbol }} · {{ trade.side }} · {{ trade.quantity }}</li>
+      }
+    </ul>
+    <app-pagination
+      [pageSizeOptions]="pageSizes"
+      [(pageSize)]="sizedPageSize"
+      [totalItems]="tradeCount"
+      [totalPages]="sizedTotalPages()"
+      [(currentPage)]="sizedPage"
+    />
+  </section>
+
+  <section class="card mb-24" aria-labelledby="instrument-heading">
+    <h2 id="instrument-heading" class="card-title">Instrument icon and label</h2>
+    <p class="form-hint mb-16">
+      Logos come from <code>public/assets/icons/&lt;TICKER&gt;.svg</code>; a missing file falls back to the symbol's initials.
+    </p>
+    <div class="flex items-center gap-24 wrap">
+      <app-instrument-icon symbol="AAPL" iconUrl="/assets/icons/AAPL.svg" [size]="48" />
+      <app-instrument-icon symbol="NOPE" iconUrl="/assets/icons/NOPE.svg" [size]="48" />
+      <app-instrument-icon symbol="MSFT" [size]="32" />
+      <app-instrument-label symbol="INFY.NS" name="Infosys Ltd" iconUrl="/assets/icons/INFY.NS.svg" />
+    </div>
+  </section>
+
+  <section class="card mb-24" aria-labelledby="donut-heading">
+    <h2 id="donut-heading" class="card-title">Donut chart</h2>
+    <div class="showcase-donut">
+      <app-donut-chart
+        [slices]="allocation"
+        centerLabel="Invested"
+        centerValue="$16,950.00"
+        ariaLabel="Donut chart of four sample holdings by cost"
+        [valueFormatter]="formatUsd"
+      />
+    </div>
   </section>
 </div>

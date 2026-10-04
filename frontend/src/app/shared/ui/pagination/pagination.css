@@ -1,13 +1,31 @@
 .paginator {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
+  margin-top: 16px;
+  font-size: 13.5px;
 }
 
+/* Page buttons alone (no rows-per-page selector) stay on the right. */
 .paginator-items {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 16px;
-  font-size: 13.5px;
+  margin-left: auto;
+}
+
+.page-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.page-range {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
 }

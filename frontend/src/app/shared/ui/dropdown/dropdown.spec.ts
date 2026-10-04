@@ -66,4 +66,13 @@ describe('Dropdown', () => {
 
     expect(select().disabled).toBe(true);
   });
+
+  it('has a compact size for dense toolbars', async () => {
+    expect(select().classList.contains('is-compact')).toBe(false);
+
+    fixture.componentRef.setInput('size', 'compact');
+    await fixture.whenStable();
+
+    expect(select().classList.contains('is-compact')).toBe(true);
+  });
 });

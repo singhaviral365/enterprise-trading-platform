@@ -27,6 +27,8 @@ export class Dropdown {
   readonly invalid = input(false);
   readonly errorText = input('');
   readonly disabled = input(false);
+  /** `compact` shrinks the control (height, padding, font) for dense toolbars such as the pagination footer. */
+  readonly size = input<'default' | 'compact'>('default');
   readonly inputId = input(`dropdown-${nextDropdownId++}`);
 
   protected onChange(event: Event): void {

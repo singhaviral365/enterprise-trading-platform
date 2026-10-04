@@ -5,6 +5,7 @@
   class="form-select"
   [id]="inputId()"
   [class.is-error]="invalid()"
+  [class.is-compact]="size() === 'compact'"
   [disabled]="disabled()"
   [attr.aria-invalid]="invalid() ? 'true' : null"
   [attr.aria-describedby]="invalid() && errorText() ? inputId() + '-error' : null"
