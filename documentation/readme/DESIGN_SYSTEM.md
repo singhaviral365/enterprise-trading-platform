@@ -13,6 +13,63 @@ Everything lives in `frontend/src`:
 | UI services (theme, notifications, confirm dialog) | `app/core/*.service.ts` |
 | Live examples of every component | `/showcase` route (`app/showcase`) |
 
+## Table of contents
+
+- [1. Rules](#1-rules)
+- [2. Foundations](#2-foundations)
+  - [2.1 Colour tokens](#21-colour-tokens)
+  - [Surfaces](#surfaces)
+  - [Accent](#accent)
+  - [Status: success](#status-success)
+  - [Status: info](#status-info)
+  - [Status: warning](#status-warning)
+  - [Status: error](#status-error)
+  - [Shell](#shell)
+  - [Data (charts)](#data-charts)
+  - [2.2 Gradients, shadows and shell tokens](#22-gradients-shadows-and-shell-tokens)
+  - [2.3 Typography](#23-typography)
+  - [2.4 Spacing, layout and radii](#24-spacing-layout-and-radii)
+  - [2.5 Motion](#25-motion)
+  - [2.6 Theming](#26-theming)
+- [3. Global CSS patterns (`styles.css`)](#3-global-css-patterns-stylescss)
+  - [Buttons](#buttons)
+  - [Forms](#forms)
+  - [Cards](#cards)
+  - [Tables](#tables)
+  - [Status text](#status-text)
+  - [Empty state and toolbar](#empty-state-and-toolbar)
+  - [Modal building blocks](#modal-building-blocks)
+  - [Accessibility helpers](#accessibility-helpers)
+- [4. Components](#4-components)
+  - [4.1 Header, sidebar, footer (`layout/`)](#41-header-sidebar-footer-layout)
+  - [4.2 Dropdown (`shared/ui/dropdown/dropdown`)](#42-dropdown-shareduidropdowndropdown)
+  - [4.3 Multiselect (`shared/ui/multiselect/multiselect`)](#43-multiselect-shareduimultiselectmultiselect)
+  - [4.3b Multi-select dropdown (`shared/ui/multi-dropdown/multi-dropdown`)](#43b-multi-select-dropdown-shareduimulti-dropdownmulti-dropdown)
+  - [4.4 Pagination (`shared/ui/pagination/pagination`)](#44-pagination-shareduipaginationpagination)
+  - [4.5 Spinner (`shared/ui/spinner/spinner`)](#45-spinner-shareduispinnerspinner)
+  - [4.6 Tooltip (`shared/ui/tooltip/tooltip`)](#46-tooltip-shareduitooltiptooltip)
+  - [4.7 Dialog (`shared/ui/dialog/dialog` + `core/dialog.service`)](#47-dialog-shareduidialogdialog--coredialogservice)
+  - [4.7b Auth dialog (`features/auth/auth-dialog` + `core/auth-dialog.service`)](#47b-auth-dialog-featuresauthauth-dialog--coreauth-dialogservice)
+  - [4.8 Notification (`shared/ui/notification/notification` + `core/notification.service`)](#48-notification-shareduinotificationnotification--corenotificationservice)
+  - [4.9 Side toggle (`shared/ui/side-toggle`)](#49-side-toggle-shareduiside-toggle)
+  - [4.10b Order status badge (`shared/ui/order-status/order-status`)](#410b-order-status-badge-shareduiorder-statusorder-status)
+  - [4.10c Order history and Positions pages (`features/orders`, `features/positions`)](#410c-order-history-and-positions-pages-featuresorders-featurespositions)
+  - [4.10d Positions page (`features/positions`)](#410d-positions-page-featurespositions)
+  - [4.10e Market data page (`features/market`)](#410e-market-data-page-featuresmarket)
+  - [4.10f Dashboard (`features/dashboard`)](#410f-dashboard-featuresdashboard)
+  - [4.11 Instrument icon and label (`shared/ui/instrument-icon`, `shared/ui/instrument-label`)](#411-instrument-icon-and-label-shareduiinstrument-icon-shareduiinstrument-label)
+  - [4.12 Sheet dialog (`shared/ui/sheet-dialog`)](#412-sheet-dialog-shareduisheet-dialog)
+  - [4.13 Donut chart (`shared/ui/donut-chart`)](#413-donut-chart-shareduidonut-chart)
+  - [4.13b Line chart (`shared/ui/line-chart`)](#413b-line-chart-shareduiline-chart)
+  - [4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)](#414-order-ticket-confirmation-and-side-toggle-shareduiorder-ticket-order-confirmation-side-toggle)
+  - [4.15 Split view (`shared/ui/split-view`)](#415-split-view-shareduisplit-view)
+  - [4.16 Quote summary and trade panel (`shared/ui/quote-summary`, `shared/ui/trade-panel`)](#416-quote-summary-and-trade-panel-shareduiquote-summary-shareduitrade-panel)
+  - [4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)](#410-noclipboard-directive-shareddirectivesno-clipboard)
+- [5. Services the UI relies on](#5-services-the-ui-relies-on)
+- [6. Recipes](#6-recipes)
+- [7. Contributing checklist](#7-contributing-checklist)
+- [8. Known limits](#8-known-limits)
+
 ## 1. Rules
 
 1. **Colours come from tokens only.** Never write a hex value, `rgb()`, `rgba()`, `hsl()` or a colour
@@ -201,6 +258,7 @@ Keep heading levels in order (h1 → h2 → h3).
 
 - `.rise-in` fades a card in; stagger siblings with `style="--stagger: 1"` (70ms per step).
 - `.card.is-lift` lifts a card on hover.
+- `SplitView` (4.15) glides its columns with `cubic-bezier(0.22, 1, 0.36, 1)` over 0.45s.
 - All of it is disabled under `prefers-reduced-motion: reduce`. New animations must be too.
 
 ### 2.6 Theming
@@ -478,26 +536,29 @@ and use the global table classes.
 
 ### 4.10d Positions page (`features/positions`)
 
-`/positions` is a parent with two presentational children and a dialog:
+`/positions` is a parent with two presentational children and a detail pane (a split view, 4.15):
 
 | Component | Role |
 |---|---|
-| `Positions` (`positions.ts`) | Owns the data (from `AccountOverviewStore`), the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is open |
+| `Positions` (`positions.ts`) | Owns the data (from `AccountOverviewStore`), the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is selected |
 | `PositionsCard` (`app-positions-card`) | **Default view.** A grid of clickable cards: logo, symbol, name and **cost basis only**. Four to five per desktop row (`auto-fill, minmax(210px, 1fr)`), one per row under 600px. Each card is a `<button>` |
 | `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, total row. Rows are `clickable-row`s (Tab, Enter, Space) |
-| `PositionDialog` (`app-position-dialog`) | Opens from either view. Symbol, name and cost basis on one line, then quantity and average cost, then **"How your cost basis adds up"**: the filled BUY orders for that symbol (date, quantity, price, cost), a total row and the sum written out (`$8,760.00 ÷ 50 = $175.20`). A sentence covers sells ("selling lowers the quantity, not the average cost") and a note appears when the history does not account for the holding. **Buy more** and **Sell** switch the dialog to the shared order ticket (below) |
+| `PositionDetail` (`app-position-detail`) | Opens from either view, in the right-hand pane on wide screens and in a dialog on narrow ones. Symbol, name and cost basis on one line, then quantity and average cost, then **"How your cost basis adds up"**: the filled BUY orders for that symbol (date, quantity, price, cost), a total row and the sum written out (`$8,760.00 ÷ 50 = $175.20`). A sentence covers sells ("selling lowers the quantity, not the average cost") and a note appears when the history does not account for the holding. **Buy more** and **Sell** switch the pane to the shared trade panel (4.16): the same price card and order ticket the market data page uses |
 
 The switch sits at the top right: two icon buttons in a `role="group"`, `aria-pressed`, tooltips ("Card view" with the
 four-squares icon, "Table view" with the list icon). The choice is remembered in `localStorage`
-(`positions.view`) as a per-browser convenience. The dialog follows the live row, so quantity and cost update as
+(`positions.view`) as a per-browser convenience. The detail follows the live row, so quantity and cost update as
 orders fill, and keeps the last row if the position disappears (sold out) so the order confirmation stays on screen.
 The breakdown is `positionBreakdown()` in `core/position-lots.ts`; it mirrors the executor's weighted-average rule.
 
 ### 4.10e Market data page (`features/market`)
 
 `/market` ("Market data" in the sidebar) hosts the live market board, which used to sit on the dashboard. The board
-(`app-market-board`) and the quote dialog (`app-quote-dialog`) live in `features/market`. Rows show the instrument
-logo; the quote dialog shows what the price is in your account currency when the instrument is quoted in another one.
+(`app-market-board`) and the quote detail (`app-quote-detail`) live in `features/market`. Rows show the instrument
+logo. Clicking a row opens the quote detail in a split view (4.15): the table compresses to half the screen and the
+detail glides in on the right (a dialog under 1100px). The selected row is filled with the primary colour. The detail
+shows the price card (4.16, which also gives the price in your account currency when the instrument is quoted in
+another one); **Buy** and **Sell** open the shared trade panel.
 
 ### 4.10f Dashboard (`features/dashboard`)
 
@@ -523,7 +584,7 @@ wherever a bare symbol is not enough (position cards and rows, order history, re
 
 ### 4.12 Sheet dialog (`shared/ui/sheet-dialog`)
 
-The modal shell behind the quote dialog and the position dialog: a native `<dialog>` (focus trap, Esc, inert
+The modal shell used by the split view (4.15) on narrow screens, and by the other dialogs: a native `<dialog>` (focus trap, Esc, inert
 background) with a rounded panel, blurred backdrop and rise-in animation (all disabled under reduced motion).
 
 ```html
@@ -564,12 +625,63 @@ the chart; the SVG is a labelled image.
 
 ### 4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)
 
-Moved from `features/dashboard` so any screen can trade: the quote dialog (market board) and the position dialog
-(Positions) both embed `<app-order-ticket [row]="marketRow" [(side)]="side" (cancelled)="..." (done)="..." />`.
+Moved from `features/dashboard` so any screen can trade. It is embedded by the trade panel (4.16), which the quote
+detail (market board) and the position detail (Positions) both use: `<app-order-ticket [row]="marketRow" [(side)]="side" (cancelled)="..." (done)="..." />`.
 `MarketRow` (`core/market-row.ts`) is the instrument as the ticket needs it: quote, change, previous close, currency.
 For an instrument quoted in another currency than the account the ticket shows the estimate in both, compares cash in
 the account currency (using the rates `MarketService.fxRates()` keeps from the market board), and the confirmation shows
 the limit price in the account currency. See `CURRENCY.md`.
+
+### 4.15 Split view (`shared/ui/split-view`)
+
+A list with a detail pane beside it. On wide screens (`min-width: 1100px`, exported as `SPLIT_VIEW_QUERY`) selecting
+something compresses the list to half the width and glides the detail in on the right; under that width the same
+detail opens in a `SheetDialog` (4.12), so mobile keeps the pop-up. Market data and Positions both use it.
+
+```html
+<app-split-view [open]="!!selected()" labelledBy="detail-title" testId="my-detail" (closed)="selected.set(null)">
+  <div list>...table or cards...</div>
+  <div detail>@if (selected(); as row) { <app-quote-detail [row]="row" (closed)="selected.set(null)" /> }</div>
+</app-split-view>
+```
+
+| Input / output | Meaning |
+|---|---|
+| `open` | Whether a detail is showing |
+| `labelledBy` | Id of the heading inside the detail (the shared header uses `detail-title`), for `aria-labelledby` |
+| `testId` | `data-testid` of the pane (or of the dialog on narrow screens) |
+| `(closed)` | Esc inside the pane, or Esc / backdrop click on the dialog; the detail also has its own close button |
+
+How it behaves:
+
+- **The slide.** `.split` is a grid whose columns are `1fr 0` closed and `1fr calc(50% + gap / 2)` open (a percentage: `cqw` on the grid itself would resolve against an ancestor container and shrink the page), so only
+  lengths and `fr` are interpolated and the grid animates smoothly (0.45s, ease-out). The detail panel keeps its final
+  width the whole time and the column clips it, so it is revealed rather than squeezed and reflowed. Do not animate a
+  column to `minmax(...)` or between `fr` units; it jumps.
+- **Compressing.** The list is a container. Tables hide low-priority columns (`.col-extra`) with `@container`
+  queries, so they cope with the half-width pane and a phone alike; never pass a "compact" flag down.
+- **Selection.** Selected card: primary border plus `--accent-primary-container-background`. Selected table row: the
+  full `--accent-primary-background` with `--accent-primary-foreground` text (and `--label-subtle` set to the same, so
+  instrument labels stay legible). Tokens only; the selected item also carries `aria-current` or is the button that
+  opened the pane.
+- **Focus.** The pane takes focus when it opens (`tabindex="-1"`), Esc closes it.
+- **Without `matchMedia`** (jsdom, old browsers) it uses the dialog.
+- Motion is disabled under `prefers-reduced-motion`.
+
+### 4.16 Quote summary and trade panel (`shared/ui/quote-summary`, `shared/ui/trade-panel`)
+
+The detail pane for an instrument. Both pages share the second screen so buying and selling looks and works the same
+wherever it starts.
+
+- `app-quote-summary` takes a `MarketRow`: the header (logo, symbol with id `detail-title`, name, asset chip, close
+  button) and the gradient **price card** (price, change chip, previous close, date, and the account-currency
+  equivalent for other currencies).
+- `app-order-ticket` is described in 4.14.
+- `app-trade-panel` puts the two together: price card on top, order ticket below. Inputs `row` and `side`
+  (`model`); outputs `cancelled`, `done`, `closed`.
+- **First screens differ, second screen is shared.** `QuoteDetail` shows the price card, a chart placeholder and
+  Buy / Sell. `PositionDetail` shows the holding (quantity, average cost, the buys behind it). Buy / Sell on either
+  opens `app-trade-panel`. A mode change is kept while the same instrument gets fresh prices and resets for another.
 
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
