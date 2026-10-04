@@ -31,6 +31,8 @@ export const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   'RES-404':
     'That page or service could not be found. Refresh and try again; if it keeps happening, contact support.',
   'SRV-500': 'The trading service hit an unexpected problem. Please try again in a moment.',
+  'FX-503':
+    'We could not get a currency exchange rate for this order right now. Please try again in a moment, or place a market order.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

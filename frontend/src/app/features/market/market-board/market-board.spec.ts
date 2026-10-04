@@ -44,7 +44,7 @@ describe('MarketBoardPanel', () => {
     await load();
 
     expect(symbols()).toEqual(['AAPL', 'MSFT', 'TSLA', 'NVDA', 'AMZN']);
-    expect(byTestId('market-range')?.textContent).toContain('1–5 of 7');
+    expect(byTestId('pagination-range')?.textContent).toContain('1-5 of 7');
     const aapl = root.querySelector('.market-row')!;
     expect(aapl.classList.contains('is-up')).toBe(true);
     expect(aapl.textContent).toContain('$200.00');
@@ -81,7 +81,7 @@ describe('MarketBoardPanel', () => {
     await fixture.whenStable();
 
     expect(symbols()).toEqual(['GOOG', 'META']);
-    expect(byTestId('market-range')?.textContent).toContain('6–7 of 7');
+    expect(byTestId('pagination-range')?.textContent).toContain('6-7 of 7');
   });
 
   it('changes the page size, returns to page 1 and ignores unknown sizes', async () => {
@@ -89,12 +89,12 @@ describe('MarketBoardPanel', () => {
     root.querySelector<HTMLButtonElement>('button[aria-label="Next page"]')!.click();
     await fixture.whenStable();
 
-    const select = byTestId<HTMLSelectElement>('market-page-size')!;
+    const select = root.querySelector<HTMLSelectElement>('[data-testid="pagination-page-size"] select')!;
     select.value = '10';
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
     expect(symbols()).toHaveLength(7);
-    expect(byTestId('market-range')?.textContent).toContain('1–7 of 7');
+    expect(byTestId('pagination-range')?.textContent).toContain('1-7 of 7');
 
     select.innerHTML += '<option value="99">99</option>';
     select.value = '99';

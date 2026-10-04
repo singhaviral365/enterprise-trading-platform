@@ -22,6 +22,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
       },
       {
+        path: 'market',
+        title: 'Market data | Trading Platform',
+        loadComponent: () => import('./features/market/market').then((m) => m.Market),
+      },
+      {
         path: 'orders',
         title: 'Order history | Trading Platform',
         loadComponent: () => import('./features/orders/order-history/order-history').then((m) => m.OrderHistory),

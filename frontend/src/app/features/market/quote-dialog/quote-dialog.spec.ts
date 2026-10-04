@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideApiClients } from '../../../api/api.config';
-import type { MarketRow } from '../market-board/market-board';
+import type { MarketRow } from '../../../core/market-row';
 import { QuoteDialog } from './quote-dialog';
 
 const ROW: MarketRow = {

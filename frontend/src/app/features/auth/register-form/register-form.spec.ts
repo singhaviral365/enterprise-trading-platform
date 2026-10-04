@@ -52,7 +52,7 @@ describe('RegisterForm', () => {
     await fixture.whenStable();
 
     expect(byTestId<HTMLButtonElement>('register-submit')!.disabled).toBe(true);
-    expect(root.textContent).toContain('Password needs one capital letter (A–Z).');
+    expect(root.textContent).toContain('Password needs one capital letter (A-Z).');
   });
 
   it.each(['9trader.a', 'trader.one', 'traderone7'])('blocks registration for the username %p', async (username) => {

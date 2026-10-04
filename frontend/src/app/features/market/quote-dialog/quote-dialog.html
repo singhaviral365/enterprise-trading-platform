@@ -1,11 +1,4 @@
-<dialog
-  #dialogElement
-  class="quote-dialog"
-  aria-labelledby="quote-dialog-title"
-  data-testid="quote-dialog"
-  (cancel)="onCancel($event)"
-  (click)="onClick($event)"
->
+<app-sheet-dialog [open]="!!row()" labelledBy="quote-dialog-title" testId="quote-dialog" (closed)="closed.emit()">
   @if (row(); as current) {
     <div
       class="quote-panel"
@@ -13,7 +6,7 @@
       [class.is-down]="(current.change ?? current.changePercent ?? 0) < 0"
     >
       <header class="quote-header">
-        <span class="quote-tile" aria-hidden="true">{{ current.quote.symbol.slice(0, 2) }}</span>
+        <app-instrument-icon [symbol]="current.quote.symbol" [iconUrl]="current.quote.iconUrl" [size]="48" />
         <div class="quote-heading">
           <h2 id="quote-dialog-title" class="quote-title">{{ current.quote.symbol }}</h2>
           <p class="quote-subtitle">
@@ -50,6 +43,11 @@
               {{ current.quote.price | number: '1.2-4' }}
             }
           </p>
+          @if (accountEquivalent(); as equivalent) {
+            <p class="quote-equivalent" data-testid="quote-dialog-equivalent">
+              ≈ {{ equivalent.amount | currency: equivalent.currency }}
+            </p>
+          }
           @if (current.change !== null || current.changePercent !== null) {
             <p class="quote-move">
               <i
@@ -115,4 +113,4 @@
       }
     </div>
   }
-</dialog>
+</app-sheet-dialog>

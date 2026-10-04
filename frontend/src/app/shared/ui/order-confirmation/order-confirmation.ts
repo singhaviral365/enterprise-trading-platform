@@ -1,7 +1,7 @@
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { OrderPricingType, OrderResponse, OrderSide, OrderStatus } from '../../../api/generated/trade';
-import { OrderStatusBadge } from '../../../shared/ui/order-status/order-status';
+import { OrderStatusBadge } from '../order-status/order-status';
 
 /** Shown after an order is accepted by the Trade API: order number, status and what was sent. */
 @Component({
@@ -15,7 +15,11 @@ export class OrderConfirmation {
   protected readonly OrderPricingType = OrderPricingType;
 
   readonly order = input.required<OrderResponse>();
-  /** ISO currency code of the instrument, for formatting the price; null shows a plain number. */
+  /**
+   * ISO code of the account currency, for formatting the price: the Trade API records and returns every
+   * price in the account's currency (a limit price entered in the instrument's currency is converted).
+   * Null shows a plain number.
+   */
   readonly currency = input<string | null>(null);
   readonly another = output<void>();
   readonly done = output<void>();

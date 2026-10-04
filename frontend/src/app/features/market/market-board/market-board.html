@@ -65,7 +65,7 @@
                 [attr.aria-label]="'View ' + row.quote.symbol + (row.quote.name ? ', ' + row.quote.name : '') + ' details'"
                 (click)="open(row)"
               >
-                <span class="ticker-tile" aria-hidden="true">{{ row.quote.symbol.slice(0, 2) }}</span>
+                <app-instrument-icon [symbol]="row.quote.symbol" [iconUrl]="row.quote.iconUrl" [size]="36" />
                 <span class="ticker-text">
                   <span class="ticker">{{ row.quote.symbol }}</span>
                   @if (row.quote.name) {
@@ -122,24 +122,13 @@
   </div>
 
   <div class="table-footer" data-testid="market-pagination">
-    <div class="page-size">
-      <label for="market-page-size">Rows per page</label>
-      <select
-        id="market-page-size"
-        class="page-size-select"
-        data-testid="market-page-size"
-        [value]="pageSize()"
-        (change)="onPageSizeChange($event)"
-      >
-        @for (size of pageSizes; track size) {
-          <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
-        }
-      </select>
-      <span class="page-range" aria-live="polite" data-testid="market-range">
-        {{ range().from }}-{{ range().to }} of {{ range().total }}
-      </span>
-    </div>
-    <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
+    <app-pagination
+      [pageSizeOptions]="pageSizes"
+      [(pageSize)]="pageSize"
+      [totalItems]="rows().length"
+      [totalPages]="totalPages()"
+      [(currentPage)]="page"
+    />
   </div>
   @if (errorMessage()) {
     <p class="form-hint refresh-error" role="status">{{ errorMessage() }} Showing the last prices we received.</p>

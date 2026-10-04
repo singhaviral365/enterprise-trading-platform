@@ -61,7 +61,7 @@ export class AccountSetupForm implements OnInit {
     maxLength(path.clientName, 100, { message: 'Name must be 100 characters or fewer.' });
     required(path.phoneNo, { message: 'Enter your phone number.' });
     pattern(path.phoneNo, /^\+?[0-9\s\-()]{10,20}$/, {
-      message: 'Enter 10–20 digits; spaces, dashes, brackets and a leading + are allowed.',
+      message: 'Enter 10-20 digits; spaces, dashes, brackets and a leading + are allowed.',
     });
     required(path.email, { message: 'Enter your email address.' });
     email(path.email, { message: 'Enter a valid email address, like name@example.com.' });

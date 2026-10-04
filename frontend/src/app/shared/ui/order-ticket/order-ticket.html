@@ -1,5 +1,5 @@
 @if (liveOrder(); as order) {
-  <app-order-confirmation [order]="order" [currency]="row().currency" (another)="placeAnother()" (done)="done.emit(order)" />
+  <app-order-confirmation [order]="order" [currency]="accountCurrency()" (another)="placeAnother()" (done)="done.emit(order)" />
 } @else {
   <form class="ticket" novalidate (submit)="onSubmit($event)" data-testid="order-ticket">
     <app-side-toggle [(side)]="side" (sideChange)="serverError.set('')" />
@@ -124,6 +124,17 @@
           }
         </dd>
       </div>
+      @if (estimateInAccountCurrency(); as converted) {
+        <div data-testid="order-estimate-converted">
+          <dt>≈ {{ side() === OrderSide.Buy ? 'Cost' : 'Proceeds' }} in {{ accountCurrency() }}</dt>
+          <dd>{{ converted | currency: accountCurrency() ?? 'USD' }}</dd>
+        </div>
+      } @else if (needsConversion()) {
+        <div data-testid="order-estimate-no-rate">
+          <dt>Settles in {{ accountCurrency() }}</dt>
+          <dd>at the live exchange rate</dd>
+        </div>
+      }
       @if (side() === OrderSide.Buy && cash() !== null) {
         <div>
           <dt>Available cash</dt>

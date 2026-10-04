@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Service, inject } from '@angular/core';
+import { Service, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { MARKET_API_URL } from './api.config';
 
@@ -11,6 +11,10 @@ export interface MarketQuote {
   readonly price: number | null;
   /** Every field Fauxnance returned for the symbol, as-is; null when there was no quote. */
   readonly details: Readonly<Record<string, unknown>> | null;
+  /** ISO code `price` is quoted in: the quote API's own currency, else the instrument's. */
+  readonly currency?: string | null;
+  /** Public path of the company logo, e.g. `/assets/icons/AAPL.svg`; null when the instrument has none. */
+  readonly iconUrl?: string | null;
 }
 
 export interface MarketBoard {
@@ -18,6 +22,29 @@ export interface MarketBoard {
   readonly asOf: string;
   /** True when the trade-executor could not refresh and is serving its last snapshot. */
   readonly stale: boolean;
+  /** Currency the `fxRates` are relative to (USD); absent when the exchange rate service is unavailable. */
+  readonly baseCurrency?: string | null;
+  /** One unit of `baseCurrency` in every currency, from ExchangeRate-API (fetched by the backend only). */
+  readonly fxRates?: Readonly<Record<string, number>> | null;
+}
+
+/** Exchange rates relative to a base currency, as published with the market board. */
+export interface FxRates {
+  readonly base: string;
+  readonly rates: Readonly<Record<string, number>>;
+}
+
+/**
+ * `amount` of `from` expressed in `to`, or null when the rates do not cover either currency. The
+ * backend does the real conversion when an order settles; this is only for showing estimates.
+ */
+export function convertCurrency(rates: FxRates | null, amount: number, from: string, to: string): number | null {
+  if (from === to) {
+    return amount;
+  }
+  const fromRate = rates?.rates[from];
+  const toRate = rates?.rates[to];
+  return fromRate && toRate ? (amount / fromRate) * toRate : null;
 }
 
 /** Error thrown by `MarketService`; `message` is safe to show to the user as-is. */
@@ -36,10 +63,18 @@ export class MarketError extends Error {
 export class MarketService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(MARKET_API_URL);
+  private readonly latestRates = signal<FxRates | null>(null);
+
+  /** The exchange rates from the most recent board that carried them; null until one has loaded. */
+  readonly fxRates = this.latestRates.asReadonly();
 
   async getBoard(): Promise<MarketBoard> {
     try {
-      return await firstValueFrom(this.http.get<MarketBoard>(`${this.baseUrl}/quotes`));
+      const board = await firstValueFrom(this.http.get<MarketBoard>(`${this.baseUrl}/quotes`));
+      if (board.baseCurrency && board.fxRates) {
+        this.latestRates.set({ base: board.baseCurrency, rates: board.fxRates });
+      }
+      return board;
     } catch (error) {
       throw toMarketError(error);
     }

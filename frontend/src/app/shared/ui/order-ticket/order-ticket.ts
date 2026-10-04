@@ -8,10 +8,11 @@ import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthDialogService } from '../../../core/auth-dialog.service';
 import { describeError } from '../../../core/errors/describe-error';
 import { newIdempotencyKey } from '../../../core/idempotency-key';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
-import type { MarketRow } from '../market-board/market-board';
+import { MarketService, convertCurrency } from '../../../core/market.service';
+import type { MarketRow } from '../../../core/market-row';
 import { OrderConfirmation } from '../order-confirmation/order-confirmation';
 import { SideToggle } from '../side-toggle/side-toggle';
+import { Spinner } from '../spinner/spinner';
 
 interface TicketModel {
   quantity: string;
@@ -34,6 +35,7 @@ const MAX_QUANTITY = 1_000_000;
 export class OrderTicket {
   private readonly trade = inject(TradeApi);
   private readonly authDialog = inject(AuthDialogService);
+  private readonly market = inject(MarketService);
   protected readonly store = inject(AccountOverviewStore);
 
   /** Exposed so the template compares against the generated enums, never string literals. */
@@ -122,16 +124,43 @@ export class OrderTicket {
   protected readonly unitPrice = computed(() =>
     this.orderType() === OrderPricingType.Limit ? this.limitValue() : this.row().quote.price,
   );
+  /** Quantity times price, in the currency the instrument is quoted in. */
   protected readonly estimate = computed(() => {
     const quantity = this.quantityValue();
     const price = this.unitPrice();
     return quantity !== null && price !== null ? quantity * price : null;
   });
-  /** A buy that costs more than the available cash can only be rejected. */
-  protected readonly insufficientCash = computed(() => {
+  /** The instrument is quoted in a different currency from the account, so amounts settle after conversion. */
+  protected readonly needsConversion = computed(() => {
+    const quoted = this.row().currency;
+    const account = this.accountCurrency();
+    return quoted !== null && account !== null && quoted !== account;
+  });
+  /**
+   * The estimate in the account's currency, at the exchange rate the market board carries. Null when no
+   * conversion is needed, or when the rates (or the estimate) are not available.
+   */
+  protected readonly estimateInAccountCurrency = computed(() => {
     const estimate = this.estimate();
+    const quoted = this.row().currency;
+    const account = this.accountCurrency();
+    if (!this.needsConversion() || estimate === null || quoted === null || account === null) {
+      return null;
+    }
+    return convertCurrency(this.market.fxRates(), estimate, quoted, account);
+  });
+  /**
+   * A buy that costs more than the available cash can only be rejected. The cost is compared in the account's
+   * currency, so a 1,100 rupee share is not mistaken for 1,100 dollars. If the two currencies differ and no
+   * rate is available the form cannot tell, and leaves the decision to the Trade Executor.
+   */
+  protected readonly insufficientCash = computed(() => {
     const cash = this.cash();
-    return this.side() === OrderSide.Buy && estimate !== null && cash !== null && estimate > cash;
+    if (this.side() !== OrderSide.Buy || cash === null) {
+      return false;
+    }
+    const cost = this.needsConversion() ? this.estimateInAccountCurrency() : this.estimate();
+    return cost !== null && cost > cash;
   });
   /** Selling more than is held can only be rejected. */
   protected readonly exceedsHolding = computed(() => {

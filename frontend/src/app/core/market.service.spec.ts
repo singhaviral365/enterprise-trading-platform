@@ -5,6 +5,7 @@ import { throwError } from 'rxjs';
 import {
   CHANGE_FIELDS,
   MarketBoard,
+  convertCurrency,
   MarketError,
   MarketQuote,
   MarketService,
@@ -53,6 +54,28 @@ describe('MarketService', () => {
     expect(error).toBeInstanceOf(MarketError);
     expect((error as MarketError).status).toBe(status);
     expect((error as MarketError).message).toMatch(message);
+  });
+
+  it('keeps the exchange rates the board carries for the order ticket and quote dialog', async () => {
+    expect(service.fxRates()).toBeNull();
+
+    const board = service.getBoard();
+    http.expectOne(QUOTES_URL).flush({ ...BOARD, baseCurrency: 'USD', fxRates: { USD: 1, INR: 96.35 } });
+    await board;
+
+    expect(service.fxRates()).toEqual({ base: 'USD', rates: { USD: 1, INR: 96.35 } });
+  });
+
+  it('keeps the previous rates when a later board arrives without any', async () => {
+    const first = service.getBoard();
+    http.expectOne(QUOTES_URL).flush({ ...BOARD, baseCurrency: 'USD', fxRates: { USD: 1, INR: 96.35 } });
+    await first;
+
+    const second = service.getBoard();
+    http.expectOne(QUOTES_URL).flush(BOARD);
+    await second;
+
+    expect(service.fxRates()?.rates['INR']).toBe(96.35);
   });
 
   it('reports a network failure as unavailable', async () => {
@@ -108,5 +131,26 @@ describe('quote field helpers', () => {
     expect(quoteNumber(quote({ change: '2.25' }), CHANGE_FIELDS)).toBe(2.25);
     expect(quoteNumber(quote({ change: 'n/a' }), CHANGE_FIELDS)).toBeNull();
     expect(quoteNumber(quote({ change: true }), CHANGE_FIELDS)).toBeNull();
+  });
+});
+
+describe('convertCurrency', () => {
+  const rates = { base: 'USD', rates: { USD: 1, INR: 100, EUR: 0.5 } };
+
+  it('returns the amount unchanged for the same currency, with or without rates', () => {
+    expect(convertCurrency(null, 42, 'USD', 'USD')).toBe(42);
+    expect(convertCurrency(rates, 42, 'INR', 'INR')).toBe(42);
+  });
+
+  it('converts through the base currency', () => {
+    expect(convertCurrency(rates, 1100, 'INR', 'USD')).toBe(11);
+    expect(convertCurrency(rates, 10, 'USD', 'INR')).toBe(1000);
+    expect(convertCurrency(rates, 1100, 'INR', 'EUR')).toBe(5.5);
+  });
+
+  it('gives up when the rates are missing or lack a currency', () => {
+    expect(convertCurrency(null, 1100, 'INR', 'USD')).toBeNull();
+    expect(convertCurrency(rates, 1100, 'JPY', 'USD')).toBeNull();
+    expect(convertCurrency(rates, 1100, 'INR', 'JPY')).toBeNull();
   });
 });

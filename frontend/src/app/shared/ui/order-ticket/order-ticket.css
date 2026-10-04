@@ -55,7 +55,7 @@ input[type='radio'] {
   border-radius: 14px;
   background: var(--surface-background-bright);
   cursor: pointer;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.18s ease, transform 0.18s ease;
 }
 
 .type-card:hover {
@@ -129,12 +129,13 @@ input[type='radio'] {
   border: 1px solid var(--surface-line);
   border-radius: 10px;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 .ticket-input:focus {
   border-color: var(--accent-primary-background);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent);
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 1px;
 }
 
 .ticket-input.is-error {
@@ -280,7 +281,6 @@ input[type='radio'] {
   font-weight: 700;
   color: var(--status-success-foreground);
   background: linear-gradient(135deg, var(--status-success-background), color-mix(in srgb, var(--status-success-background) 75%, #0f766e));
-  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--status-success-background) 80%, transparent);
 }
 
 .submit-btn:hover:not(:disabled) {
@@ -292,7 +292,6 @@ input[type='radio'] {
 .submit-btn:disabled {
   color: var(--surface-line);
   background: var(--surface-line-subtle);
-  box-shadow: none;
   filter: none;
   transform: none;
 }

@@ -2,8 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideApiClients } from '../../../api/api.config';
+import { MarketService } from '../../../core/market.service';
 import { SessionService } from '../../../core/session.service';
-import type { MarketRow } from '../market-board/market-board';
+import type { MarketRow } from '../../../core/market-row';
 import { OrderTicket } from './order-ticket';
 
 const ROW: MarketRow = {
@@ -340,6 +341,64 @@ describe('OrderTicket', () => {
       await press('order-quantity-increase');
 
       expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+    });
+  });
+
+  describe('instrument quoted in another currency', () => {
+    const INR_ROW: MarketRow = {
+      quote: { symbol: 'INFY.NS', name: 'Infosys Ltd', assetClass: 'EQUITY', price: 1100, details: { currency: 'INR' } },
+      change: 1,
+      changePercent: 0.1,
+      previousClose: 1099,
+      currency: 'INR',
+    };
+
+    async function loadRates(): Promise<void> {
+      const loading = TestBed.inject(MarketService).getBoard();
+      http.expectOne('/api/v1/market/quotes').flush({
+        quotes: [],
+        asOf: '2026-10-04T05:00:00Z',
+        stale: false,
+        baseCurrency: 'USD',
+        fxRates: { USD: 1, INR: 100 },
+      });
+      await loading;
+      fixture.componentRef.setInput('row', INR_ROW);
+      await fixture.whenStable();
+    }
+
+    it('shows the cost in the account currency next to the quoted one', async () => {
+      await loadRates();
+
+      await type('order-quantity', '10');
+
+      expect(byTestId('order-estimate')?.textContent).toContain('₹11,000.00');
+      expect(byTestId('order-estimate-converted')?.textContent).toContain('$110.00');
+    });
+
+    it('checks the cash in the account currency, not against the raw rupee amount', async () => {
+      await loadRates();
+
+      // 300 shares = 330,000 rupees = $3,300: affordable with $25,000, although 330,000 > 25,000.
+      await type('order-quantity', '300');
+      expect(byTestId('order-warning')).toBeNull();
+      expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(false);
+
+      // 3,000 shares = $33,000: more than the cash.
+      await type('order-quantity', '3000');
+      expect(byTestId('order-warning')?.textContent).toContain('more than your available cash');
+      expect(byTestId<HTMLButtonElement>('order-submit')!.disabled).toBe(true);
+    });
+
+    it('leaves the cash check to the Trade Executor when no exchange rate is available', async () => {
+      fixture.componentRef.setInput('row', INR_ROW);
+      await fixture.whenStable();
+
+      await type('order-quantity', '3000');
+
+      expect(byTestId('order-estimate-converted')).toBeNull();
+      expect(byTestId('order-estimate-no-rate')?.textContent).toContain('Settles in USD');
+      expect(byTestId('order-warning')).toBeNull();
     });
   });
 });

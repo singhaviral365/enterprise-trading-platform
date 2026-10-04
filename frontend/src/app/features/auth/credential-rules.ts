@@ -45,11 +45,11 @@ export function usernameRules(username: string): readonly CredentialRule[] {
   return [
     {
       id: 'length',
-      label: `${USERNAME_MIN}–${USERNAME_MAX} characters`,
+      label: `${USERNAME_MIN}-${USERNAME_MAX} characters`,
       met: username.length >= USERNAME_MIN && username.length <= USERNAME_MAX,
     },
     { id: 'letter', label: 'Starts with a letter', met: /^[A-Za-z]/.test(username) },
-    { id: 'digit', label: 'One number (0–9)', met: /[0-9]/.test(username) },
+    { id: 'digit', label: 'One number (0-9)', met: /[0-9]/.test(username) },
     {
       id: 'symbol',
       label: 'One of . _ - (between characters)',
@@ -65,11 +65,11 @@ export function passwordRules(password: string, username: string): readonly Cred
   return [
     {
       id: 'length',
-      label: `${PASSWORD_MIN}–${PASSWORD_MAX} characters`,
+      label: `${PASSWORD_MIN}-${PASSWORD_MAX} characters`,
       met: password.length >= PASSWORD_MIN && password.length <= PASSWORD_MAX,
     },
-    { id: 'upper', label: 'One capital letter (A–Z)', met: /[A-Z]/.test(password) },
-    { id: 'digit', label: 'One number (0–9)', met: /[0-9]/.test(password) },
+    { id: 'upper', label: 'One capital letter (A-Z)', met: /[A-Z]/.test(password) },
+    { id: 'digit', label: 'One number (0-9)', met: /[0-9]/.test(password) },
     { id: 'symbol', label: 'One special symbol, e.g. ! @ # $ %', met: /[^A-Za-z0-9\s]/.test(password) },
     { id: 'different', label: 'Different from your username', met: password.length > 0 && !sameAsUsername },
   ];

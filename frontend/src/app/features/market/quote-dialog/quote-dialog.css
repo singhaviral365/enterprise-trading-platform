@@ -1,54 +1,7 @@
-.quote-dialog {
-  margin: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  max-width: none;
-  max-height: none;
-  overflow: visible;
-  perspective: 1200px;
-}
-
-.quote-dialog::backdrop {
-  background: rgb(20 20 20 / 0.35);
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
-  backdrop-filter: blur(8px) saturate(120%);
-  animation: backdrop-in 0.2s ease-out;
-}
-
-.quote-panel {
-  position: relative;
-  width: min(720px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  padding: 24px;
-  background: var(--surface-background-bright);
-  color: var(--surface-foreground);
-  border: 1px solid var(--surface-line-subtle);
-  border-radius: 22px;
-  transform-origin: 50% 100%;
-  animation: panel-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
 .quote-header {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.quote-tile {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--accent-primary-foreground);
-  background: var(--accent-gradient);
-  box-shadow: var(--accent-glow);
 }
 
 .quote-heading {
@@ -105,9 +58,6 @@
   border-radius: 18px;
   color: var(--hero-foreground);
   background: var(--hero-gradient);
-  box-shadow:
-    0 1px 0 rgb(255 255 255 / 0.18) inset,
-    0 18px 36px -18px rgb(6 95 70 / 0.65);
 }
 
 .quote-hero::after {
@@ -166,6 +116,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.quote-equivalent {
+  position: relative;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
 .quote-move {
   position: relative;
   display: inline-flex;
@@ -211,7 +170,6 @@
   font-weight: 600;
   color: var(--surface-foreground-subtle);
   background: var(--surface-background-bright);
-  box-shadow: var(--card-shadow);
 }
 
 .quote-actions {
@@ -230,25 +188,5 @@
   .trade-btn:hover:not(:disabled) {
     transition: none;
     transform: none;
-  }
-}
-
-@keyframes backdrop-in {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px) rotateX(10deg) scale(0.96);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .quote-dialog::backdrop,
-  .quote-panel {
-    animation: none;
   }
 }

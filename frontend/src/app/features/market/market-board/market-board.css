@@ -57,10 +57,10 @@
 @keyframes pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 5px transparent;
+    opacity: 0.35;
   }
 }
 
@@ -110,7 +110,7 @@
 /* Rows are cards of their own: rounded, and they lift on hover. */
 .market-row {
   position: relative;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease;
 }
 
 .market-row > * {
@@ -133,7 +133,6 @@
 
 .market-row:hover {
   transform: translateY(-1px);
-  box-shadow: var(--card-shadow);
 }
 
 .row-link {
@@ -164,19 +163,6 @@
 .row-link:focus-visible::after {
   outline: 2px solid var(--accent-primary-background);
   outline-offset: 2px;
-}
-
-.ticker-tile {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--accent-primary-foreground);
-  background: var(--accent-gradient);
-  box-shadow: var(--accent-glow);
 }
 
 .ticker-text {
@@ -276,45 +262,8 @@
   }
 }
 
-/* Rows-per-page selector and page navigation under the table. */
+/* Rows-per-page selector and page navigation (the shared pagination component) under the table. */
 .table-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
   margin-top: 12px;
-  padding-top: 12px;
   border-top: 1px solid var(--surface-line-subtle);
 }
-
-.page-size {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--surface-foreground-subtle);
-}
-
-.page-size-select {
-  height: 32px;
-  padding: 0 8px;
-  font: inherit;
-  font-size: 13px;
-  color: var(--surface-foreground);
-  background: var(--surface-background-bright);
-  border: 1px solid var(--surface-line);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.page-size-select:focus-visible {
-  outline: 2px solid var(--accent-primary-background);
-  outline-offset: 2px;
-}
-
-.page-range {
-  margin-left: 4px;
-  font-variant-numeric: tabular-nums;
-}
-

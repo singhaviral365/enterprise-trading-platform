@@ -1,17 +1,8 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, linkedSignal, resource, signal } from '@angular/core';
-import {
-  CHANGE_FIELDS,
-  CHANGE_PERCENT_FIELDS,
-  CURRENCY_FIELDS,
-  MarketBoard,
-  MarketError,
-  MarketQuote,
-  MarketService,
-  PREVIOUS_CLOSE_FIELDS,
-  quoteField,
-  quoteNumber,
-} from '../../../core/market.service';
+import { MarketRow, toMarketRow } from '../../../core/market-row';
+import { MarketBoard, MarketError, MarketService } from '../../../core/market.service';
+import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Pagination } from '../../../shared/ui/pagination/pagination';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { QuoteDialog } from '../quote-dialog/quote-dialog';
@@ -21,19 +12,10 @@ const REFRESH_MS = 30_000;
 
 export const PAGE_SIZES = [5, 10, 25] as const;
 
-export interface MarketRow {
-  readonly quote: MarketQuote;
-  readonly change: number | null;
-  readonly changePercent: number | null;
-  /** Last session's closing price, from the quote's previousClose. */
-  readonly previousClose: number | null;
-  readonly currency: string | null;
-}
-
 /** Live market table: one row per tradable instrument; clicking a row opens its quote details. */
 @Component({
   selector: 'app-market-board',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, Pagination, Spinner, QuoteDialog],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, InstrumentIcon, Pagination, Spinner, QuoteDialog],
   templateUrl: './market-board.html',
   styleUrl: './market-board.css',
 })
@@ -51,19 +33,7 @@ export class MarketBoardPanel {
   });
   protected readonly selected = signal<MarketRow | null>(null);
 
-  protected readonly rows = computed<readonly MarketRow[]>(() => {
-    const quotes = this.latest()?.quotes ?? [];
-    return quotes.map((quote) => {
-      const currency = quoteField(quote, CURRENCY_FIELDS);
-      return {
-        quote,
-        change: quoteNumber(quote, CHANGE_FIELDS),
-        changePercent: quoteNumber(quote, CHANGE_PERCENT_FIELDS),
-        previousClose: quoteNumber(quote, PREVIOUS_CLOSE_FIELDS),
-        currency: typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : null,
-      };
-    });
-  });
+  protected readonly rows = computed<readonly MarketRow[]>(() => (this.latest()?.quotes ?? []).map(toMarketRow));
 
   protected readonly pageSizes = PAGE_SIZES;
   protected readonly pageSize = signal<number>(PAGE_SIZES[0]);
@@ -81,13 +51,6 @@ export class MarketBoardPanel {
     const start = (this.page() - 1) * this.pageSize();
     return this.rows().slice(start, start + this.pageSize());
   });
-  /** e.g. { from: 6, to: 10 } for page 2 of 5-row pages. */
-  protected readonly range = computed(() => {
-    const total = this.rows().length;
-    const from = total === 0 ? 0 : (this.page() - 1) * this.pageSize() + 1;
-    return { from, to: Math.min(total, this.page() * this.pageSize()), total };
-  });
-
   protected readonly errorMessage = computed(() => {
     const error = this.board.error();
     if (!error) {
@@ -99,13 +62,6 @@ export class MarketBoardPanel {
   constructor() {
     const timer = setInterval(() => this.board.reload(), REFRESH_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
-  }
-
-  protected onPageSizeChange(event: Event): void {
-    const size = Number((event.target as HTMLSelectElement).value);
-    if ((PAGE_SIZES as readonly number[]).includes(size)) {
-      this.pageSize.set(size);
-    }
   }
 
   protected open(row: MarketRow): void {
