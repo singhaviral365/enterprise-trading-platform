@@ -12,7 +12,7 @@ export interface ProtectedApi {
 /** Allow-list: the token is sent only to these platform APIs, nothing else. */
 export const PROTECTED_APIS: readonly ProtectedApi[] = [
   // Trade REST API
-  { origin: 'http://localhost:8080', pathPrefixes: ['/api/v1/'] },
+  { origin: 'http://localhost:8081', pathPrefixes: ['/api/v1/'] },
   // Auth API: only the protected route; login/register/refresh take no header
   { origin: 'http://localhost:3000', pathPrefixes: ['/auth/me'] },
 ];

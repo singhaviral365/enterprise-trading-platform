@@ -24,8 +24,8 @@ describe('authInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   it('attaches the bearer token to a platform API request', () => {
-    http.get('http://localhost:8080/api/v1/orders').subscribe();
-    const req = httpMock.expectOne('http://localhost:8080/api/v1/orders');
+    http.get('http://localhost:8081/api/v1/orders').subscribe();
+    const req = httpMock.expectOne('http://localhost:8081/api/v1/orders');
     expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
 
     http.get('http://localhost:3000/auth/me').subscribe();
