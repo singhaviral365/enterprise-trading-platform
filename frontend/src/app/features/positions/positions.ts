@@ -3,9 +3,10 @@ import { Component, computed, inject, linkedSignal, signal } from '@angular/core
 import { RouterLink } from '@angular/router';
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { Pagination } from '../../shared/ui/pagination/pagination';
+import { SplitView } from '../../shared/ui/split-view/split-view';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../shared/ui/tooltip/tooltip';
-import { PositionDialog } from './position-dialog/position-dialog';
+import { PositionDetail } from './position-detail/position-detail';
 import { PositionRow, toPositionRow } from './position-row';
 import { PositionsCard } from './positions-card/positions-card';
 import { PositionsTable } from './positions-table/positions-table';
@@ -33,7 +34,17 @@ function readStoredView(): PositionsView {
  */
 @Component({
   selector: 'app-positions',
-  imports: [CurrencyPipe, Pagination, PositionDialog, PositionsCard, PositionsTable, RouterLink, Spinner, Tooltip],
+  imports: [
+    CurrencyPipe,
+    Pagination,
+    PositionDetail,
+    PositionsCard,
+    PositionsTable,
+    RouterLink,
+    Spinner,
+    SplitView,
+    Tooltip,
+  ],
   templateUrl: './positions.html',
   styleUrl: './positions.css',
 })
@@ -43,14 +54,22 @@ export class Positions {
   protected readonly view = signal<PositionsView>(readStoredView());
 
   protected readonly allRows = computed<readonly PositionRow[]>(() =>
-    [...(this.store.linked()?.overview.positions ?? [])].map(toPositionRow).sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [...(this.store.linked()?.overview.positions ?? [])]
+      .map(toPositionRow)
+      .sort((a, b) => a.symbol.localeCompare(b.symbol)),
   );
-  protected readonly currency = computed(() => this.store.linked()?.overview.balance.currency ?? null);
-  protected readonly totalCostBasis = computed(() => this.allRows().reduce((sum, row) => sum + row.costBasis, 0));
+  protected readonly currency = computed(
+    () => this.store.linked()?.overview.balance.currency ?? null,
+  );
+  protected readonly totalCostBasis = computed(() =>
+    this.allRows().reduce((sum, row) => sum + row.costBasis, 0),
+  );
 
   protected readonly pageSizes = POSITION_PAGE_SIZES;
   protected readonly pageSize = signal<number>(POSITION_PAGE_SIZES[0]);
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.allRows().length / this.pageSize())));
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.allRows().length / this.pageSize())),
+  );
   /** 1-based page; back to page 1 when the size changes, and clamped when a refresh leaves fewer rows. */
   protected readonly page = linkedSignal<{ size: number; total: number }, number>({
     source: () => ({ size: this.pageSize(), total: this.totalPages() }),
@@ -69,12 +88,22 @@ export class Positions {
    * keeps the last one if the position disappears while the dialog is open, e.g. after selling it all, so the
    * order confirmation is not pulled out from under the user.
    */
-  protected readonly dialogRow = linkedSignal<{ symbol: string | null; row: PositionRow | null }, PositionRow | null>({
+  protected readonly detailRow = linkedSignal<
+    { symbol: string | null; row: PositionRow | null },
+    PositionRow | null
+  >({
     source: () => {
       const symbol = this.selectedSymbol();
-      return { symbol, row: symbol === null ? null : (this.allRows().find((candidate) => candidate.symbol === symbol) ?? null) };
+      return {
+        symbol,
+        row:
+          symbol === null
+            ? null
+            : (this.allRows().find((candidate) => candidate.symbol === symbol) ?? null),
+      };
     },
-    computation: (source, previous) => (source.symbol === null ? null : (source.row ?? previous?.value ?? null)),
+    computation: (source, previous) =>
+      source.symbol === null ? null : (source.row ?? previous?.value ?? null),
   });
 
   protected setView(view: PositionsView): void {

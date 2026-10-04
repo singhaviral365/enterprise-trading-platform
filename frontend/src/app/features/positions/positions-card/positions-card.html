@@ -4,6 +4,8 @@
       <button
         type="button"
         class="card is-lift position-card"
+        [class.is-selected]="row.symbol === selectedSymbol()"
+        [attr.aria-current]="row.symbol === selectedSymbol() ? 'true' : null"
         data-testid="position-card"
         [attr.aria-label]="'View ' + row.symbol + ', ' + row.name + ', position details'"
         (click)="selected.emit(row)"

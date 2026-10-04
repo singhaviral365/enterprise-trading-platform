@@ -18,5 +18,7 @@ export class PositionsCard {
   readonly rows = input.required<readonly PositionRow[]>();
   /** ISO code of the account currency, which every position value is in. */
   readonly currency = input<string | null>(null);
+  /** The symbol whose detail is open, if any: its card is highlighted. */
+  readonly selectedSymbol = input<string | null>(null);
   readonly selected = output<PositionRow>();
 }

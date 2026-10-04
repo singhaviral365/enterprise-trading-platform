@@ -1,0 +1,85 @@
+@let current = row();
+<div
+  class="quote-summary"
+  [class.is-up]="(current.change ?? current.changePercent ?? 0) > 0"
+  [class.is-down]="(current.change ?? current.changePercent ?? 0) < 0"
+>
+  <header class="quote-header">
+    <app-instrument-icon
+      [symbol]="current.quote.symbol"
+      [iconUrl]="current.quote.iconUrl"
+      [size]="48"
+    />
+    <div class="quote-heading">
+      <h2 id="detail-title" class="quote-title">{{ current.quote.symbol }}</h2>
+      <p class="quote-subtitle">
+        {{ current.quote.name ?? 'Instrument' }}
+        @if (current.quote.assetClass) {
+          <span class="asset-chip">{{ current.quote.assetClass }}</span>
+        }
+      </p>
+    </div>
+    @if (asOf(); as quotedAt) {
+      <time class="quote-date" [attr.datetime]="quotedAt" data-testid="quote-date">
+        {{ quotedAt | date: 'mediumDate' }}
+      </time>
+    }
+    <button
+      type="button"
+      class="btn is-tertiary is-icon-only quote-close"
+      aria-label="Close"
+      data-testid="quote-close"
+      (click)="closed.emit()"
+    >
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+  </header>
+
+  <section class="quote-hero" aria-label="Price">
+    <div class="hero-main">
+      <p class="quote-price" data-testid="quote-price">
+        @if (current.quote.price === null) {
+          No live quote
+        } @else if (current.currency) {
+          {{ current.quote.price | currency: current.currency }}
+        } @else {
+          {{ current.quote.price | number: '1.2-4' }}
+        }
+      </p>
+      @if (accountEquivalent(); as equivalent) {
+        <p class="quote-equivalent" data-testid="quote-equivalent">
+          ≈ {{ equivalent.amount | currency: equivalent.currency }}
+        </p>
+      }
+      @if (current.change !== null || current.changePercent !== null) {
+        <p class="quote-move">
+          <i
+            class="fas"
+            [class.fa-arrow-trend-up]="(current.change ?? current.changePercent ?? 0) > 0"
+            [class.fa-arrow-trend-down]="(current.change ?? current.changePercent ?? 0) < 0"
+            aria-hidden="true"
+          ></i>
+          @if (current.change !== null) {
+            {{ current.change > 0 ? '+' : '' }}{{ current.change | number: '1.2-2' }}
+          }
+          @if (current.changePercent !== null) {
+            ({{ current.changePercent > 0 ? '+' : ''
+            }}{{ current.changePercent | number: '1.2-2' }}%)
+          }
+        </p>
+      }
+    </div>
+    @if (current.previousClose !== null) {
+      <p class="hero-side" data-testid="quote-previous-close">
+        <span class="hero-side-label">Prev. close</span>
+        <span class="hero-side-value">
+          @if (current.currency) {
+            {{ current.previousClose | currency: current.currency }}
+          } @else {
+            {{ current.previousClose | number: '1.2-4' }}
+          }
+        </span>
+      </p>
+    }
+  </section>
+</div>

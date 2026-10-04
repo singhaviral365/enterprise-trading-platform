@@ -92,6 +92,6 @@ test.describe('place an order', () => {
     await expect(confirmation.getByTestId('order-status')).toHaveText(PLACED_STATUS_LABEL);
 
     await confirmation.getByTestId('order-done').click();
-    await expect(page.getByTestId('quote-dialog')).not.toBeVisible();
+    await expect(page.getByTestId('quote-detail')).not.toBeVisible();
   });
 });

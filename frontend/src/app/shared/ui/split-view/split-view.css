@@ -1,0 +1,70 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Closed: the list has the whole width and the detail column is zero wide. Open: half and half. The column
+   sizes animate, so the detail slides in and the list compresses. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0fr;
+  column-gap: 0;
+  align-items: start;
+  transition:
+    grid-template-columns 0.3s ease,
+    column-gap 0.3s ease;
+}
+
+.split.is-open {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 20px;
+}
+
+.split-list {
+  min-width: 0;
+}
+
+/* Hidden (and out of the accessibility tree) once the slide-out has finished. */
+.split-detail {
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+  min-width: 0;
+  max-height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+  overflow: hidden auto;
+  border-radius: 22px;
+  outline: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    visibility 0s linear 0.3s;
+}
+
+.split.is-open .split-detail {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 0.25s ease 0.1s,
+    visibility 0s;
+}
+
+.split-detail:focus-visible {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}
+
+.split-detail-panel {
+  padding: 24px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 22px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .split,
+  .split-detail,
+  .split.is-open .split-detail {
+    transition: none;
+  }
+}

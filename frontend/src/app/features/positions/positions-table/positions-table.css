@@ -1,3 +1,24 @@
 :host {
   display: block;
 }
+
+/* The table's own width decides what fits: Average cost drops out when it is squeezed (next to the detail pane, or on a phone). */
+.table-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 520px) {
+  .col-extra {
+    display: none;
+  }
+}
+
+/* The selected row: the full primary shade (design-system tokens only). */
+.data-table tbody tr.is-selected th,
+.data-table tbody tr.is-selected td,
+.data-table tbody tr.is-selected:hover th,
+.data-table tbody tr.is-selected:hover td {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+  --label-subtle: var(--accent-primary-foreground);
+}

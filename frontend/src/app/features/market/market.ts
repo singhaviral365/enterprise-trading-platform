@@ -12,9 +12,7 @@ import { MarketBoardPanel } from './market-board/market-board';
     <header class="market-page-header">
       <h1 class="page-title" data-testid="market-page-title">Market data</h1>
     </header>
-    <section class="card" aria-labelledby="market-title">
-      <app-market-board />
-    </section>
+    <app-market-board />
   `,
   styles: `
     :host {

@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
@@ -15,25 +15,31 @@ import { MarketRow, toMarketRow } from '../../../core/market-row';
 import { MarketError, MarketService } from '../../../core/market.service';
 import { positionBreakdown } from '../../../core/position-lots';
 import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
-import { OrderTicket } from '../../../shared/ui/order-ticket/order-ticket';
-import { SheetDialog } from '../../../shared/ui/sheet-dialog/sheet-dialog';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
 import { PositionRow } from '../position-row';
 
 /**
- * Details of one position, opened from a card or a table row: the symbol, name and cost basis on one line,
+ * What the positions page shows for the selected position (in the side pane on a wide screen, in a dialog on a narrow one): the symbol, name and cost basis on one line,
  * quantity and average cost, and a table of the filled BUY orders that add up to the holding (quantity and
- * cost per buy), which is how the average cost is worked out. Buy more and Sell switch the same dialog to the
- * shared order ticket, so placing the order and seeing it fill is the same flow as from the market board.
+ * cost per buy), which is how the average cost is worked out. Buy more and Sell switch to the shared `TradePanel`, the same buy / sell screen the market page uses.
  */
 @Component({
-  selector: 'app-position-dialog',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, InstrumentIcon, OrderTicket, SheetDialog, Spinner],
-  templateUrl: './position-dialog.html',
-  styleUrl: './position-dialog.css',
+  selector: 'app-position-detail',
+  imports: [
+    CurrencyPipe,
+    DatePipe,
+    DecimalPipe,
+    InstrumentIcon,
+    NgTemplateOutlet,
+    Spinner,
+    TradePanel,
+  ],
+  templateUrl: './position-detail.html',
+  styleUrl: './position-detail.css',
 })
-export class PositionDialog {
-  /** The position to show; null keeps the dialog closed. */
+export class PositionDetail {
+  /** The position to show. */
   readonly position = input<PositionRow | null>(null);
   /** ISO code of the account currency, which every value here is in. */
   readonly currency = input<string | null>(null);
@@ -49,7 +55,10 @@ export class PositionDialog {
   /** Details or order ticket; every newly opened position starts on its details. */
   protected readonly mode = linkedSignal<PositionRow | null, 'details' | 'order'>({
     source: this.position,
-    computation: () => 'details',
+    // Only a different symbol starts over: the row is replaced whenever the account reloads (e.g. as an order fills),
+    // and that must not throw away the order confirmation the user is looking at.
+    computation: (position, previous) =>
+      previous && previous.source?.symbol === position?.symbol ? previous.value : 'details',
   });
 
   /** The filled buys behind this position, from the order history the account store already holds. */

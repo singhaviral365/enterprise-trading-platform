@@ -37,7 +37,13 @@
           </button>
         </app-tooltip>
       </div>
-      <button type="button" class="btn is-secondary" data-testid="positions-refresh" [disabled]="store.data.isLoading()" (click)="store.refresh()">
+      <button
+        type="button"
+        class="btn is-secondary"
+        data-testid="positions-refresh"
+        [disabled]="store.data.isLoading()"
+        (click)="store.refresh()"
+      >
         <i class="fas fa-rotate" aria-hidden="true"></i>
         Refresh
       </button>
@@ -58,7 +64,9 @@
 } @else if (!store.linked()) {
   <div class="card empty-state" data-testid="positions-no-account">
     <i class="fas fa-building-columns" aria-hidden="true"></i>
-    <p class="empty-state-text">You don't have a trading account yet, so there are no positions to show.</p>
+    <p class="empty-state-text">
+      You don't have a trading account yet, so there are no positions to show.
+    </p>
     <a class="btn is-primary mt-16" routerLink="/dashboard">Go to the dashboard</a>
   </div>
 } @else if (allRows().length === 0) {
@@ -68,27 +76,53 @@
     <a class="btn is-primary mt-16" routerLink="/dashboard">Find an instrument to trade</a>
   </div>
 } @else {
-  @if (view() === 'card') {
-    <p class="positions-summary" data-testid="positions-summary">
-      {{ allRows().length }} {{ allRows().length === 1 ? 'position' : 'positions' }} · Total cost basis
-      <strong data-testid="positions-total">{{ totalCostBasis() | currency: (currency() ?? 'USD') }}</strong>
-    </p>
-    <app-positions-card [rows]="pageRows()" [currency]="currency()" (selected)="open($event)" />
-  } @else {
-    <app-positions-table
-      [rows]="pageRows()"
-      [totalCostBasis]="totalCostBasis()"
-      [currency]="currency()"
-      (selected)="open($event)"
-    />
-  }
-  <app-pagination
-    [pageSizeOptions]="pageSizes"
-    [(pageSize)]="pageSize"
-    [totalItems]="allRows().length"
-    [totalPages]="totalPages()"
-    [(currentPage)]="page"
-  />
-}
+  <app-split-view
+    [open]="!!detailRow()"
+    labelledBy="detail-title"
+    testId="position-dialog"
+    (closed)="selectedSymbol.set(null)"
+  >
+    <div list>
+      @if (view() === 'card') {
+        <p class="positions-summary" data-testid="positions-summary">
+          {{ allRows().length }} {{ allRows().length === 1 ? 'position' : 'positions' }} · Total
+          cost basis
+          <strong data-testid="positions-total">{{
+            totalCostBasis() | currency: currency() ?? 'USD'
+          }}</strong>
+        </p>
+        <app-positions-card
+          [rows]="pageRows()"
+          [currency]="currency()"
+          [selectedSymbol]="selectedSymbol()"
+          (selected)="open($event)"
+        />
+      } @else {
+        <app-positions-table
+          [rows]="pageRows()"
+          [selectedSymbol]="selectedSymbol()"
+          [totalCostBasis]="totalCostBasis()"
+          [currency]="currency()"
+          (selected)="open($event)"
+        />
+      }
+      <app-pagination
+        [pageSizeOptions]="pageSizes"
+        [(pageSize)]="pageSize"
+        [totalItems]="allRows().length"
+        [totalPages]="totalPages()"
+        [(currentPage)]="page"
+      />
+    </div>
 
-<app-position-dialog [position]="dialogRow()" [currency]="currency()" (closed)="selectedSymbol.set(null)" />
+    <div detail>
+      @if (detailRow(); as current) {
+        <app-position-detail
+          [position]="current"
+          [currency]="currency()"
+          (closed)="selectedSymbol.set(null)"
+        />
+      }
+    </div>
+  </app-split-view>
+}

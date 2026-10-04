@@ -164,7 +164,7 @@ describe('Positions', () => {
       await render();
 
       expect(dialog().open).toBe(true);
-      expect(root.querySelector('#position-dialog-title')?.textContent).toContain('AAPL');
+      expect(root.querySelector('#detail-title')?.textContent).toContain('AAPL');
       expect(byTestId('position-dialog-stats')?.textContent).toContain('$8,750.00');
       expect(byTestId('position-dialog-quantity')?.textContent).toContain('50');
       expect(byTestId('position-dialog-average')?.textContent).toContain('$175.00');
@@ -188,7 +188,7 @@ describe('Positions', () => {
       root.querySelector<HTMLElement>('[data-testid="position-row"]')!.click();
       await render();
       expect(dialog().open).toBe(true);
-      expect(root.querySelector('#position-dialog-title')?.textContent).toContain('AAPL');
+      expect(root.querySelector('#detail-title')?.textContent).toContain('AAPL');
 
       byTestId<HTMLButtonElement>('position-dialog-close')!.click();
       await render();
@@ -197,7 +197,7 @@ describe('Positions', () => {
       const second = Array.from(root.querySelectorAll<HTMLElement>('[data-testid="position-row"]'))[1];
       second.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       await render();
-      expect(root.querySelector('#position-dialog-title')?.textContent).toContain('MSFT');
+      expect(root.querySelector('#detail-title')?.textContent).toContain('MSFT');
     });
 
     it('explains sells and warns when older orders are missing from the history', async () => {

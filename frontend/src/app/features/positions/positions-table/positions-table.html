@@ -7,7 +7,7 @@
       <tr>
         <th scope="col">Instrument</th>
         <th scope="col" class="is-numeric">Quantity</th>
-        <th scope="col" class="is-numeric">Average cost</th>
+        <th scope="col" class="is-numeric col-extra">Average cost</th>
         <th scope="col" class="is-numeric">Cost basis</th>
       </tr>
     </thead>
@@ -15,6 +15,8 @@
       @for (row of rows(); track row.symbol) {
         <tr
           class="clickable-row"
+          [class.is-selected]="row.symbol === selectedSymbol()"
+          [attr.aria-current]="row.symbol === selectedSymbol() ? 'true' : null"
           data-testid="position-row"
           tabindex="0"
           [attr.aria-label]="'View ' + row.symbol + ', ' + row.name + ', position details'"
@@ -31,7 +33,9 @@
             />
           </th>
           <td class="is-numeric">{{ row.quantity | number }}</td>
-          <td class="is-numeric">{{ row.averageCost | currency: currency() ?? 'USD' }}</td>
+          <td class="is-numeric col-extra">
+            {{ row.averageCost | currency: currency() ?? 'USD' }}
+          </td>
           <td class="is-numeric">{{ row.costBasis | currency: currency() ?? 'USD' }}</td>
         </tr>
       }

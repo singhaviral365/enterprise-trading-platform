@@ -41,7 +41,7 @@ export async function openQuote(page: Page, symbol: string): Promise<Locator> {
     await sizes.selectOption(values[values.length - 1]);
   }
   await row.click();
-  const dialog = page.getByTestId('quote-dialog');
+  const dialog = page.getByTestId('quote-detail');
   await expect(dialog).toBeVisible();
   return dialog;
 }

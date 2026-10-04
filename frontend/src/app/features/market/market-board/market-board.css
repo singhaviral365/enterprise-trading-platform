@@ -74,7 +74,10 @@
   }
 }
 
+/* The table's own width decides what fits, so the extra columns drop out when the table is squeezed (half the
+   screen next to the quote pane, or a phone) and come back when there is room. */
 .table-scroll {
+  container-type: inline-size;
   overflow-x: auto;
   margin: 0 -8px;
 }
@@ -266,4 +269,29 @@
 .table-footer {
   margin-top: 12px;
   border-top: 1px solid var(--surface-line-subtle);
+}
+
+@container (max-width: 620px) {
+  .col-extra {
+    display: none;
+  }
+}
+
+/* The selected row: the full primary shade, with text and chips switched to the on-primary colour. */
+.market-row.is-selected > *,
+.market-row.is-selected:hover > * {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+}
+
+.market-row.is-selected .ticker-name,
+.market-row.is-selected .muted,
+.market-row.is-selected .delta,
+.market-row.is-selected .pct-chip {
+  color: var(--accent-primary-foreground);
+}
+
+.market-row.is-selected .pct-chip {
+  background: transparent;
+  border: 1px solid var(--accent-primary-foreground);
 }

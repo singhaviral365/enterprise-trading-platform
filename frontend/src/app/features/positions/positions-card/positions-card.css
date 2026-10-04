@@ -60,3 +60,9 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* The selected card: primary border and a light primary shade (design-system tokens only). */
+.position-card.is-selected {
+  border-color: var(--accent-primary-background);
+  background: var(--accent-primary-container-background);
+}

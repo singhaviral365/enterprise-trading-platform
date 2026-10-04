@@ -103,15 +103,15 @@ describe('MarketBoardPanel', () => {
     expect(symbols()).toHaveLength(7);
   });
 
-  it('opens the quote dialog for the clicked row', async () => {
+  it('opens the quote detail for the clicked row', async () => {
     await load();
 
     byTestId<HTMLButtonElement>('market-row-MSFT')!.click();
     await fixture.whenStable();
 
-    const dialog = byTestId<HTMLDialogElement>('quote-dialog')!;
+    const dialog = byTestId<HTMLDialogElement>('quote-detail')!;
     expect(dialog.open).toBe(true);
-    expect(dialog.querySelector('#quote-dialog-title')?.textContent).toContain('MSFT');
+    expect(dialog.querySelector('#detail-title')?.textContent).toContain('MSFT');
   });
 
   it('says so when no instruments are available', async () => {

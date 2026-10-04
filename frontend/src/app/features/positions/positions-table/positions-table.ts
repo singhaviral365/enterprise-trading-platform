@@ -20,6 +20,8 @@ export class PositionsTable {
   readonly totalCostBasis = input(0);
   /** ISO code of the account currency, which every position value is in. */
   readonly currency = input<string | null>(null);
+  /** The symbol whose detail is open, if any: its row is highlighted. */
+  readonly selectedSymbol = input<string | null>(null);
   readonly selected = output<PositionRow>();
 
   protected onSpace(event: Event, row: PositionRow): void {
