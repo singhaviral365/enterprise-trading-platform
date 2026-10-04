@@ -1,4 +1,9 @@
-<div class="split" [class.is-open]="inline() && open()" data-testid="split-view">
+<div
+  class="split"
+  [class.is-open]="inline() && open()"
+  [class.is-cards]="layout() === 'cards'"
+  data-testid="split-view"
+>
   <div class="split-list">
     <ng-content select="[list]" />
   </div>

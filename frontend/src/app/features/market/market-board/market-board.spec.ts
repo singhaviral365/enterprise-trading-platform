@@ -112,6 +112,9 @@ describe('MarketBoardPanel', () => {
     const dialog = byTestId<HTMLDialogElement>('quote-detail')!;
     expect(dialog.open).toBe(true);
     expect(dialog.querySelector('#detail-title')?.textContent).toContain('MSFT');
+    const selected = root.querySelectorAll('tr.market-row.is-selected');
+    expect(selected).toHaveLength(1);
+    expect(selected[0].textContent).toContain('MSFT');
   });
 
   it('says so when no instruments are available', async () => {

@@ -24,7 +24,7 @@ export class App {
     { route: '/market', label: 'Market data', icon: 'fas fa-chart-line' },
     { route: '/positions', label: 'Positions', icon: 'fas fa-layer-group' },
     { route: '/orders', label: 'Order history', icon: 'fas fa-clock-rotate-left' },
-    { route: '/showcase', label: 'Components', icon: 'fas fa-puzzle-piece' },
+    // { route: '/showcase', label: 'Components', icon: 'fas fa-puzzle-piece' },
   ];
 
   protected toggleSidebar(): void {

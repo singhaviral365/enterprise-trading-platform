@@ -72,6 +72,7 @@
                 class="market-row"
                 [class.is-up]="(row.change ?? row.changePercent ?? 0) > 0"
                 [class.is-down]="(row.change ?? row.changePercent ?? 0) < 0"
+                [class.is-selected]="row.quote.symbol === selectedSymbol()"
               >
                 <th scope="row">
                   <!-- The button covers the whole row (see .row-link::after) so any cell opens the quote. -->

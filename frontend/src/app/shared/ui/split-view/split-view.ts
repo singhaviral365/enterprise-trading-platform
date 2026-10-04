@@ -45,6 +45,12 @@ export class SplitView {
   readonly labelledBy = input.required<string>();
   /** Optional `data-testid` for the detail pane / dialog, for tests. */
   readonly testId = input<string | null>(null);
+  /**
+   * How the list is laid out. `table` (default) animates the columns, so the list glides narrower. `cards` is a
+   * wrapping grid that would re-flow on every frame, so its columns change at once, the cards settle with a short
+   * fade and the detail slides in over the right edge instead.
+   */
+  readonly layout = input<'table' | 'cards'>('table');
   /** The user pressed Esc, or clicked the backdrop of the dialog. */
   readonly closed = output<void>();
 

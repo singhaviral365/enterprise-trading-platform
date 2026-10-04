@@ -275,6 +275,11 @@
   .col-extra {
     display: none;
   }
+
+  /* The last cell that is still shown ("% Change") closes the row's rounded end. */
+  .market-row > :nth-child(4) {
+    border-radius: 0 12px 12px 0;
+  }
 }
 
 /* The selected row: the full primary shade, with text and chips switched to the on-primary colour. */

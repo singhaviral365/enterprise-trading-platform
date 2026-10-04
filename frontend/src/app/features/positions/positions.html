@@ -80,6 +80,7 @@
     [open]="!!detailRow()"
     labelledBy="detail-title"
     testId="position-dialog"
+    [layout]="view() === 'card' ? 'cards' : 'table'"
     (closed)="selectedSymbol.set(null)"
   >
     <div list>

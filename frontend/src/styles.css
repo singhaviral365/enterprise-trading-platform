@@ -899,6 +899,12 @@ a:hover {
 
 /* Layout: App Shell */
 
+/* Keep room for the vertical scrollbar even when a page does not need it yet, so a pane opening (and the page
+   growing taller) never narrows the main content. */
+html {
+  scrollbar-gutter: stable;
+}
+
 .app-layout {
   display: flex;
   min-height: 100vh;
