@@ -4,6 +4,7 @@ import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.FxRateUnavailableException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InsufficientHoldingsException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
@@ -49,6 +50,16 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("ACC-403", response.getBody().errorCode());
+    }
+
+    @Test
+    void testFxRateUnavailableMapsToFX503() {
+        FxRateUnavailableException ex = new FxRateUnavailableException("INR", "USD");
+        ResponseEntity<ErrorResponse> response = handler.handleDomainErrors(ex);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("FX-503", response.getBody().errorCode());
     }
 
     @Test

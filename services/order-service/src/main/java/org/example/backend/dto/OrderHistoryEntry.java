@@ -11,6 +11,8 @@ public record OrderHistoryEntry(
         String orderId,
         Long accountId,
         String symbol,
+        String instrumentName,
+        String iconUrl,
         OrderSide side,
         OrderPricingType orderPricingType,
         Integer quantity,

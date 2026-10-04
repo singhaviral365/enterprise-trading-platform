@@ -237,6 +237,10 @@
                    javaType="java.lang.Long"/>
             <arg column="instrument_ticker"
                  javaType="java.lang.String"/>
+            <arg column="instrument_name"
+                 javaType="java.lang.String"/>
+            <arg column="icon_url"
+                 javaType="java.lang.String"/>
             <arg column="quantity"
                  javaType="java.lang.Integer"/>
             <arg column="purchase_price"
@@ -250,6 +254,8 @@
         SELECT
         h.account_id,
         i.instrument_ticker,
+        i.instrument_name,
+        i.icon_url,
         CAST(h.quantity AS INTEGER) AS quantity,
         h.purchase_price
 

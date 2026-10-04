@@ -383,6 +383,12 @@
             <arg column="instrument_ticker"
                  javaType="java.lang.String"/>
 
+            <arg column="instrument_name"
+                 javaType="java.lang.String"/>
+
+            <arg column="icon_url"
+                 javaType="java.lang.String"/>
+
             <arg column="order_type"
                  javaType="org.example.backend.enums.OrderSide"/>
 
@@ -416,6 +422,8 @@
         CAST(o.order_id AS VARCHAR) AS order_id,
         o.account_id,
         i.instrument_ticker,
+        i.instrument_name,
+        i.icon_url,
         o.order_type,
         o.order_pricing_type,
         CAST(o.quantity AS INTEGER) AS quantity,

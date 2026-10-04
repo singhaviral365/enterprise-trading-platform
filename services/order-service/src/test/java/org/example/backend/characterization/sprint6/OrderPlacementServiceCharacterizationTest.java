@@ -17,6 +17,7 @@ import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.DuplicateOrderException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.fx.CurrencyConversionService;
 import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
@@ -65,6 +66,9 @@ class OrderPlacementServiceCharacterizationTest {
     @Mock
     private OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
 
+    @Mock
+    private CurrencyConversionService currencyConversionService;
+
     private TradeService tradeService;
 
     @BeforeEach
@@ -74,7 +78,8 @@ class OrderPlacementServiceCharacterizationTest {
                 holdingMapper,
                 instrumentMapper,
                 orderMapper,
-                orderPlacedAfterCommitListener);
+                orderPlacedAfterCommitListener,
+                currencyConversionService);
     }
 
     @Test

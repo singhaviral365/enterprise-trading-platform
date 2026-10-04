@@ -22,12 +22,15 @@ import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountLinkConflictException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.FxRateUnavailableException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InsufficientHoldingsException;
 import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.exceptions.OrderNotFoundException;
 import org.example.backend.exceptions.OrderNotCancellableException;
+import org.example.backend.fx.CurrencyConversionService;
+import org.example.backend.fx.ExchangeRateUnavailableException;
 import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
@@ -49,24 +52,30 @@ public class TradeService {
 
         private static final BigDecimal MARKET_PERSISTED_PRICE = new BigDecimal("0.0001");
 
+        /** A converted price that rounds to zero would violate the price constraint; this is the smallest stored price. */
+        private static final BigDecimal MIN_CONVERTED_PRICE = new BigDecimal("0.0001");
+
     private final AccountMapper accountMapper;
     private final HoldingMapper holdingMapper;
     private final InstrumentMapper instrumentMapper;
     private final OrderMapper orderMapper;
     private final OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
+    private final CurrencyConversionService currencyConversionService;
 
     public TradeService(
             AccountMapper accountMapper,
             HoldingMapper holdingMapper,
             InstrumentMapper instrumentMapper,
             OrderMapper orderMapper,
-            OrderPlacedAfterCommitListener orderPlacedAfterCommitListener) {
+            OrderPlacedAfterCommitListener orderPlacedAfterCommitListener,
+            CurrencyConversionService currencyConversionService) {
 
         this.accountMapper = accountMapper;
         this.holdingMapper = holdingMapper;
         this.instrumentMapper = instrumentMapper;
         this.orderMapper = orderMapper;
         this.orderPlacedAfterCommitListener = orderPlacedAfterCommitListener;
+        this.currencyConversionService = currencyConversionService;
     }
 
     // =========================================================
@@ -83,11 +92,14 @@ public class TradeService {
             BigDecimal price,
             String idempotencyKey) {
 
-        requireActiveAccount(accountId);
+        Account account = requireActiveAccount(accountId);
         Instrument instrument = requireTradableInstrument(symbol);
         ensureIdempotencyKeyUnused(idempotencyKey);
 
-        BigDecimal persistedPrice = normalizePersistedPrice(orderPricingType, price);
+        // A limit price is entered in the instrument's currency; every stored price is in the account's.
+        BigDecimal persistedPrice = normalizePersistedPrice(
+                orderPricingType,
+                limitPriceInAccountCurrency(orderPricingType, price, instrument, account));
 
         Order order = createAndPersistNewOrder(
                 accountId,
@@ -119,6 +131,36 @@ public class TradeService {
                                                 ? null
                                                 : order.getPrice());
     }
+
+        /**
+         * Converts a LIMIT price from the instrument's currency to the account's. Same-currency orders and MARKET
+         * orders (no price) never call the exchange rate service.
+         */
+        private BigDecimal limitPriceInAccountCurrency(
+                        OrderPricingType orderPricingType,
+                        BigDecimal requestedPrice,
+                        Instrument instrument,
+                        Account account) {
+
+                if (orderPricingType != OrderPricingType.LIMIT || requestedPrice == null) {
+                        return requestedPrice;
+                }
+
+                String from = instrument.getCurrency();
+                String to = account.getCurrency();
+                if (from.equalsIgnoreCase(to)) {
+                        return requestedPrice;
+                }
+
+                try {
+                        return currencyConversionService
+                                        .convert(requestedPrice, from, to)
+                                        .setScale(4, RoundingMode.HALF_UP)
+                                        .max(MIN_CONVERTED_PRICE);
+                } catch (ExchangeRateUnavailableException ex) {
+                        throw new FxRateUnavailableException(from, to);
+                }
+        }
 
         private static BigDecimal normalizePersistedPrice(
                         OrderPricingType orderPricingType,

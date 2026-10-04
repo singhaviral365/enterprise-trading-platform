@@ -87,14 +87,16 @@ class TradeControllerReadEndpointsTest {
     void positionsReturnedSuccessfully() throws Exception {
         when(tradeService.getPositions(1L))
                 .thenReturn(List.of(
-                        new PositionResponse(1L, "ACME", 100, new BigDecimal("25.50")),
-                        new PositionResponse(1L, "INFY.NS", 40, new BigDecimal("1580.25"))));
+                        new PositionResponse(1L, "ACME", "Acme Corporation", "/assets/icons/ACME.svg", 100, new BigDecimal("25.50")),
+                        new PositionResponse(1L, "INFY.NS", "Infosys Ltd", null, 40, new BigDecimal("1580.25"))));
 
         mockMvc.perform(get("/api/v1/accounts/1/positions")
                         .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].accountId").value(1))
                 .andExpect(jsonPath("$[0].symbol").value("ACME"))
+                .andExpect(jsonPath("$[0].instrumentName").value("Acme Corporation"))
+                .andExpect(jsonPath("$[0].iconUrl").value("/assets/icons/ACME.svg"))
                 .andExpect(jsonPath("$[0].quantity").value(100))
                 .andExpect(jsonPath("$[0].averageCost").value(25.50))
                 .andExpect(jsonPath("$[1].symbol").value("INFY.NS"));
@@ -108,6 +110,8 @@ class TradeControllerReadEndpointsTest {
                                 "1",
                                 1L,
                                 "ACME",
+                                "Acme Corporation",
+                                "/assets/icons/ACME.svg",
                                 OrderSide.BUY,
                                 OrderPricingType.LIMIT,
                                 100,
@@ -123,6 +127,7 @@ class TradeControllerReadEndpointsTest {
                 .andExpect(jsonPath("$[0].orderId").value("1"))
                 .andExpect(jsonPath("$[0].accountId").value(1))
                 .andExpect(jsonPath("$[0].symbol").value("ACME"))
+                .andExpect(jsonPath("$[0].instrumentName").value("Acme Corporation"))
                 .andExpect(jsonPath("$[0].side").value("BUY"))
                 .andExpect(jsonPath("$[0].orderPricingType").value("LIMIT"))
                 .andExpect(jsonPath("$[0].status").value("FILLED"))

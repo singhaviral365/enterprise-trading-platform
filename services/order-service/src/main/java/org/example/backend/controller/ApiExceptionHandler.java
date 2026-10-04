@@ -8,6 +8,7 @@ import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.AccountLinkConflictException;
 import org.example.backend.exceptions.DomainException;
 import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.FxRateUnavailableException;
 import org.example.backend.exceptions.InsufficientFundsException;
 import org.example.backend.exceptions.InsufficientHoldingsException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -64,6 +66,9 @@ public class ApiExceptionHandler {
 
             case OptimisticLockException ignored ->
                     HttpStatus.CONFLICT;
+
+            case FxRateUnavailableException ignored ->
+                    HttpStatus.SERVICE_UNAVAILABLE;
 
             case OrderNotCancellableException ignored ->
                     HttpStatus.CONFLICT;
@@ -106,9 +111,9 @@ public class ApiExceptionHandler {
                 );
     }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(
-            NoHandlerFoundException ex) {
+            Exception ex) {
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)

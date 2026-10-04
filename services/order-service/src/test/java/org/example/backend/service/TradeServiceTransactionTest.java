@@ -13,8 +13,11 @@ import org.example.backend.enums.OrderSide;
 import org.example.backend.enums.OrderStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.DuplicateOrderException;
+import org.example.backend.exceptions.FxRateUnavailableException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
 import org.example.backend.exceptions.OrderNotCancellableException;
+import org.example.backend.fx.CurrencyConversionService;
+import org.example.backend.fx.ExchangeRateUnavailableException;
 import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
@@ -65,6 +68,9 @@ class TradeServiceTransactionTest {
     @Mock
     private OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
 
+    @Mock
+    private CurrencyConversionService currencyConversionService;
+
     private TradeService tradeService;
 
     @BeforeEach
@@ -74,7 +80,8 @@ class TradeServiceTransactionTest {
                 holdingMapper,
                 instrumentMapper,
                 orderMapper,
-                orderPlacedAfterCommitListener);
+                orderPlacedAfterCommitListener,
+                currencyConversionService);
     }
 
     @Test
@@ -269,6 +276,93 @@ class TradeServiceTransactionTest {
                 () -> tradeService.cancelOrder(9002L, ACCOUNT_ID));
 
         verify(orderMapper, never()).cancelOrder(eq(9002L), eq(1L));
+    }
+
+    @Test
+    void limitPriceInTheInstrumentCurrencyIsStoredInTheAccountCurrency() {
+        Account account = activeAccount(new BigDecimal("25000.00"), 3L);
+        Instrument inrInstrument = instrumentQuotedIn("INR");
+
+        when(accountMapper.selectAccountById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+        when(instrumentMapper.selectInstrumentByTicker("ACME")).thenReturn(Optional.of(inrInstrument));
+        when(orderMapper.selectOrderByIdempotencyKey("idem-fx")).thenReturn(Optional.empty());
+        when(orderMapper.nextOrderId()).thenReturn(9010L);
+        when(currencyConversionService.convert(new BigDecimal("1100.00"), "INR", "USD"))
+                .thenReturn(new BigDecimal("11.416333456789"));
+
+        OrderResponse response = tradeService.placeOrder(
+                ACCOUNT_ID,
+                "ACME",
+                OrderSide.BUY,
+                OrderPricingType.LIMIT,
+                10L,
+                new BigDecimal("1100.00"),
+                "idem-fx");
+
+        assertEquals(new BigDecimal("11.4163"), response.price());
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderMapper).insertOrder(orderCaptor.capture());
+        assertEquals(new BigDecimal("11.4163"), orderCaptor.getValue().getPrice());
+    }
+
+    @Test
+    void sameCurrencyLimitOrderAndMarketOrderNeverCallTheExchangeRateService() {
+        Account account = activeAccount(new BigDecimal("25000.00"), 3L);
+
+        when(accountMapper.selectAccountById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+        when(instrumentMapper.selectInstrumentByTicker("ACME")).thenReturn(Optional.of(tradableInstrument()));
+        when(orderMapper.selectOrderByIdempotencyKey(any())).thenReturn(Optional.empty());
+        when(orderMapper.nextOrderId()).thenReturn(9011L, 9012L);
+
+        tradeService.placeOrder(ACCOUNT_ID, "ACME", OrderSide.BUY, OrderPricingType.LIMIT, 1L, new BigDecimal("50.00"), "idem-a");
+        tradeService.placeOrder(ACCOUNT_ID, "ACME", OrderSide.BUY, OrderPricingType.MARKET, 1L, null, "idem-b");
+
+        verify(currencyConversionService, never()).convert(any(), any(), any());
+    }
+
+    @Test
+    void marketOrderOnAForeignCurrencyInstrumentDoesNotNeedAnExchangeRateAtPlacement() {
+        Account account = activeAccount(new BigDecimal("25000.00"), 3L);
+
+        when(accountMapper.selectAccountById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+        when(instrumentMapper.selectInstrumentByTicker("ACME")).thenReturn(Optional.of(instrumentQuotedIn("INR")));
+        when(orderMapper.selectOrderByIdempotencyKey("idem-m")).thenReturn(Optional.empty());
+        when(orderMapper.nextOrderId()).thenReturn(9013L);
+
+        tradeService.placeOrder(ACCOUNT_ID, "ACME", OrderSide.BUY, OrderPricingType.MARKET, 1L, null, "idem-m");
+
+        verify(currencyConversionService, never()).convert(any(), any(), any());
+        verify(orderMapper).insertOrder(any());
+    }
+
+    @Test
+    void limitOrderIsRefusedWithFx503WhenTheExchangeRateIsUnavailable() {
+        Account account = activeAccount(new BigDecimal("25000.00"), 3L);
+
+        when(accountMapper.selectAccountById(ACCOUNT_ID)).thenReturn(Optional.of(account));
+        when(instrumentMapper.selectInstrumentByTicker("ACME")).thenReturn(Optional.of(instrumentQuotedIn("INR")));
+        when(orderMapper.selectOrderByIdempotencyKey("idem-down")).thenReturn(Optional.empty());
+        when(currencyConversionService.convert(any(), eq("INR"), eq("USD")))
+                .thenThrow(new ExchangeRateUnavailableException("down"));
+
+        FxRateUnavailableException ex = assertThrows(
+                FxRateUnavailableException.class,
+                () -> tradeService.placeOrder(
+                        ACCOUNT_ID, "ACME", OrderSide.BUY, OrderPricingType.LIMIT, 1L, new BigDecimal("1100.00"), "idem-down"));
+
+        assertEquals("FX-503", ex.getErrorCode());
+        verify(orderMapper, never()).insertOrder(any());
+    }
+
+    private static Instrument instrumentQuotedIn(String currency) {
+        return new Instrument(
+                INSTRUMENT_ID,
+                "ACME",
+                "Acme Corp",
+                InstrumentAssetClass.EQUITY,
+                InstrumentStatus.TRADING,
+                currency,
+                null);
     }
 
     private static Account activeAccount(
