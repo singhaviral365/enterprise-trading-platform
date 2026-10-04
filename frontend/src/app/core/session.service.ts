@@ -9,24 +9,31 @@ export interface AuthTokens {
   readonly expiresIn: number;
 }
 
+/**
+ * What the app needs from a sign-in response: how long the access token lives. The tokens themselves are never
+ * read or kept here; the Auth service also puts them in HttpOnly cookies that JavaScript cannot see.
+ */
+export type SessionGrant = Pick<AuthTokens, 'expiresIn'> & Partial<AuthTokens>;
+
+/** What the app remembers of a sign-in. Nothing secret: the tokens are in HttpOnly cookies. */
 export interface StoredSession {
   readonly username: string;
-  readonly accessToken: string;
-  readonly refreshToken: string;
-  /** Epoch milliseconds after which the access token is no longer accepted. */
+  /** Epoch milliseconds after which the access cookie is no longer accepted (it can be renewed until the refresh cookie expires). */
   readonly expiresAt: number;
 }
 
 export const SESSION_STORAGE_KEY = 'auth.session';
 
 /**
- * Holds the signed-in user's tokens and persists them to localStorage so a page reload keeps the
- * session. The layout only reads `isLoggedIn`; `AuthService` is the one that starts and ends sessions, and
- * `TokenRefresher` renews the tokens while the refresh token is still good.
+ * Tracks whether a user is signed in, for the UI. The actual credentials are the `access_token` and
+ * `refresh_token` cookies the Auth service sets: the browser attaches them to API calls and no script, and
+ * therefore no XSS bug, can read them. What lives here (and in localStorage, so a page reload and other tabs see
+ * it) is only the username and when the access cookie runs out. `AuthService` starts and ends sessions and
+ * `TokenRefresher` renews them.
  *
- * A stored session whose access token has run out is still restored: the refresh token (7 days) can mint a
- * new one on the first request. Other tabs share the same storage, so a sign-in, a token renewal or a
- * sign-out in one tab is picked up by the rest.
+ * A stored session whose access cookie has run out is still restored: the refresh cookie (7 days) can mint a
+ * new one on the first request. A session saved by an older version of the app, which kept the tokens in
+ * localStorage, is discarded (and those tokens erased), so the user signs in once more.
  */
 @Service()
 export class SessionService {
@@ -35,7 +42,6 @@ export class SessionService {
   readonly session = this.current.asReadonly();
   readonly isLoggedIn = computed(() => this.current() !== null);
   readonly username = computed(() => this.current()?.username ?? '');
-  readonly accessToken = computed(() => this.current()?.accessToken ?? null);
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -47,13 +53,8 @@ export class SessionService {
     }
   }
 
-  start(username: string, tokens: AuthTokens, now = Date.now()): void {
-    const session: StoredSession = {
-      username,
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      expiresAt: now + tokens.expiresIn * 1000,
-    };
+  start(username: string, grant: SessionGrant, now = Date.now()): void {
+    const session: StoredSession = { username, expiresAt: now + grant.expiresIn * 1000 };
     this.current.set(session);
     try {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
@@ -62,19 +63,19 @@ export class SessionService {
     }
   }
 
-  /** Swaps in the tokens from a refresh; the user stays the same. */
-  renew(tokens: AuthTokens, now = Date.now()): void {
+  /** Records a renewal; the user stays the same. */
+  renew(grant: SessionGrant, now = Date.now()): void {
     const username = this.current()?.username;
     if (username !== undefined) {
-      this.start(username, tokens, now);
+      this.start(username, grant, now);
     }
   }
 
-  /** Re-reads storage, which another tab may have changed (renewed tokens, or signed out). */
+  /** Re-reads storage, which another tab may have changed (a renewal, or a sign-out). */
   syncFromStorage(): void {
     const stored = this.readStoredSession();
     const current = this.current();
-    if (stored?.accessToken !== current?.accessToken || stored?.refreshToken !== current?.refreshToken) {
+    if (stored?.username !== current?.username || stored?.expiresAt !== current?.expiresAt) {
       this.current.set(stored);
     }
   }
@@ -94,17 +95,15 @@ export class SessionService {
       if (!raw) {
         return null;
       }
-      const parsed = JSON.parse(raw) as Partial<StoredSession>;
-      const valid =
-        typeof parsed.username === 'string' &&
-        typeof parsed.accessToken === 'string' &&
-        typeof parsed.refreshToken === 'string' &&
-        typeof parsed.expiresAt === 'number';
-      if (!valid) {
+      const parsed = JSON.parse(raw) as Partial<StoredSession> & Record<string, unknown>;
+      const valid = typeof parsed.username === 'string' && typeof parsed.expiresAt === 'number';
+      // An older version stored the tokens here. Erase them now rather than leave secrets in localStorage.
+      const legacy = 'accessToken' in parsed || 'refreshToken' in parsed;
+      if (!valid || legacy) {
         localStorage.removeItem(SESSION_STORAGE_KEY);
         return null;
       }
-      return parsed as StoredSession;
+      return { username: parsed.username as string, expiresAt: parsed.expiresAt as number };
     } catch {
       return null;
     }

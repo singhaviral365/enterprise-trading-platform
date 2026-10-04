@@ -28,8 +28,14 @@ export class AuthApi {
     return this.auth.login(request);
   }
 
-  refresh(request: RefreshRequest): Observable<TokenResponse> {
+  /** Without a body the Auth service reads the HttpOnly `refresh_token` cookie, which is what the browser uses. */
+  refresh(request: RefreshRequest = {}): Observable<TokenResponse> {
     return this.auth.refresh(request);
+  }
+
+  /** Revokes the refresh token and clears the session cookies. */
+  logout(): Observable<void> {
+    return this.auth.logout();
   }
 
   currentUser(): Observable<UserResponse> {

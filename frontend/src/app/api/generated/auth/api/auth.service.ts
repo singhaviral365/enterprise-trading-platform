@@ -50,7 +50,7 @@ export class AuthService extends BaseService implements AuthServiceInterface {
 
     /**
      * Log in and receive tokens
-     * Verifies the credentials and issues an access token and a refresh token. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body. 
+     * Verifies the credentials and issues an access token and a refresh token. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body. The pair is also set as HttpOnly &#x60;access_token&#x60; and &#x60;refresh_token&#x60; cookies. 
      * @endpoint post /auth/login
      * @param loginRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -116,21 +116,82 @@ export class AuthService extends BaseService implements AuthServiceInterface {
     }
 
     /**
+     * Log out
+     * Revokes the refresh token (the HttpOnly cookie, or the body for a client without cookies) and clears both session cookies. Always &#x60;204&#x60;, so it cannot be used to probe whether a token existed. The access token is a stateless JWT: it stops working when it expires, within 15 minutes. A cookie-only request must carry an &#x60;X-Requested-With&#x60; header, otherwise &#x60;AUTH-401&#x60;. 
+     * @endpoint post /auth/logout
+     * @param refreshRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public logout(refreshRequest?: RefreshRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any>;
+    public logout(refreshRequest?: RefreshRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
+    public logout(refreshRequest?: RefreshRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
+    public logout(refreshRequest?: RefreshRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/logout`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: refreshRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Exchange a refresh token for a new token pair
-     * Consumes the presented refresh token and issues a new pair. The presented token stops working immediately. Presenting a token that has already been consumed is treated as theft: revoke every refresh token for that user and return &#x60;AUTH-401&#x60;. 
+     * Consumes the presented refresh token and issues a new pair. The presented token stops working immediately. Presenting a token that has already been consumed is treated as theft: revoke every refresh token for that user and return &#x60;AUTH-401&#x60;.  A browser sends no body: the token is read from the HttpOnly &#x60;refresh_token&#x60; cookie, and the request must carry an &#x60;X-Requested-With&#x60; header. A client without cookies sends the token in the body instead. Either way the new pair is set as cookies again. 
      * @endpoint post /auth/refresh
      * @param refreshRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public refresh(refreshRequest: RefreshRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<TokenResponse>;
-    public refresh(refreshRequest: RefreshRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<TokenResponse>>;
-    public refresh(refreshRequest: RefreshRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<TokenResponse>>;
-    public refresh(refreshRequest: RefreshRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
-        if (refreshRequest === null || refreshRequest === undefined) {
-            throw new Error('Required parameter refreshRequest was null or undefined when calling refresh.');
-        }
+    public refresh(refreshRequest?: RefreshRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<TokenResponse>;
+    public refresh(refreshRequest?: RefreshRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<TokenResponse>>;
+    public refresh(refreshRequest?: RefreshRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<TokenResponse>>;
+    public refresh(refreshRequest?: RefreshRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 

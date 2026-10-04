@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 
 import { AUTH_API_BASE_URL } from '../../api/api.config';
-import { ACCESS_TOKEN_PROVIDER } from '../auth/access-token.provider';
+import { SessionService } from '../session.service';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
@@ -11,48 +11,72 @@ describe('authInterceptor', () => {
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(withInterceptors([authInterceptor])),
-        provideHttpClientTesting(),
-        { provide: ACCESS_TOKEN_PROVIDER, useValue: { getAccessToken: () => 'test-token' } },
-      ],
+      providers: [provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting()],
     });
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
+    TestBed.inject(SessionService).start('alice', { expiresIn: 900 });
   });
 
   afterEach(() => httpMock.verify());
 
-  it('attaches the bearer token to a same-origin Trade API request', () => {
+  /** The session is two HttpOnly cookies the browser attaches itself, so the call opts in to credentials. */
+  const carriesSession = (req: { request: { withCredentials: boolean; headers: { get(n: string): string | null; has(n: string): boolean } } }) => {
+    expect(req.request.withCredentials).toBe(true);
+    expect(req.request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+    expect(req.request.headers.has('Authorization')).toBe(false);
+  };
+
+  it('sends a same-origin Trade API request with credentials and the CSRF header, but no token', () => {
     http.get('/api/v1/orders').subscribe();
-    const req = httpMock.expectOne('/api/v1/orders');
-    expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
+
+    carriesSession(httpMock.expectOne('/api/v1/orders'));
   });
 
-  it('attaches the bearer token to the market endpoint under the same prefix', () => {
+  it('does the same for the market endpoint under the same prefix', () => {
     http.get('/api/v1/market/board').subscribe();
-    const req = httpMock.expectOne('/api/v1/market/board');
-    expect(req.request.headers.get('Authorization')).toBe('Bearer test-token');
+
+    carriesSession(httpMock.expectOne('/api/v1/market/board'));
   });
 
-  it('attaches the bearer token to the Auth service profile route', () => {
+  it('does the same for the Auth service profile route', () => {
     http.get(`${AUTH_API_BASE_URL}/auth/me`).subscribe();
-    const me = httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/me`);
-    expect(me.request.headers.get('Authorization')).toBe('Bearer test-token');
+
+    carriesSession(httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/me`));
   });
 
-  it('does not attach the bearer token to a third-party request', () => {
+  it('sends the login, refresh and logout calls with credentials, so the cross-origin cookies are stored and sent', () => {
+    for (const path of ['login', 'refresh', 'logout']) {
+      http.post(`${AUTH_API_BASE_URL}/auth/${path}`, {}).subscribe();
+      carriesSession(httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/${path}`));
+    }
+  });
+
+  it('does not make register a credentialed call: it needs no session', () => {
+    http.post(`${AUTH_API_BASE_URL}/auth/register`, {}).subscribe();
+
+    const req = httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/register`);
+    expect(req.request.withCredentials).toBe(false);
+    expect(req.request.headers.has('X-Requested-With')).toBe(false);
+  });
+
+  it('never sends the session to a third party', () => {
     http.get('https://analytics.example.com/collect').subscribe();
+
     const req = httpMock.expectOne('https://analytics.example.com/collect');
+    expect(req.request.withCredentials).toBe(false);
+    expect(req.request.headers.has('X-Requested-With')).toBe(false);
     expect(req.request.headers.has('Authorization')).toBe(false);
   });
 
-  it('does not attach the bearer token to unauthenticated auth routes', () => {
-    for (const path of ['login', 'register', 'refresh']) {
-      http.post(`${AUTH_API_BASE_URL}/auth/${path}`, {}).subscribe();
-      const req = httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/${path}`);
-      expect(req.request.headers.has('Authorization')).toBe(false);
-    }
+  it('leaves a request alone when nobody is signed in', () => {
+    TestBed.inject(SessionService).clear();
+
+    http.get('/api/v1/orders').subscribe();
+
+    const req = httpMock.expectOne('/api/v1/orders');
+    expect(req.request.withCredentials).toBe(false);
   });
 });

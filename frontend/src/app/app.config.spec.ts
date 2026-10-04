@@ -1,22 +1,22 @@
 import { TestBed } from '@angular/core/testing';
 import { appConfig } from './app.config';
-import { ACCESS_TOKEN_PROVIDER } from './core/auth/access-token.provider';
 import { SessionService } from './core/session.service';
 import { TEST_TOKENS } from './testing/trade-http';
 
 describe('appConfig', () => {
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({ providers: appConfig.providers });
   });
 
-  it('feeds the generated clients the signed-in session token', () => {
-    const provider = TestBed.inject(ACCESS_TOKEN_PROVIDER);
-    expect(provider.isAuthenticated()).toBe(false);
-    expect(provider.getAccessToken()).toBeNull();
+  it('builds, and the session it tracks holds no tokens (they are HttpOnly cookies)', () => {
+    const session = TestBed.inject(SessionService);
+    expect(session.isLoggedIn()).toBe(false);
 
-    TestBed.inject(SessionService).start('alice', TEST_TOKENS);
+    session.start('alice', TEST_TOKENS);
 
-    expect(provider.isAuthenticated()).toBe(true);
-    expect(provider.getAccessToken()).toBe('a');
+    expect(session.isLoggedIn()).toBe(true);
+    expect(JSON.stringify(session.session())).not.toContain(TEST_TOKENS.accessToken + '"');
+    expect(Object.keys(session.session()!).sort()).toEqual(['expiresAt', 'username']);
   });
 });

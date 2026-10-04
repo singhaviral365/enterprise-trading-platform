@@ -1,19 +1,15 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 
-import { ACCESS_TOKEN_PROVIDER } from '../auth/access-token.provider';
+import { SessionService } from '../session.service';
 import { authGuard } from './auth.guard';
 import { safeReturnUrl } from './return-url';
 
 function setup(authenticated: boolean) {
-  TestBed.configureTestingModule({
-    providers: [
-      {
-        provide: ACCESS_TOKEN_PROVIDER,
-        useValue: { getAccessToken: () => null, isAuthenticated: () => authenticated },
-      },
-    ],
-  });
+  localStorage.clear();
+  if (authenticated) {
+    TestBed.inject(SessionService).start('alice', { expiresIn: 900 });
+  }
 }
 
 function run(url: string) {

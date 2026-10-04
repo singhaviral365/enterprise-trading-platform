@@ -11,8 +11,8 @@
 
 export interface RefreshRequest { 
     /**
-     * The refresh token issued by the previous login or refresh.
+     * The refresh token issued by the previous login or refresh. Omit it to use the HttpOnly `refresh_token` cookie (what a browser does). 
      */
-    refreshToken: string;
+    refreshToken?: string;
 }
 

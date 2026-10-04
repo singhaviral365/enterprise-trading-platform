@@ -44,7 +44,7 @@ describe('LoginForm', () => {
     expect(byTestId('login-submit')).toBeInstanceOf(HTMLButtonElement);
   });
 
-  it('signs in with valid credentials, stores the token and emits signedIn', async () => {
+  it('signs in with valid credentials, remembers the session (not the tokens) and emits signedIn', async () => {
     const signedIn = vi.fn();
     fixture.componentInstance.signedIn.subscribe(signedIn);
 
@@ -63,8 +63,10 @@ describe('LoginForm', () => {
     await vi.waitFor(() => expect(signedIn).toHaveBeenCalledWith({ username: 'alice.trader' }));
     const session = TestBed.inject(SessionService);
     expect(session.isLoggedIn()).toBe(true);
-    expect(session.accessToken()).toBe('access-1');
-    expect(localStorage.getItem(SESSION_STORAGE_KEY)).toContain('access-1');
+    expect(session.username()).toBe('alice.trader');
+    expect(localStorage.getItem(SESSION_STORAGE_KEY)).toContain('alice.trader');
+    expect(localStorage.getItem(SESSION_STORAGE_KEY)).not.toContain('access-1');
+    expect(localStorage.getItem(SESSION_STORAGE_KEY)).not.toContain('refresh-1');
   });
 
   it('shows a readable error when the credentials are rejected', async () => {

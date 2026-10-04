@@ -23,7 +23,7 @@ describe('AuthService', () => {
 
   afterEach(() => http.verify());
 
-  it('starts a session with the returned tokens on login', async () => {
+  it('starts a session on login, without keeping the tokens the response carries', async () => {
     const done = auth.login('alice.trader', 'secret-password');
     const request = http.expectOne({ method: 'POST', url: `${AUTH_API_BASE_URL}/auth/login` });
     expect(request.request.body).toEqual({ username: 'alice.trader', password: 'secret-password' });
@@ -31,8 +31,9 @@ describe('AuthService', () => {
     await done;
 
     expect(session.isLoggedIn()).toBe(true);
-    expect(session.accessToken()).toBe('a');
     expect(session.username()).toBe('alice.trader');
+    expect(session.session()!.expiresAt).toBeGreaterThan(Date.now() + 800_000);
+    expect(JSON.stringify(session.session())).not.toContain('"a"');
   });
 
   it('rejects with the HTTP error and starts no session when login fails', async () => {
@@ -66,9 +67,22 @@ describe('AuthService', () => {
     await expect(done).resolves.toMatchObject({ username: 'alice.trader' });
   });
 
-  it('clears the session on logout', () => {
-    session.start('alice.trader', { accessToken: 'a', refreshToken: 'r', tokenType: 'Bearer', expiresIn: 900 });
+  it('signs out at once and asks the Auth service to revoke the refresh token and clear the cookies', () => {
+    session.start('alice.trader', { expiresIn: 900 });
+
     auth.logout();
+
+    expect(session.isLoggedIn()).toBe(false);
+    const request = http.expectOne({ method: 'POST', url: `${AUTH_API_BASE_URL}/auth/logout` });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
+
+  it('stays signed out even when the logout call fails', () => {
+    session.start('alice.trader', { expiresIn: 900 });
+
+    auth.logout();
+    http.expectOne(`${AUTH_API_BASE_URL}/auth/logout`).flush(null, { status: 500, statusText: 'x' });
+
     expect(session.isLoggedIn()).toBe(false);
   });
 });

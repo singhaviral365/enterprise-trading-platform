@@ -39,13 +39,29 @@ describe('AuthApi', () => {
     req.flush({});
   });
 
-  it('posts the refresh token to /auth/refresh', () => {
-    api.refresh({ refreshToken: 'r' }).subscribe();
+  it('posts an empty body to /auth/refresh, so the service uses the HttpOnly refresh cookie', () => {
+    api.refresh().subscribe();
 
     const req = http.expectOne(`${AUTH_API_BASE_URL}/auth/refresh`);
     expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush({});
+  });
+
+  it('can still post a refresh token in the body, as a client without cookies would', () => {
+    api.refresh({ refreshToken: 'r' }).subscribe();
+
+    const req = http.expectOne(`${AUTH_API_BASE_URL}/auth/refresh`);
     expect(req.request.body).toEqual({ refreshToken: 'r' });
     req.flush({});
+  });
+
+  it('posts to /auth/logout to revoke the refresh token and clear the cookies', () => {
+    api.logout().subscribe();
+
+    const req = http.expectOne(`${AUTH_API_BASE_URL}/auth/logout`);
+    expect(req.request.method).toBe('POST');
+    req.flush(null, { status: 204, statusText: 'No Content' });
   });
 
   it('reads the signed-in profile from /auth/me', () => {

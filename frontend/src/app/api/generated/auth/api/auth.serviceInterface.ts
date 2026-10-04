@@ -29,19 +29,27 @@ export interface AuthServiceInterface {
 
     /**
      * Log in and receive tokens
-     * Verifies the credentials and issues an access token and a refresh token. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body. 
+     * Verifies the credentials and issues an access token and a refresh token. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body. The pair is also set as HttpOnly &#x60;access_token&#x60; and &#x60;refresh_token&#x60; cookies. 
      * @endpoint post /auth/login
      * @param loginRequest 
      */
     login(loginRequest: LoginRequest, extraHttpRequestParams?: any): Observable<TokenResponse>;
 
     /**
+     * Log out
+     * Revokes the refresh token (the HttpOnly cookie, or the body for a client without cookies) and clears both session cookies. Always &#x60;204&#x60;, so it cannot be used to probe whether a token existed. The access token is a stateless JWT: it stops working when it expires, within 15 minutes. A cookie-only request must carry an &#x60;X-Requested-With&#x60; header, otherwise &#x60;AUTH-401&#x60;. 
+     * @endpoint post /auth/logout
+     * @param refreshRequest 
+     */
+    logout(refreshRequest?: RefreshRequest, extraHttpRequestParams?: any): Observable<{}>;
+
+    /**
      * Exchange a refresh token for a new token pair
-     * Consumes the presented refresh token and issues a new pair. The presented token stops working immediately. Presenting a token that has already been consumed is treated as theft: revoke every refresh token for that user and return &#x60;AUTH-401&#x60;. 
+     * Consumes the presented refresh token and issues a new pair. The presented token stops working immediately. Presenting a token that has already been consumed is treated as theft: revoke every refresh token for that user and return &#x60;AUTH-401&#x60;.  A browser sends no body: the token is read from the HttpOnly &#x60;refresh_token&#x60; cookie, and the request must carry an &#x60;X-Requested-With&#x60; header. A client without cookies sends the token in the body instead. Either way the new pair is set as cookies again. 
      * @endpoint post /auth/refresh
      * @param refreshRequest 
      */
-    refresh(refreshRequest: RefreshRequest, extraHttpRequestParams?: any): Observable<TokenResponse>;
+    refresh(refreshRequest?: RefreshRequest, extraHttpRequestParams?: any): Observable<TokenResponse>;
 
     /**
      * Register a user

@@ -31,7 +31,7 @@ describe('Header', () => {
 
   it('signing out clears the session and returns home', async () => {
     const session = TestBed.inject(SessionService);
-    session.start('alice.trader', { accessToken: 'a', refreshToken: 'r', tokenType: 'Bearer', expiresIn: 900 });
+    session.start('alice.trader', { expiresIn: 900 });
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     const fixture = TestBed.createComponent(Header);
     const root = fixture.nativeElement as HTMLElement;
@@ -40,6 +40,8 @@ describe('Header', () => {
     await fixture.whenStable();
 
     root.querySelector<HTMLButtonElement>('[data-testid="logout-button"]')!.click();
+    // The Auth service is told so it can revoke the refresh token and clear the cookies.
+    http.expectOne({ method: 'POST', url: 'http://localhost:3000/auth/logout' }).flush(null, { status: 204, statusText: 'No Content' });
     await fixture.whenStable();
 
     expect(session.isLoggedIn()).toBe(false);

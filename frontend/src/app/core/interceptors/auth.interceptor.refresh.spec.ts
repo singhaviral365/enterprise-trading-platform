@@ -3,13 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { AUTH_API_BASE_URL, provideApiClients } from '../../api/api.config';
-import { ACCESS_TOKEN_PROVIDER } from '../auth/access-token.provider';
 import { SessionService } from '../session.service';
 import { authInterceptor } from './auth.interceptor';
 
 const REFRESH_URL = `${AUTH_API_BASE_URL}/auth/refresh`;
 const ORDERS = '/api/v1/accounts/1001';
-const OLD = { accessToken: 'old', refreshToken: 'old-refresh', tokenType: 'Bearer', expiresIn: 900 };
+const OLD = { expiresIn: 900 };
+/** The tokens in a refresh response are never read: the real ones are HttpOnly cookies. */
 const NEW = { accessToken: 'new', refreshToken: 'new-refresh', tokenType: 'Bearer', expiresIn: 900 };
 
 /** The interceptor wired to the real session and refresher, as the app runs it. */
@@ -20,19 +20,13 @@ describe('authInterceptor session renewal', () => {
   let navigate: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
         provideApiClients(),
         provideRouter([]),
-        {
-          provide: ACCESS_TOKEN_PROVIDER,
-          useFactory: () => {
-            const current = TestBed.inject(SessionService);
-            return { getAccessToken: () => current.accessToken(), isAuthenticated: () => current.isLoggedIn() };
-          },
-        },
       ],
     });
     client = TestBed.inject(HttpClient);
@@ -44,23 +38,23 @@ describe('authInterceptor session renewal', () => {
 
   afterEach(() => http.verify());
 
-  const bearer = (request: { request: { headers: { get(n: string): string | null } } }) =>
-    request.request.headers.get('Authorization');
+  const sentWithSession = (request: { request: { withCredentials: boolean; headers: { has(n: string): boolean } } }) =>
+    request.request.withCredentials && request.request.headers.has('X-Requested-With');
 
-  it('refreshes once on a 401 and retries the call with the new token', async () => {
+  it('refreshes once on a 401 and retries the call, still with the session', async () => {
     const result = new Promise((resolve, reject) => client.get(ORDERS).subscribe({ next: resolve, error: reject }));
 
     const first = http.expectOne(ORDERS);
-    expect(bearer(first)).toBe('Bearer old');
+    expect(sentWithSession(first)).toBe(true);
     first.flush(null, { status: 401, statusText: 'Unauthorized' });
 
     (await vi.waitFor(() => http.expectOne(REFRESH_URL))).flush(NEW);
     const retry = await vi.waitFor(() => http.expectOne(ORDERS));
-    expect(bearer(retry)).toBe('Bearer new');
+    expect(sentWithSession(retry)).toBe(true);
     retry.flush({ ok: true });
 
     await expect(result).resolves.toEqual({ ok: true });
-    expect(session.accessToken()).toBe('new');
+    expect(session.session()!.expiresAt).toBeGreaterThan(Date.now() + 800_000);
   });
 
   it('shares one refresh between calls that fail together', async () => {
@@ -74,7 +68,7 @@ describe('authInterceptor session renewal', () => {
     (await vi.waitFor(() => http.expectOne(REFRESH_URL))).flush(NEW);
     for (const path of ['balance', 'positions']) {
       const retry = await vi.waitFor(() => http.expectOne(`${ORDERS}/${path}`));
-      expect(bearer(retry)).toBe('Bearer new');
+      expect(sentWithSession(retry)).toBe(true);
       retry.flush({ path });
     }
 
@@ -92,6 +86,18 @@ describe('authInterceptor session renewal', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
+  it('does not refresh when a rejected login comes back 401: bad credentials are not an expired session', async () => {
+    const result = new Promise((resolve, reject) =>
+      client.post(`${AUTH_API_BASE_URL}/auth/login`, {}).subscribe({ next: resolve, error: reject }),
+    );
+
+    http.expectOne(`${AUTH_API_BASE_URL}/auth/login`).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(result).rejects.toMatchObject({ status: 401 });
+    http.expectNone(REFRESH_URL);
+    expect(session.isLoggedIn()).toBe(true);
+  });
+
   it('does not loop when the retry is rejected as well', async () => {
     const result = new Promise((resolve, reject) => client.get(ORDERS).subscribe({ next: resolve, error: reject }));
     http.expectOne(ORDERS).flush(null, { status: 401, statusText: 'Unauthorized' });
@@ -103,21 +109,21 @@ describe('authInterceptor session renewal', () => {
     http.expectNone(REFRESH_URL);
   });
 
-  it('refreshes before sending when the stored token has already expired, e.g. after a reload', async () => {
-    session.start('alice', { ...OLD, expiresIn: -60 });
+  it('refreshes before sending when the access cookie has already expired, e.g. after a reload', async () => {
+    session.start('alice', { expiresIn: -60 });
 
     const result = new Promise((resolve, reject) => client.get(ORDERS).subscribe({ next: resolve, error: reject }));
     http.expectNone(ORDERS);
     (await vi.waitFor(() => http.expectOne(REFRESH_URL))).flush(NEW);
 
     const request = await vi.waitFor(() => http.expectOne(ORDERS));
-    expect(bearer(request)).toBe('Bearer new');
+    expect(sentWithSession(request)).toBe(true);
     request.flush({ ok: true });
     await expect(result).resolves.toEqual({ ok: true });
   });
 
-  it('fails the call and ends the session when an expired token cannot be refreshed', async () => {
-    session.start('alice', { ...OLD, expiresIn: -60 });
+  it('fails the call and ends the session when an expired session cannot be refreshed', async () => {
+    session.start('alice', { expiresIn: -60 });
 
     const result = new Promise((resolve, reject) => client.get(ORDERS).subscribe({ next: resolve, error: reject }));
     (await vi.waitFor(() => http.expectOne(REFRESH_URL))).flush(null, { status: 401, statusText: 'Unauthorized' });
@@ -137,7 +143,7 @@ describe('authInterceptor session renewal', () => {
     expect(session.isLoggedIn()).toBe(true);
   });
 
-  it('does not refresh for a 401 from a service that never got the token', async () => {
+  it('does not refresh for a 401 from a service that never got the session', async () => {
     const result = new Promise((resolve, reject) =>
       client.get('https://other.example.com/x').subscribe({ next: resolve, error: reject }),
     );

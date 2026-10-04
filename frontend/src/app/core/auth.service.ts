@@ -7,7 +7,7 @@ import { SessionService } from './session.service';
 
 /**
  * Session orchestration on top of the generated Auth client: logging in starts the session,
- * logging out ends it. It makes no HTTP calls of its own, and it does not translate failures;
+ * logging out ends it (and asks the Auth service to revoke the refresh token and clear the cookies). It makes no HTTP calls of its own, and it does not translate failures;
  * a rejected call carries the client's `HttpErrorResponse`, which callers turn into a sentence
  * with `describeError`.
  */
@@ -30,7 +30,13 @@ export class AuthService {
     return firstValueFrom(this.api.currentUser());
   }
 
+  /**
+   * Signs out at once in the UI, then tells the Auth service so it can revoke the refresh token and expire the
+   * HttpOnly cookies (script cannot delete those itself). A failure of that call is not shown: the user is signed
+   * out locally either way, and the refresh token would only be good for what is left of its seven days.
+   */
   logout(): void {
     this.session.clear();
+    this.api.logout().subscribe({ error: () => undefined });
   }
 }
