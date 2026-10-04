@@ -27,22 +27,8 @@
   color: var(--surface-foreground);
   border: 1px solid var(--surface-line-subtle);
   border-radius: 22px;
-  box-shadow:
-    0 2px 4px rgb(0 0 0 / 0.08),
-    0 12px 24px rgb(0 0 0 / 0.14),
-    0 32px 64px -12px rgb(0 0 0 / 0.35);
   transform-origin: 50% 100%;
   animation: panel-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-/* Accent strip along the top edge, matching the sign-in / register dialog. */
-.quote-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 4px;
-  border-radius: 22px 22px 0 0;
-  background: linear-gradient(90deg, var(--accent-primary-background), var(--data-mono-blue-3));
 }
 
 .quote-header {
@@ -237,23 +223,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin-top: 8px;
-}
-
-.trade-btn {
-  font-weight: 700;
-  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* Buy and Sell share the same green. */
-.trade-btn:not(:disabled) {
-  color: var(--status-success-foreground);
-  background: linear-gradient(135deg, var(--status-success-background), color-mix(in srgb, var(--status-success-background) 75%, #0f766e));
-  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--status-success-background) 80%, transparent);
-}
-
-.trade-btn:hover:not(:disabled) {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
 }
 
 @media (prefers-reduced-motion: reduce) {

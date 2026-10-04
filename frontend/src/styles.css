@@ -445,7 +445,8 @@ a:hover {
 .btn.is-large {
   min-height: 44px;
   padding: 10px 24px;
-  font-size: 15px;
+  font-size: 16px;
+  font-weight: 800;
   border-radius: 50px;
 }
 
@@ -483,10 +484,6 @@ a:hover {
 
 .btn.is-icon-only.is-unclickable {
   cursor: default;
-}
-
-.btn.is-icon-only.is-unclickable:hover:not(:disabled) {
-  background: inherit;
 }
 
 /* Form Elements */

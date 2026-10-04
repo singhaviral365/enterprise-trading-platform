@@ -60,12 +60,10 @@ input[type='radio'] {
 
 .type-card:hover {
   transform: translateY(-1px);
-  box-shadow: var(--card-shadow);
 }
 
 .type-card.is-active {
   border-color: var(--accent-primary-background);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 18%, transparent);
 }
 
 .type-card:has(input:focus-visible) {
@@ -89,7 +87,6 @@ input[type='radio'] {
 .type-card.is-active .type-icon {
   color: var(--accent-primary-foreground);
   background: var(--accent-gradient);
-  box-shadow: var(--accent-glow);
 }
 
 .type-text {

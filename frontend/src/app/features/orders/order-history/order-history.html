@@ -6,8 +6,6 @@
         {{ store.workingOrders() }} {{ store.workingOrders() === 1 ? 'order is' : 'orders are' }} still working. This list updates automatically.
       } @else if (store.paused()) {
         Automatic updates paused while {{ store.workingOrders() }} {{ store.workingOrders() === 1 ? 'order is' : 'orders are' }} still working. Press Refresh to check again.
-      } @else if (allOrders().length) {
-        Every order is listed, including rejected ones.
       }
     </p>
   </div>

@@ -136,7 +136,7 @@
         }
       </select>
       <span class="page-range" aria-live="polite" data-testid="market-range">
-        {{ range().from }}–{{ range().to }} of {{ range().total }}
+        {{ range().from }}-{{ range().to }} of {{ range().total }}
       </span>
     </div>
     <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />

@@ -37,8 +37,6 @@ input[type='radio'] {
   width: calc(50% - 4px);
   border-radius: 10px;
   background: var(--status-success-background);
-  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--status-success-background) 70%, transparent);
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.25s ease, box-shadow 0.25s ease;
 }
 
 /* Same green for both sides; only the position changes. */

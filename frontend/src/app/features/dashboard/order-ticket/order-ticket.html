@@ -9,7 +9,7 @@
       <legend class="field-label">Order type</legend>
       <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Market">
         <input type="radio" name="order-type" value="MARKET" data-testid="order-type-market" [checked]="orderType() === OrderPricingType.Market" (change)="setOrderType(OrderPricingType.Market)" />
-        <span class="type-icon" aria-hidden="true"><i class="fas fa-bolt"></i></span>
+        <button class="btn is-primary is-icon-only" aria-hidden="true"><i class="fas fa-bolt"></i></button>
         <span class="type-text">
           <span class="type-title">Market</span>
           <span class="type-hint">Fill now at the live price</span>
@@ -17,7 +17,7 @@
       </label>
       <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Limit">
         <input type="radio" name="order-type" value="LIMIT" data-testid="order-type-limit" [checked]="orderType() === OrderPricingType.Limit" (change)="setOrderType(OrderPricingType.Limit)" />
-        <span class="type-icon" aria-hidden="true"><i class="fas fa-sliders"></i></span>
+        <button class="btn is-primary is-icon-only" aria-hidden="true"><i class="fas fa-sliders"></i></button>
         <span class="type-text">
           <span class="type-title">Limit</span>
           <span class="type-hint">Fill only at your price or better</span>
