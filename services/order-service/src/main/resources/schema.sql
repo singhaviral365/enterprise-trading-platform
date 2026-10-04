@@ -137,6 +137,10 @@ CREATE TABLE IF NOT EXISTS instrument
 
     instrument_status   VARCHAR(20) NOT NULL DEFAULT 'TRADING',
 
+    currency            CHAR(3) NOT NULL DEFAULT 'USD',
+
+    icon_url            VARCHAR(255),
+
     CONSTRAINT pk_instrument
         PRIMARY KEY (instrument_id),
 
@@ -162,8 +166,16 @@ CREATE TABLE IF NOT EXISTS instrument
                 'HALTED',
                 'RETIRED'
             )
-        )
+        ),
+
+    CONSTRAINT chk_instrument_currency
+        CHECK (currency ~ '^[A-Z]{3}$')
 );
+
+-- Databases created before these columns existed pick them up here. Existing rows are back-filled by
+-- db/migrations/add_instrument_icon_and_currency.sql.
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS currency CHAR(3) NOT NULL DEFAULT 'USD';
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS icon_url VARCHAR(255);
 
 
 -- ============================================================

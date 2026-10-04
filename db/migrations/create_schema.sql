@@ -137,6 +137,13 @@ CREATE TABLE instrument
 
     instrument_status   VARCHAR(20) NOT NULL DEFAULT 'TRADING',
 
+    -- Currency the instrument is quoted and traded in (ISO 4217). Orders and holdings
+    -- are stored in the ACCOUNT currency; this is what they are converted from.
+    currency            CHAR(3) NOT NULL DEFAULT 'USD',
+
+    -- Public path of the company logo served by the frontend, e.g. /assets/icons/AAPL.svg
+    icon_url            VARCHAR(255),
+
     CONSTRAINT pk_instrument
         PRIMARY KEY (instrument_id),
 
@@ -162,7 +169,10 @@ CREATE TABLE instrument
                 'HALTED',
                 'RETIRED'
             )
-        )
+        ),
+
+    CONSTRAINT chk_instrument_currency
+        CHECK (currency ~ '^[A-Z]{3}$')
 );
 
 

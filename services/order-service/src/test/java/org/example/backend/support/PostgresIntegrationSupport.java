@@ -48,7 +48,9 @@ public abstract class PostgresIntegrationSupport {
                     instrument_ticker VARCHAR(20) NOT NULL UNIQUE,
                     instrument_name VARCHAR(255) NOT NULL,
                     asset_class VARCHAR(20) NOT NULL,
-                    instrument_status VARCHAR(20) NOT NULL
+                    instrument_status VARCHAR(20) NOT NULL,
+                    currency CHAR(3) NOT NULL DEFAULT 'USD',
+                    icon_url VARCHAR(255)
                 )
                 """);
 
