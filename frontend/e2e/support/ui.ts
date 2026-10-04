@@ -17,7 +17,7 @@ export async function signInFromHome(page: Page, credentials: Credentials): Prom
   // Fail with the real reason (bad credentials, account step) instead of a bare URL timeout.
   const refused = page.getByTestId('login-error');
   const accountStep = page.getByTestId('account-setup-form');
-  await expect(refused.or(accountStep).or(page.getByTestId('dashboard-username'))).toBeVisible();
+  await expect(refused.or(accountStep).or(page.getByTestId('dashboard-title'))).toBeVisible();
   if (await refused.isVisible()) {
     throw new Error(`Sign-in refused for "${credentials.username}": ${await refused.innerText()} Check the E2E_* credentials in .env.e2e.`);
   }
@@ -25,15 +25,18 @@ export async function signInFromHome(page: Page, credentials: Credentials): Prom
     throw new Error(`"${credentials.username}" has no linked trading account; open one first.`);
   }
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByTestId('dashboard-username')).toHaveText(credentials.username);
+  // The header shows who is signed in (the dashboard itself no longer greets by name).
+  await expect(page.getByTestId('header-username')).toContainText(credentials.username);
 }
 
-/** Opens the quote dialog for a symbol on the dashboard market board, widening the table if needed. */
+/** Opens the quote dialog for a symbol on the Market data page, widening the table if needed. */
 export async function openQuote(page: Page, symbol: string): Promise<Locator> {
+  // The market board moved off the dashboard to its own page (a full load is fine: the session is a cookie).
+  await page.goto('/market');
   const row = page.getByTestId(`market-row-${symbol}`);
   await expect(page.getByTestId('market-table')).toBeVisible();
   if (!(await row.isVisible())) {
-    const sizes = page.getByTestId('market-page-size');
+    const sizes = page.getByTestId('pagination-page-size').locator('select');
     const values = await sizes.locator('option').evaluateAll((all) => all.map((o) => (o as HTMLOptionElement).value));
     await sizes.selectOption(values[values.length - 1]);
   }

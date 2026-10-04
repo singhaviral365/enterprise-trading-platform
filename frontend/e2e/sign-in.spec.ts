@@ -36,7 +36,7 @@ test.describe('sign in', () => {
     await submitLogin(page, credentials);
 
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByTestId('dashboard-username')).toHaveText(credentials.username);
+    await expect(page.getByTestId('header-username')).toContainText(credentials.username);
     await expect(page.getByTestId('logout-button')).toBeVisible();
     await expect(page.getByTestId('auth-dialog')).not.toBeVisible();
   });

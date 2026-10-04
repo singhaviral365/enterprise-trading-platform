@@ -7,7 +7,7 @@ These specs drive a real browser against the **running stack**. They mock nothin
 | Spec | Covers |
 | --- | --- |
 | `sign-in.spec.ts` | Guard redirect, refused sign-in, successful sign-in, arriving at the page you asked for |
-| `place-order.spec.ts` | Non-active (read-only) account, rejection before submission, a placed order (NEW, FILLED or REJECTED accepted) |
+| `place-order.spec.ts` | (from the Market data page) Non-active (read-only) account, rejection before submission, a placed order (NEW, FILLED or REJECTED accepted) |
 | `blotter.spec.ts` | Order history: guard, rows, sorting, refresh (bonus) |
 
 Isolation: each spec file runs in its own worker process, each test in a fresh browser context, and there is
