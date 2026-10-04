@@ -11,6 +11,8 @@ import java.util.Objects;
 
 public class Instrument {
 
+    public static final String DEFAULT_CURRENCY = "USD";
+
     @Positive
     private final int instrumentId;
 
@@ -28,12 +30,33 @@ public class Instrument {
     @NotNull
     private InstrumentStatus instrumentStatus;
 
+    /** ISO 4217 code the instrument is quoted and traded in, e.g. INR for INFY.NS. */
+    @NotBlank
+    @Size(min = 3, max = 3)
+    private final String currency;
+
+    /** Public path of the company logo, e.g. /assets/icons/AAPL.svg; null when there is none. */
+    @Size(max = 255)
+    private final String iconUrl;
+
     public Instrument(
             int instrumentId,
             String instrumentTicker,
             String instrumentName,
             InstrumentAssetClass assetClass,
             InstrumentStatus instrumentStatus) {
+
+        this(instrumentId, instrumentTicker, instrumentName, assetClass, instrumentStatus, DEFAULT_CURRENCY, null);
+    }
+
+    public Instrument(
+            int instrumentId,
+            String instrumentTicker,
+            String instrumentName,
+            InstrumentAssetClass assetClass,
+            InstrumentStatus instrumentStatus,
+            String currency,
+            String iconUrl) {
 
         if (instrumentId < 1) {
             throw new IllegalArgumentException(
@@ -72,6 +95,8 @@ public class Instrument {
         this.instrumentName = instrumentName;
         this.assetClass = assetClass;
         this.instrumentStatus = instrumentStatus;
+        this.currency = currency == null || currency.isBlank() ? DEFAULT_CURRENCY : currency.trim().toUpperCase();
+        this.iconUrl = iconUrl == null || iconUrl.isBlank() ? null : iconUrl.trim();
     }
 
     public int getInstrumentId() {
@@ -92,6 +117,14 @@ public class Instrument {
 
     public InstrumentStatus getInstrumentStatus() {
         return instrumentStatus;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public String getIconUrl() {
+        return iconUrl;
     }
 
     public boolean isTradable() {

@@ -7,6 +7,8 @@ import org.example.backend.mapper.InstrumentMapper;
 import org.example.trade_executor.client.QuoteDetails;
 import org.example.trade_executor.client.QuoteClient;
 import org.example.trade_executor.client.QuoteUnavailableException;
+import org.example.trade_executor.fx.CurrencyConversionService;
+import org.example.trade_executor.fx.ExchangeRates;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,9 +24,11 @@ import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -40,6 +44,9 @@ class MarketQuoteServiceTest {
 
     @Mock
     private QuoteClient quoteClient;
+
+    @Mock
+    private CurrencyConversionService currencyConversionService;
 
     private MutableClock clock;
 
@@ -59,7 +66,7 @@ class MarketQuoteServiceTest {
         quotes.put("MSFT", quote("MSFT", "417.44"));
         when(quoteClient.getQuoteDetails(anyCollection())).thenReturn(quotes);
 
-        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, 30, clock);
+        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock);
         MarketBoard board = service.getBoard();
 
         assertEquals(2, board.quotes().size());
@@ -76,7 +83,7 @@ class MarketQuoteServiceTest {
                 .thenReturn(Map.of("AAPL", quote("AAPL", "189.12")))
                 .thenReturn(Map.of("AAPL", quote("AAPL", "200.00")));
 
-        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, 30, clock);
+        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock);
 
         MarketBoard first = service.getBoard();
         clock.advanceSeconds(10);
@@ -95,7 +102,7 @@ class MarketQuoteServiceTest {
                 .thenReturn(Map.of("AAPL", quote("AAPL", "189.12")))
                 .thenThrow(new QuoteUnavailableException("AAPL", "downstream unavailable"));
 
-        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, 5, clock);
+        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 5, clock);
 
         MarketBoard fresh = service.getBoard();
         clock.advanceSeconds(6);
@@ -113,7 +120,7 @@ class MarketQuoteServiceTest {
         when(quoteClient.getQuoteDetails(anyCollection()))
                 .thenThrow(new QuoteUnavailableException("AAPL", "downstream unavailable"));
 
-        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, 30, clock);
+        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock);
 
         assertThrows(ResponseStatusException.class, service::getBoard);
     }
@@ -127,7 +134,7 @@ class MarketQuoteServiceTest {
         when(instrumentMapper.selectTradableInstruments()).thenReturn(many);
         when(quoteClient.getQuoteDetails(anyCollection())).thenReturn(Map.of());
 
-        new MarketQuoteService(instrumentMapper, quoteClient, 30, clock).getBoard();
+        new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock).getBoard();
 
         org.mockito.ArgumentCaptor<java.util.Collection<String>> batches =
                 org.mockito.ArgumentCaptor.forClass(java.util.Collection.class);
@@ -143,7 +150,7 @@ class MarketQuoteServiceTest {
                 .thenReturn(Map.of("AAPL", quote("AAPL", "189.12")))
                 .thenThrow(new QuoteUnavailableException("AAPL", "downstream unavailable"));
 
-        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, 5, clock);
+        MarketQuoteService service = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 5, clock);
         service.getBoard();
         clock.advanceSeconds(6);
         service.getBoard();
@@ -161,10 +168,52 @@ class MarketQuoteServiceTest {
                 new Instrument(2, null, "Broken row", InstrumentAssetClass.EQUITY, InstrumentStatus.TRADING)));
         when(quoteClient.getQuoteDetails(anyCollection())).thenReturn(Map.of());
 
-        MarketBoard board = new MarketQuoteService(instrumentMapper, quoteClient, 30, clock).getBoard();
+        MarketBoard board = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock).getBoard();
 
         assertEquals(1, board.quotes().size());
         assertEquals("AAPL", board.quotes().get(0).symbol());
+    }
+
+    @Test
+    void carriesIconCurrencyAndExchangeRatesOntoTheBoard() {
+        when(instrumentMapper.selectTradableInstruments()).thenReturn(List.of(
+                new Instrument(1, "AAPL", "Apple Inc", InstrumentAssetClass.EQUITY, InstrumentStatus.TRADING,
+                        "USD", "/assets/icons/AAPL.svg"),
+                new Instrument(2, "INFY.NS", "Infosys Ltd", InstrumentAssetClass.EQUITY, InstrumentStatus.TRADING,
+                        "INR", "/assets/icons/INFY.NS.svg")));
+        Map<String, QuoteDetails> quotes = new LinkedHashMap<>();
+        quotes.put("AAPL", new QuoteDetails("AAPL", new BigDecimal("200.00"), Map.of("currency", "USD")));
+        // The quote API did not report a currency for this one, so the instrument's own is used.
+        quotes.put("INFY.NS", quote("INFY.NS", "1100.00"));
+        when(quoteClient.getQuoteDetails(anyCollection())).thenReturn(quotes);
+        when(currencyConversionService.currentRatesIfAvailable()).thenReturn(Optional.of(new ExchangeRates(
+                "USD",
+                Map.of("USD", BigDecimal.ONE, "INR", new BigDecimal("96.35")),
+                clock.instant())));
+
+        MarketBoard board = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock).getBoard();
+
+        MarketQuote aapl = board.quotes().get(0);
+        MarketQuote infy = board.quotes().get(1);
+        assertEquals("/assets/icons/AAPL.svg", aapl.iconUrl());
+        assertEquals("USD", aapl.currency());
+        assertEquals("/assets/icons/INFY.NS.svg", infy.iconUrl());
+        assertEquals("INR", infy.currency());
+        assertEquals("USD", board.baseCurrency());
+        assertEquals(new BigDecimal("96.35"), board.fxRates().get("INR"));
+    }
+
+    @Test
+    void theBoardStillWorksWithoutExchangeRates() {
+        when(instrumentMapper.selectTradableInstruments()).thenReturn(List.of(instrument(1, "AAPL", "Apple Inc")));
+        when(quoteClient.getQuoteDetails(anyCollection())).thenReturn(Map.of("AAPL", quote("AAPL", "189.12")));
+        when(currencyConversionService.currentRatesIfAvailable()).thenReturn(Optional.empty());
+
+        MarketBoard board = new MarketQuoteService(instrumentMapper, quoteClient, currencyConversionService, 30, clock).getBoard();
+
+        assertEquals(1, board.quotes().size());
+        assertNull(board.fxRates());
+        assertNull(board.baseCurrency());
     }
 
     private static QuoteDetails quote(String symbol, String price) {

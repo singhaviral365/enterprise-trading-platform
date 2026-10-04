@@ -5,6 +5,8 @@ import org.example.backend.mapper.InstrumentMapper;
 import org.example.trade_executor.client.QuoteClient;
 import org.example.trade_executor.client.QuoteDetails;
 import org.example.trade_executor.client.QuoteUnavailableException;
+import org.example.trade_executor.fx.CurrencyConversionService;
+import org.example.trade_executor.fx.ExchangeRates;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,7 @@ public class MarketQuoteService {
 
     private final InstrumentMapper instrumentMapper;
     private final QuoteClient quoteClient;
+    private final CurrencyConversionService currencyConversionService;
     private final Duration cacheTtl;
     private final Clock clock;
 
@@ -44,19 +47,22 @@ public class MarketQuoteService {
     public MarketQuoteService(
             InstrumentMapper instrumentMapper,
             QuoteClient quoteClient,
+            CurrencyConversionService currencyConversionService,
             @Value("${trading.market.cache-ttl-seconds:30}") long cacheTtlSeconds) {
 
-        this(instrumentMapper, quoteClient, cacheTtlSeconds, Clock.systemUTC());
+        this(instrumentMapper, quoteClient, currencyConversionService, cacheTtlSeconds, Clock.systemUTC());
     }
 
     MarketQuoteService(
             InstrumentMapper instrumentMapper,
             QuoteClient quoteClient,
+            CurrencyConversionService currencyConversionService,
             long cacheTtlSeconds,
             Clock clock) {
 
         this.instrumentMapper = instrumentMapper;
         this.quoteClient = quoteClient;
+        this.currencyConversionService = currencyConversionService;
         this.cacheTtl = Duration.ofSeconds(Math.max(1L, cacheTtlSeconds));
         this.clock = clock;
     }
@@ -114,20 +120,31 @@ public class MarketQuoteService {
                         instrument.getInstrumentName(),
                         instrument.getAssetClass() == null ? null : instrument.getAssetClass().name(),
                         quote == null ? null : quote.price(),
-                        quote == null ? null : quote.fields()));
+                        quote == null ? null : quote.fields(),
+                        quoteCurrency(quote, instrument),
+                        instrument.getIconUrl()));
             }
 
+            // Rates are best effort: without them the board still works, it just cannot show converted amounts.
+            ExchangeRates rates = currencyConversionService.currentRatesIfAvailable().orElse(null);
             MarketBoard freshBoard = new MarketBoard(
                     marketQuotes,
                     OffsetDateTime.ofInstant(now, ZoneOffset.UTC).toString(),
-                    false);
+                    false,
+                    rates == null ? null : rates.baseCode(),
+                    rates == null ? null : rates.rates());
 
             cachedSnapshot = new Snapshot(freshBoard, now);
             return freshBoard;
         } catch (QuoteUnavailableException ex) {
             LOGGER.warn("Market quote refresh failed", ex);
             if (snapshot != null) {
-                MarketBoard staleBoard = new MarketBoard(snapshot.board().quotes(), snapshot.board().asOf(), true);
+                MarketBoard staleBoard = new MarketBoard(
+                        snapshot.board().quotes(),
+                        snapshot.board().asOf(),
+                        true,
+                        snapshot.board().baseCurrency(),
+                        snapshot.board().fxRates());
                 // Re-arm the TTL so an outage costs one Fauxnance call per TTL, not one per request.
                 cachedSnapshot = new Snapshot(staleBoard, now);
                 return staleBoard;
@@ -135,6 +152,14 @@ public class MarketQuoteService {
 
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Live market data unavailable", ex);
         }
+    }
+
+    /** The quote API's own currency when it reports one, else the instrument's. */
+    private static String quoteCurrency(QuoteDetails quote, Instrument instrument) {
+        Object reported = quote == null ? null : quote.fields().get("currency");
+        return reported instanceof String code && code.trim().length() == 3
+                ? code.trim().toUpperCase()
+                : instrument.getCurrency();
     }
 
     private record Snapshot(MarketBoard board, Instant fetchedAt) {

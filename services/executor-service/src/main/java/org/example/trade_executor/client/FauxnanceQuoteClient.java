@@ -371,7 +371,9 @@ public class FauxnanceQuoteClient implements QuoteClient {
                 String symbol = symbolNode.asText().trim();
                 BigDecimal price = extractPrice(priceNode);
                 if (!symbol.isBlank() && price != null && price.compareTo(BigDecimal.ZERO) > 0) {
-                    quotes.put(symbol, new LiveQuote(symbol, price));
+                    JsonNode currencyNode = node.get("currency");
+                    String currency = currencyNode != null && currencyNode.isTextual() ? currencyNode.asText() : null;
+                    quotes.put(symbol, new LiveQuote(symbol, price, currency));
                 }
             }
 

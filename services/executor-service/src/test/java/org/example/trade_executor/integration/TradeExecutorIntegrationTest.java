@@ -14,8 +14,10 @@ import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
 import org.example.trade_executor.executor.OrderPlacedConsumer;
+import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
+import org.example.trade_executor.fx.CurrencyConversionService;
 import org.example.trade_executor.service.OrderSettlementService;
 import org.example.trade_executor.service.TradeExecutorService;
 import org.junit.jupiter.api.AfterAll;
@@ -256,9 +258,21 @@ class TradeExecutorIntegrationTest {
         }
 
         @Bean
+        AccountMapper accountMapper() {
+            return Mockito.mock(AccountMapper.class);
+        }
+
+        @Bean
+        CurrencyConversionService currencyConversionService() {
+            return Mockito.mock(CurrencyConversionService.class);
+        }
+
+        @Bean
         TradeExecutorService tradeExecutorService(
                 OrderMapper orderMapper,
                 InstrumentMapper instrumentMapper,
+                AccountMapper accountMapper,
+                CurrencyConversionService currencyConversionService,
                 FauxnanceQuoteClient quoteClient,
                 FillDecisionEngine fillDecisionEngine,
                 OrderSettlementService orderSettlementService,
@@ -266,6 +280,8 @@ class TradeExecutorIntegrationTest {
             return new TradeExecutorService(
                     orderMapper,
                     instrumentMapper,
+                    accountMapper,
+                    currencyConversionService,
                     quoteClient,
                     fillDecisionEngine,
                     orderSettlementService,

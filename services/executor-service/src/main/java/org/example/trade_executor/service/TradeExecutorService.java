@@ -14,14 +14,20 @@ import org.example.trade_executor.executor.ExecutionOutcome;
 import org.example.trade_executor.executor.ExecutionRejectReason;
 import org.example.trade_executor.executor.FillDecisionEngine;
 import org.example.trade_executor.executor.PoisonOrderMessageException;
+import org.example.backend.entities.Account;
+import org.example.backend.mapper.AccountMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
+import org.example.trade_executor.fx.CurrencyConversionService;
+import org.example.trade_executor.fx.ExchangeRateUnavailableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Optional;
 
 @Service
@@ -29,8 +35,13 @@ public class TradeExecutorService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TradeExecutorService.class);
 
+    /** A converted price that rounds to zero would be invalid; the smallest stored price is used instead. */
+    private static final BigDecimal MIN_CONVERTED_PRICE = new BigDecimal("0.0001");
+
     private final OrderMapper orderMapper;
     private final InstrumentMapper instrumentMapper;
+    private final AccountMapper accountMapper;
+    private final CurrencyConversionService currencyConversionService;
     private final QuoteClient quoteClient;
     private final FillDecisionEngine fillDecisionEngine;
     private final OrderSettlementService orderSettlementService;
@@ -40,6 +51,8 @@ public class TradeExecutorService {
     public TradeExecutorService(
             OrderMapper orderMapper,
             InstrumentMapper instrumentMapper,
+            AccountMapper accountMapper,
+            CurrencyConversionService currencyConversionService,
             QuoteClient quoteClient,
             FillDecisionEngine fillDecisionEngine,
             OrderSettlementService orderSettlementService,
@@ -48,6 +61,8 @@ public class TradeExecutorService {
 
         this.orderMapper = orderMapper;
         this.instrumentMapper = instrumentMapper;
+        this.accountMapper = accountMapper;
+        this.currencyConversionService = currencyConversionService;
         this.quoteClient = quoteClient;
         this.fillDecisionEngine = fillDecisionEngine;
         this.orderSettlementService = orderSettlementService;
@@ -101,11 +116,41 @@ public class TradeExecutorService {
                 return ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE);
             }
 
-            return fillDecisionEngine.decide(order, quote.get());
+            // The quote is in the instrument's currency; orders, balances and holdings are in the account's.
+            LiveQuote accountCurrencyQuote = inAccountCurrency(order, instrument, quote.get());
+            return fillDecisionEngine.decide(order, accountCurrencyQuote);
         } catch (QuoteUnavailableException ex) {
             LOGGER.warn("Quote unavailable for symbol {} after retries", ex.getSymbol(), ex);
             return ExecutionOutcome.rejected(ExecutionRejectReason.PRICE_UNAVAILABLE);
+        } catch (ExchangeRateUnavailableException ex) {
+            LOGGER.warn("Order {} cannot be priced in the account currency: {}", order.getOrderId(), ex.getMessage());
+            return ExecutionOutcome.rejected(ExecutionRejectReason.FX_RATE_UNAVAILABLE);
         }
+    }
+
+    /**
+     * Expresses the quote in the account's currency (the exchange-rate service is only called when the two
+     * differ). A missing account is left for settlement to reject as ACCOUNT_NOT_ACTIVE.
+     */
+    private LiveQuote inAccountCurrency(Order order, Instrument instrument, LiveQuote quote) {
+        Account account = accountMapper.selectAccountById(order.getAccountId()).orElse(null);
+        if (account == null) {
+            return quote;
+        }
+
+        String quoteCurrency = quote.currency() != null ? quote.currency() : instrument.getCurrency();
+        String accountCurrency = account.getCurrency();
+        if (quoteCurrency.equalsIgnoreCase(accountCurrency)) {
+            return quote;
+        }
+
+        BigDecimal converted = currencyConversionService
+                .convert(quote.price(), quoteCurrency, accountCurrency)
+                .setScale(4, RoundingMode.HALF_UP)
+                .max(MIN_CONVERTED_PRICE);
+        LOGGER.info("Order {}: {} {} {} converted to {} {}",
+                order.getOrderId(), quote.symbol(), quote.price(), quoteCurrency, converted, accountCurrency);
+        return quote.withPrice(converted, accountCurrency);
     }
 
     private Optional<OrderResolvedEvent> settleWithRetry(long orderId, ExecutionOutcome marketOutcome) {
