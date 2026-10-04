@@ -160,7 +160,32 @@
                   <th scope="row">
                     <span class="wl-symbol">
                       <span class="ticker-tile" aria-hidden="true">{{ item.tickerSymbol.slice(0, 2) }}</span>
-                      <span class="ticker">{{ item.tickerSymbol }}</span>
+                      <span class="ticker-text">
+                        <span class="ticker">{{ item.tickerSymbol }}</span>
+                        @if (changes().get(item.tickerSymbol.toUpperCase()); as move) {
+                          @let direction = (move.change ?? move.percent ?? 0);
+                          <span
+                            class="move"
+                            [class.is-up]="direction > 0"
+                            [class.is-down]="direction < 0"
+                            [attr.data-testid]="'watchlist-change-' + item.tickerSymbol"
+                          >
+                            <i
+                              class="fas"
+                              [class.fa-arrow-trend-up]="direction > 0"
+                              [class.fa-arrow-trend-down]="direction < 0"
+                              [class.fa-minus]="direction === 0"
+                              aria-hidden="true"
+                            ></i>
+                            @if (move.change !== null) {
+                              {{ move.change > 0 ? '+' : '' }}{{ move.change | number: '1.2-2' }}
+                            }
+                            @if (move.percent !== null) {
+                              ({{ move.percent > 0 ? '+' : '' }}{{ move.percent | number: '1.2-2' }}%)
+                            }
+                          </span>
+                        }
+                      </span>
                     </span>
                   </th>
                   <td class="num price" [attr.data-testid]="'watchlist-price-' + item.tickerSymbol">

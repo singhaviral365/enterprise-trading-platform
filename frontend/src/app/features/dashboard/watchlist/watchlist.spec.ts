@@ -55,7 +55,7 @@ describe('WatchlistPanel', () => {
   }
 
   /** Answers the shared account store (link + overview) and the market suggestions. */
-  async function answerAccount(linked: boolean): Promise<void> {
+  async function answerAccount(linked: boolean, quotes: object[] = [{ symbol: 'MSFT' }]): Promise<void> {
     (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush(
       linked
         ? { linked: true, message: 'Linked account found', accountNumber: 'ACC000001001' }
@@ -77,7 +77,7 @@ describe('WatchlistPanel', () => {
       http.expectOne(`${account}/orders`).flush([]);
     }
     (await vi.waitFor(() => http.expectOne('/api/v1/market/quotes'))).flush({
-      quotes: [{ symbol: 'MSFT' }],
+      quotes,
       asOf: '',
       stale: false,
     });
@@ -87,8 +87,8 @@ describe('WatchlistPanel', () => {
     }
   }
 
-  async function start(lists: Watchlist[]): Promise<void> {
-    await answerAccount(true);
+  async function start(lists: Watchlist[], quotes?: object[]): Promise<void> {
+    await answerAccount(true, quotes);
     (await vi.waitFor(() => http.expectOne(BASE))).flush(lists);
     await fixture.whenStable();
   }
@@ -138,6 +138,29 @@ describe('WatchlistPanel', () => {
     expect(byTestId('watchlist-price-AMZN')?.textContent).toContain('250.00');
     expect(byTestId('watchlist-price-TSLA')?.textContent).toContain('No quote yet');
     expect(byTestId('watchlist-status-TSLA')?.textContent).toContain('Waiting');
+  });
+
+  it('shows the day change as a green or red pill beside the symbol', async () => {
+    await start(
+      [list(9, 'Tech', [item('AAPL'), item('AMZN'), item('TSLA')])],
+      [
+        { symbol: 'AAPL', details: { change: 3.37, changePercent: 1.02 } },
+        { symbol: 'AMZN', details: { change: -2.1, changePercent: -0.85 } },
+      ],
+    );
+
+    const up = byTestId('watchlist-change-AAPL')!;
+    expect(up.textContent).toContain('+3.37');
+    expect(up.textContent).toContain('(+1.02%)');
+    expect(up.classList.contains('is-up')).toBe(true);
+
+    const down = byTestId('watchlist-change-AMZN')!;
+    expect(down.textContent).toContain('-2.10');
+    expect(down.textContent).toContain('(-0.85%)');
+    expect(down.classList.contains('is-down')).toBe(true);
+
+    // No change data for this symbol: no pill rather than a made-up zero.
+    expect(byTestId('watchlist-change-TSLA')).toBeNull();
   });
 
   it('adds a stock, upper-casing and trimming the ticker', async () => {

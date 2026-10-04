@@ -3,7 +3,7 @@ import { Component, DestroyRef, computed, inject, linkedSignal, resource, signal
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { accountIdFromNumber } from '../../../core/account.service';
 import { DialogService } from '../../../core/dialog.service';
-import { MarketService } from '../../../core/market.service';
+import { CHANGE_FIELDS, CHANGE_PERCENT_FIELDS, MarketService, quoteNumber } from '../../../core/market.service';
 import { NotificationService } from '../../../core/notification.service';
 import {
   MAX_ITEMS_PER_WATCHLIST,
@@ -72,6 +72,19 @@ export class WatchlistPanel {
       .filter((symbol) => !onList.has(symbol.toUpperCase()));
   });
 
+  /** Day change per symbol, read from the market quotes (the watchlist API carries price only). */
+  protected readonly changes = computed(() => {
+    const bySymbol = new Map<string, { change: number | null; percent: number | null }>();
+    for (const quote of this.board.hasValue() ? this.board.value().quotes : []) {
+      const change = quoteNumber(quote, CHANGE_FIELDS);
+      const percent = quoteNumber(quote, CHANGE_PERCENT_FIELDS);
+      if (change !== null || percent !== null) {
+        bySymbol.set(quote.symbol.toUpperCase(), { change, percent });
+      }
+    }
+    return bySymbol;
+  });
+
   protected readonly errorMessage = computed(() => {
     const error = this.data.error();
     if (!error) {
@@ -91,7 +104,10 @@ export class WatchlistPanel {
   protected readonly tickerError = signal('');
 
   constructor() {
-    const timer = setInterval(() => this.data.reload(), REFRESH_MS);
+    const timer = setInterval(() => {
+      this.data.reload();
+      this.board.reload();
+    }, REFRESH_MS);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
