@@ -37,6 +37,8 @@ erDiagram
         varchar instrument_name
         varchar asset_class
         varchar instrument_status
+        char currency "ISO 4217 the instrument is quoted in; default USD"
+        varchar icon_url "e.g. /assets/icons/AAPL.svg"
     }
 
     orders {

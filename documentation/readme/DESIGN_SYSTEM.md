@@ -21,8 +21,10 @@ Everything lives in `frontend/src`:
    light (`:root`) and dark (`:root[data-theme="dark"]`) blocks.
 2. **Overlays and dimming** are done with a token plus `opacity` (see `.modal-overlay::before`), not
    with a translucent colour.
-3. **Cards** are `class="card"`: `1px solid var(--surface-line-subtle)`, `var(--radius-card)`,
-   `var(--card-shadow)`. Do not restyle the border.
+3. **Cards** are `class="card"`: `1px solid var(--surface-line-subtle)`, `var(--radius-card)`. Do not restyle the
+   border. **No `box-shadow` in new UI** (cards, tiles, buttons, dialogs, charts): separate things with borders,
+   background tokens and spacing. The `--card-shadow*` / `--accent-glow` tokens remain only for older screens that
+   have not been revisited.
 4. **Use the global classes and shared components before writing new CSS.** If you find yourself
    copying a style into a second component, promote it to `styles.css` or `shared/ui`.
 5. **Accessibility is WCAG AA.** Every control has an accessible name, focus is visible (global
@@ -326,7 +328,8 @@ A native `<select>` styled with `appearance: base-select`; no positioning code i
 ```
 
 Inputs: `options` (required, `{ value, label, disabled? }[]`), `label`, `placeholder`, `invalid`,
-`errorText`, `disabled`, `inputId`. Two-way `[(value)]` (string; `''` = nothing selected).
+`errorText`, `disabled`, `inputId`, `size` (`'default' | 'compact'`: `compact` is 32px high with 13px text, for dense
+toolbars such as the pagination footer). Two-way `[(value)]` (string; `''` = nothing selected).
 A11y: the label is a real `<label>`; the error text is linked with `aria-describedby`.
 
 ### 4.3 Multiselect (`shared/ui/multiselect/multiselect`)
@@ -358,10 +361,25 @@ Inputs: `options` (required, `DropdownOption[]`), `label` (required, also the ac
 
 ```html
 <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
+
+<!-- with a "Rows per page" selector and the "6-10 of 23" range -->
+<app-pagination
+  [pageSizeOptions]="[5, 10, 25]"
+  [(pageSize)]="pageSize"
+  [totalItems]="rows().length"
+  [totalPages]="totalPages()"
+  [(currentPage)]="page"
+/>
 ```
 
 `currentPage` is 1-based (`model.required`), `totalPages` required, output `pageChange` fires only
 on user navigation. Slice your data with `computed` from `page()`.
+
+Giving it `pageSizeOptions` adds the **compact `app-dropdown`** labelled "Rows per page" and the range text
+(`totalItems` feeds the range). The footer then shows even when everything fits on one page; the page buttons
+still appear only when there is more than one. Choosing a size sets `pageSize` and returns to page 1; a size that
+was not offered is ignored. Bind `[(pageSize)]` to a signal; use a `linkedSignal` for `page` if it must also clamp
+when rows disappear (see the market board and Positions).
 
 ### 4.5 Spinner (`shared/ui/spinner/spinner`)
 
@@ -427,7 +445,7 @@ this.notifications.show('Saved', 'info', 0); // 0 = stay until dismissed
 Methods: `success`, `error`, `warning`, `info`, `show(message, type, durationMs = 5000)`,
 `dismiss(id)`. Keep messages short and actionable.
 
-### 4.9 Side toggle (`features/dashboard/side-toggle`)
+### 4.9 Side toggle (`shared/ui/side-toggle`)
 
 Buy / Sell segmented control on native radios: `<app-side-toggle [(side)]="side" />`.
 
@@ -450,12 +468,108 @@ and use the global table classes.
   icon-only `is-error` trash button appears left of Reset; it asks with `DialogService.confirm` (type
   `warning`), then calls `DELETE /api/v1/orders/{id}` for each, reports successes and failures in toasts and
   refreshes the store. Selections are dropped if the order stops being `NEW` or the filters hide it.
-- **Positions:** quantity, average cost and cost basis per symbol, and a total row (no filters).
-  The dashboard's Positions card links here; its Recent orders panel shows the latest 5 with "View more".
+- **Positions:** see 4.10d.
+  Order history rows show the logo, symbol and company name (`app-instrument-label`). The dashboard's Recent orders
+  panel shows the latest 5 with "View more".
 - **Live updates:** while any order is at `NEW` the store re-reads the account on a bounded interval
   (`ORDER_POLL` in `core/order-poll.ts`: 5 s, 12 times), then pauses; `store.refresh()` (the Refresh
   buttons, and placing an order) grants a new allowance. A fill therefore shows up on every page and in
   the order ticket's confirmation without a reload. Never add another polling loop.
+
+### 4.10d Positions page (`features/positions`)
+
+`/positions` is a parent with two presentational children and a dialog:
+
+| Component | Role |
+|---|---|
+| `Positions` (`positions.ts`) | Owns the data (from `AccountOverviewStore`), the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is open |
+| `PositionsCard` (`app-positions-card`) | **Default view.** A grid of clickable cards: logo, symbol, name and **cost basis only**. Four to five per desktop row (`auto-fill, minmax(210px, 1fr)`), one per row under 600px. Each card is a `<button>` |
+| `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, total row. Rows are `clickable-row`s (Tab, Enter, Space) |
+| `PositionDialog` (`app-position-dialog`) | Opens from either view. Symbol, name and cost basis on one line, then quantity and average cost, then **"How your cost basis adds up"**: the filled BUY orders for that symbol (date, quantity, price, cost), a total row and the sum written out (`$8,760.00 ÷ 50 = $175.20`). A sentence covers sells ("selling lowers the quantity, not the average cost") and a note appears when the history does not account for the holding. **Buy more** and **Sell** switch the dialog to the shared order ticket (below) |
+
+The switch sits at the top right: two icon buttons in a `role="group"`, `aria-pressed`, tooltips ("Card view" with the
+four-squares icon, "Table view" with the list icon). The choice is remembered in `localStorage`
+(`positions.view`) as a per-browser convenience. The dialog follows the live row, so quantity and cost update as
+orders fill, and keeps the last row if the position disappears (sold out) so the order confirmation stays on screen.
+The breakdown is `positionBreakdown()` in `core/position-lots.ts`; it mirrors the executor's weighted-average rule.
+
+### 4.10e Market data page (`features/market`)
+
+`/market` ("Market data" in the sidebar) hosts the live market board, which used to sit on the dashboard. The board
+(`app-market-board`) and the quote dialog (`app-quote-dialog`) live in `features/market`. Rows show the instrument
+logo; the quote dialog shows what the price is in your account currency when the instrument is quoted in another one.
+
+### 4.10f Dashboard (`features/dashboard`)
+
+About the user's own account: three stat cards (cash balance, invested at cost, open orders), then **Invested over time**
+(a stepped line of what the holdings cost after each filled order, rebuilt from the order history by
+`core/invested-history.ts`; it does not move with market prices, and the real performance curve is planned in
+`PORTFOLIO-HISTORY-PLAN.md`), **Investments** (donut of holdings by cost with the total in the
+middle and a "View more" link to `/positions`; with more than ten holdings the smallest are grouped as "Other"),
+**Recent orders** and the watchlist placeholder.
+
+### 4.11 Instrument icon and label (`shared/ui/instrument-icon`, `shared/ui/instrument-label`)
+
+```html
+<app-instrument-icon symbol="AAPL" [iconUrl]="row.iconUrl" [size]="36" />
+<app-instrument-label symbol="INFY.NS" name="Infosys Ltd" [iconUrl]="row.iconUrl" />
+```
+
+`iconUrl` is the instrument's `icon_url` (`/assets/icons/<TICKER>.svg`, upper case; files live in
+`frontend/public/assets/icons`). Rendered with `NgOptimizedImage` at the requested size and an empty `alt` (the symbol
+is always printed next to it). **A missing URL or a file that fails to load falls back to a tile with the symbol's
+first two letters**, so a missing logo never leaves a gap. `app-instrument-label` is icon + symbol + company name; use it
+wherever a bare symbol is not enough (position cards and rows, order history, recent orders).
+
+### 4.12 Sheet dialog (`shared/ui/sheet-dialog`)
+
+The modal shell behind the quote dialog and the position dialog: a native `<dialog>` (focus trap, Esc, inert
+background) with a rounded panel, blurred backdrop and rise-in animation (all disabled under reduced motion).
+
+```html
+<app-sheet-dialog [open]="!!selected()" labelledBy="my-title" testId="my-dialog" (closed)="selected.set(null)">
+  <h2 id="my-title">...</h2>
+</app-sheet-dialog>
+```
+
+`(closed)` fires for Esc and a backdrop click; the content provides its own close button.
+
+### 4.13 Donut chart (`shared/ui/donut-chart`)
+
+```html
+<app-donut-chart [slices]="slices()" centerLabel="Invested" [centerValue]="total()"
+  [valueFormatter]="formatMoney()" ariaLabel="Donut chart of your investments by cost" />
+```
+
+`slices` is `{ name, detail?, value }[]`. Highcharts is loaded **lazily** through the `HIGHCHARTS_LOADER` token (its own
+chunk, downloaded only when a chart is drawn; specs provide a fake) and runs in **styled mode**: it draws plain SVG
+with `highcharts-color-N` classes and `donut-chart.css` fills them from `--data-categorical-1..10`, so the chart
+follows the light/dark theme and no colour is written in TypeScript. The component is `ViewEncapsulation.None`
+because Highcharts builds its SVG outside Angular's templates; every selector is prefixed `.donut-chart`. The legend is
+real HTML (swatch, name, share, value); the SVG is a labelled image. Ten colours; beyond that the caller groups the tail
+into "Other".
+
+### 4.13b Line chart (`shared/ui/line-chart`)
+
+```html
+<app-line-chart [points]="points()" seriesName="Invested at cost" [valueFormatter]="formatMoney()"
+  ariaLabel="Line chart of the cost of your holdings over time" />
+```
+
+`points` is `{ time, value }[]` (epoch milliseconds). Same approach as the donut: Highcharts through `HIGHCHARTS_LOADER`,
+styled mode, `ViewEncapsulation.None`, colours only from tokens (`--accent-primary-background` for the line and its
+fill, `--surface-line-subtle` for the grid). It draws a stepped area (it holds a value until the next point), a time
+axis starting at zero and a tooltip with the date and the formatted value. Put the numbers that matter in text next to
+the chart; the SVG is a labelled image.
+
+### 4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)
+
+Moved from `features/dashboard` so any screen can trade: the quote dialog (market board) and the position dialog
+(Positions) both embed `<app-order-ticket [row]="marketRow" [(side)]="side" (cancelled)="..." (done)="..." />`.
+`MarketRow` (`core/market-row.ts`) is the instrument as the ticket needs it: quote, change, previous close, currency.
+For an instrument quoted in another currency than the account the ticket shows the estimate in both, compares cash in
+the account currency (using the rates `MarketService.fxRates()` keeps from the market board), and the confirmation shows
+the limit price in the account currency. See `CURRENCY.md`.
 
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
@@ -470,8 +584,10 @@ drag on password fields (autofill still works) and emits so the form can say why
 | `NotificationService` | Toasts |
 | `DialogService` | Promise-based confirmations |
 | `AuthDialogService` | Open the sign-in / register dialog |
-| `SessionService` | `isLoggedIn()`, `username()`, `accessToken()`, `start()`, `renew()`, `clear()`; persists to localStorage and follows other tabs |
-| `TokenRefresher` | `refresh(staleToken)`, `endSession()`. Single-flight (refresh tokens rotate; reuse revokes the chain). Used by `authInterceptor`: refreshes before a call when the token is about to expire, and once on a 401, then retries. If the refresh token is refused it clears the session, shows a toast and navigates to `/` |
+| `SessionService` | `isLoggedIn()`, `username()`, `session()`, `start()`, `renew()`, `clear()`. Holds only `{ username, expiresAt }` (persisted to localStorage, followed across tabs). **No tokens**: they are HttpOnly cookies, see `AUTH-COOKIES.md` |
+| `TokenRefresher` | `refresh(staleExpiresAt)`, `endSession()`. Single-flight (refresh tokens rotate; reuse revokes the chain). Calls `/auth/refresh` with no body (the refresh cookie is the credential). Used by `authInterceptor`: renews before a call when the access cookie is about to expire, and once on a 401, then retries. If the refresh is refused it clears the session, shows a toast and navigates to `/` |
+| `authInterceptor` | Sends calls to the platform APIs with credentials and `X-Requested-With` (the CSRF guard); never attaches a token. Also opts login / refresh / logout into credentials so the cross-origin cookies are stored and sent |
+| `MarketService` | `getBoard()` (live quotes) and `fxRates()`, the exchange rates the latest board carried (for estimates only; the backend converts for real) |
 | `describeError(err)` (`core/errors`) | Turns any HTTP failure into a user-facing sentence from the contract's `errorCode` |
 
 ## 6. Recipes

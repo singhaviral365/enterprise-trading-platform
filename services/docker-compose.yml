@@ -93,6 +93,10 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       JWT_ISSUER: auth-service
+      # Session cookies. NODE_ENV=production makes them Secure by default, which a plain-http compose setup cannot
+      # use (browsers only exempt http://localhost); set AUTH_COOKIE_SECURE=true once you serve over https.
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
       JWT_ACCESS_TOKEN_EXPIRES_IN: 900
       JWT_REFRESH_TOKEN_EXPIRES_IN: 604800
       LOG_LEVEL: info
@@ -121,6 +125,8 @@ services:
     environment:
       JWT_SECRET: ${JWT_SECRET}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
+      EXCHANGE_RATE_API_URL: ${EXCHANGE_RATE_API_URL:-https://v6.exchangerate-api.com/v6}
+      EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092

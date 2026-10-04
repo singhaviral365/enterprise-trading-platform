@@ -87,6 +87,27 @@ Added `ACC-409` (not linked / already has an account), `RES-404` (no such route)
 (unexpected error). All three are returned by `ApiExceptionHandler` and would otherwise fail
 enum-typed client code.
 
+## October 2026: instrument names, currency and cookie sessions
+
+### trade-api.yaml
+| What | Why / evidence |
+|---|---|
+| `PositionResponse.instrumentName` (required), `PositionResponse.iconUrl` (nullable) | Positions showed a bare symbol. `HoldingMapper.xml` joins `instrument.instrument_name` and `icon_url`. |
+| `OrderHistoryEntry.instrumentName` (required), `OrderHistoryEntry.iconUrl` (nullable) | Same for the order history. `OrderMapper.xml` joins them. JSON names are camelCase like every other field. |
+| `price` / `executedPrice` / `averageCost` / `PlaceOrderRequest.price` descriptions | Stored prices are in the **account currency**. A LIMIT price is entered in the instrument's currency and converted when the order is placed (`CURRENCY.md`). No shape change. |
+| `ErrorResponse.errorCode` gains `FX-503` (HTTP 503) and `POST /api/v1/orders` documents a `503` | `TradeService` cannot convert a limit price when the exchange rate service is down. `ApiExceptionHandler` maps `FxRateUnavailableException`. Frontend: `ERROR_MESSAGES` is typed on this enum, so it needed a sentence. |
+
+The market endpoint (`GET /api/v1/market/quotes`, executor-service) is still not in a contract; it gained
+`MarketQuote.currency`, `MarketQuote.iconUrl`, `MarketBoard.baseCurrency` and `MarketBoard.fxRates`, mirrored by hand in
+`frontend/src/app/core/market.service.ts`.
+
+### auth-api.yaml
+| What | Why / evidence |
+|---|---|
+| `RefreshRequest.refreshToken` is optional; the request body is optional | A browser sends no body: the service reads the HttpOnly `refresh_token` cookie (`AuthController.presentedRefreshToken`). API clients may still send it. |
+| New `POST /auth/logout` (`logout`, `204`) | Revokes the refresh token and expires both cookies; scripts cannot delete HttpOnly cookies. |
+| `Set-Cookie` documented on the login, refresh and logout responses; new "Browser sessions" section | `AuthController` calls `setAuthCookies` / `clearAuthCookies`. Response bodies are unchanged. |
+
 ## Known gaps, deliberately not changed
 - `LinkAccountRequest` (in the Java DTOs) has no controller endpoint, so it is not in the contract.
 - The read endpoints (`GET /accounts/{id}`, `/balance`, `/positions`, `/orders`) were thought not to

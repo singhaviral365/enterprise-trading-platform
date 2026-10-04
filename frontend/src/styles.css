@@ -10,6 +10,9 @@
   /* Light theme: cool slate neutrals with the same emerald family as the dark theme. */
   --surface-background: #F4F6FA;
   --surface-background-bright: #FFFFFF;
+  /* Company logos are drawn for a light background: this tile stays light in both themes. */
+  --icon-background: #FFFFFF;
+  --icon-border: #E4E8EF;
   --surface-container-background: #EEF1F6;
   --surface-container-background-low: #F8FAFC;
   --surface-container-background-medium: #FFFFFF;
@@ -122,6 +125,9 @@ body[data-theme="dark"] {
   /* Dark theme: deep slate surfaces with a bright emerald accent (dark text on accent fills). */
   --surface-background: #0A0D12;
   --surface-background-bright: #12161D;
+  /* Company logos are drawn for a light background: this tile stays light in both themes. */
+  --icon-background: #FFFFFF;
+  --icon-border: #E4E8EF;
   --surface-container-background: #181D26;
   --surface-container-background-low: #12161D;
   --surface-container-background-medium: #181D26;
