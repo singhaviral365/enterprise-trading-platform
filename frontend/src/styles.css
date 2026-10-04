@@ -826,6 +826,163 @@ a:hover {
   color: var(--surface-foreground-subtle);
 }
 
+/* Selectable table (.row-table): the table behind Market data and Positions. Every row is a rounded card of its
+   own that lifts on hover, and the selected row is filled with the primary colour. Use it for tables whose rows
+   open something; plain read-only tables stay .data-table. Wrap it in .row-table-scroll, which is also the
+   container the .col-extra columns react to (they drop out when the table is squeezed). Mark one cell per row
+   .col-last: it keeps the rounded end when the columns after it are hidden. Rows are made clickable either with
+   tabindex="0" plus click / Enter / Space handlers on the <tr>, or with a .row-link button in the first cell. */
+.row-table-scroll {
+  container-type: inline-size;
+  overflow-x: auto;
+}
+
+.row-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  font-size: 14px;
+  color: var(--surface-foreground);
+}
+
+.row-table caption {
+  text-align: left;
+}
+
+.row-table th,
+.row-table td {
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.row-table thead th {
+  padding-top: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.row-table tbody th {
+  font-weight: 600;
+}
+
+/* Numbers: right-aligned with fixed-width digits so columns line up. */
+.row-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-table tbody tr {
+  position: relative;
+  transition: transform 0.18s ease;
+}
+
+.row-table tbody tr > * {
+  background: var(--surface-container-background-low);
+  transition: background 0.18s ease;
+}
+
+.row-table tbody tr > :first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.row-table tbody tr > :last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.row-table tbody tr:hover > *,
+.row-table tbody tr:focus-within > * {
+  background: var(--surface-container-background);
+}
+
+.row-table tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+.row-table tbody tr[tabindex] {
+  cursor: pointer;
+}
+
+.row-table tbody tr[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* A button in the first cell whose click area covers the whole row. */
+.row-table .row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-table .row-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+}
+
+.row-table .row-link:focus-visible {
+  outline: none;
+}
+
+.row-table .row-link:focus-visible::after {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+/* The selected row: the full primary shade, text switched to the on-primary colour. */
+.row-table tbody tr.is-selected > *,
+.row-table tbody tr.is-selected:hover > * {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+  --label-subtle: var(--accent-primary-foreground);
+}
+
+/* Totals row. */
+.row-table tfoot th,
+.row-table tfoot td {
+  font-weight: 700;
+  background: var(--surface-container-background);
+}
+
+.row-table tfoot > tr > :first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.row-table tfoot > tr > :last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+@container (max-width: 620px) {
+  .row-table .col-extra {
+    display: none;
+  }
+
+  .row-table tbody tr > .col-last {
+    border-radius: 0 12px 12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-table tbody tr,
+  .row-table tbody tr:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Modal Overlay */
 
 .modal-overlay {

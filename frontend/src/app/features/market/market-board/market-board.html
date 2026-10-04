@@ -55,14 +55,14 @@
         <p>No instruments are available to trade yet.</p>
       </div>
     } @else {
-      <div class="table-scroll">
-        <table class="market-table" aria-labelledby="market-title" data-testid="market-table">
+      <div class="row-table-scroll">
+        <table class="row-table" aria-labelledby="market-title" data-testid="market-table">
           <thead>
             <tr>
               <th scope="col">Instrument</th>
               <th scope="col" class="num">Price</th>
               <th scope="col" class="num col-extra">Change</th>
-              <th scope="col" class="num">% Change</th>
+              <th scope="col" class="num col-last">% Change</th>
               <th scope="col" class="num col-extra">Prev. close</th>
             </tr>
           </thead>
@@ -118,7 +118,7 @@
                     {{ row.change > 0 ? '+' : '' }}{{ row.change | number: '1.2-2' }}
                   }
                 </td>
-                <td class="num">
+                <td class="num col-last">
                   @if (row.changePercent === null) {
                     <span class="muted">—</span>
                   } @else {

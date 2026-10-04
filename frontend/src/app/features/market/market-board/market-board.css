@@ -74,98 +74,9 @@
   }
 }
 
-/* The table's own width decides what fits, so the extra columns drop out when the table is squeezed (half the
-   screen next to the quote pane, or a phone) and come back when there is room. */
-.table-scroll {
-  container-type: inline-size;
-  overflow-x: auto;
+/* The table itself is the global .row-table; this only trims it to sit inside the Market card. */
+.row-table-scroll {
   margin: 0 -8px;
-}
-
-.market-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 4px;
-  font-size: 14px;
-}
-
-.market-table th,
-.market-table td {
-  padding: 10px 12px;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.market-table thead th {
-  padding-top: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--surface-foreground-subtle);
-}
-
-.market-table .num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Rows are cards of their own: rounded, and they lift on hover. */
-.market-row {
-  position: relative;
-  transition: transform 0.18s ease;
-}
-
-.market-row > * {
-  background: var(--surface-container-background-low);
-  transition: background 0.18s ease;
-}
-
-.market-row > :first-child {
-  border-radius: 12px 0 0 12px;
-}
-
-.market-row > :last-child {
-  border-radius: 0 12px 12px 0;
-}
-
-.market-row:hover > *,
-.market-row:focus-within > * {
-  background: var(--surface-container-background);
-}
-
-.market-row:hover {
-  transform: translateY(-1px);
-}
-
-.row-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-/* Stretch the button's click area over the whole row. */
-.row-link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 12px;
-}
-
-.row-link:focus-visible {
-  outline: none;
-}
-
-.row-link:focus-visible::after {
-  outline: 2px solid var(--accent-primary-background);
-  outline-offset: 2px;
 }
 
 .ticker-text {
@@ -258,11 +169,6 @@
     animation: none;
   }
 
-  .market-row,
-  .market-row:hover {
-    transform: none;
-    transition: none;
-  }
 }
 
 /* Rows-per-page selector and page navigation (the shared pagination component) under the table. */
@@ -271,24 +177,7 @@
   border-top: 1px solid var(--surface-line-subtle);
 }
 
-@container (max-width: 620px) {
-  .col-extra {
-    display: none;
-  }
-
-  /* The last cell that is still shown ("% Change") closes the row's rounded end. */
-  .market-row > :nth-child(4) {
-    border-radius: 0 12px 12px 0;
-  }
-}
-
-/* The selected row: the full primary shade, with text and chips switched to the on-primary colour. */
-.market-row.is-selected > *,
-.market-row.is-selected:hover > * {
-  color: var(--accent-primary-foreground);
-  background: var(--accent-primary-background);
-}
-
+/* On the selected row the text and chips switch to the on-primary colour (the cells themselves are in .row-table). */
 .market-row.is-selected .ticker-name,
 .market-row.is-selected .muted,
 .market-row.is-selected .delta,

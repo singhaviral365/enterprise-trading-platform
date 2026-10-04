@@ -36,6 +36,7 @@ Everything lives in `frontend/src`:
   - [Forms](#forms)
   - [Cards](#cards)
   - [Tables](#tables)
+  - [Selectable tables (`.row-table`)](#selectable-tables-row-table)
   - [Status text](#status-text)
   - [Empty state and toolbar](#empty-state-and-toolbar)
   - [Modal building blocks](#modal-building-blocks)
@@ -335,6 +336,30 @@ Modifiers: `is-striped`, `is-compact` (table); `is-numeric` (cell, right-aligned
 `clickable-row` (row; also make it keyboard reachable: `tabindex="0"` + `(keydown.enter)`);
 `actions-cell` (buttons); `empty-row`; `<tfoot>` for totals. Always give the table a `<caption>` (or
 `aria-label`) and `scope` on header cells.
+
+### Selectable tables (`.row-table`)
+
+One style for every table whose rows open something (Market data and the Positions table). Plain read-only tables
+(Order history, Recent orders) stay `.data-table`.
+
+```html
+<div class="row-table-scroll">
+  <table class="row-table">
+    <thead><tr><th scope="col">Instrument</th><th scope="col" class="num">Price</th><th scope="col" class="num col-extra">Prev. close</th></tr></thead>
+    <tbody>
+      <tr class="is-selected" tabindex="0" (click)="open(row)" (keydown.enter)="open(row)">...</tr>
+    </tbody>
+  </table>
+</div>
+```
+
+- Rows are rounded cards that lift on hover; `.is-selected` fills the row with `--accent-primary-background` (text
+  `--accent-primary-foreground`, and `--label-subtle` so instrument labels follow). Numbers use `.num`.
+- Make rows clickable with `tabindex="0"` plus click / Enter / Space on the `<tr>` (focus ring included), or with a
+  `.row-link` button in the first cell whose click area covers the row.
+- `.row-table-scroll` is the container: `.col-extra` columns hide below 620px of table width (half-width pane, phone).
+  Put `.col-last` on the last always-visible cell of each row so the rounded end stays when the columns after it hide.
+- `<tfoot>` rows get a totals style. Component CSS adds only what is specific (chips, status colours).
 
 ### Status text
 
