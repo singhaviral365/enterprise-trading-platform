@@ -1,0 +1,22 @@
+import { CurrencyPipe } from '@angular/common';
+import { Component, input, output } from '@angular/core';
+import { InstrumentLabel } from '../../../shared/ui/instrument-label/instrument-label';
+import { PositionRow } from '../position-row';
+
+/**
+ * Card view of the positions: one clickable card per holding showing its logo, symbol, name and cost basis,
+ * and nothing else. Picking a card asks the parent for that position's details (and buy / sell).
+ * Four to five cards fit on a desktop row; on a phone they stack one per row.
+ */
+@Component({
+  selector: 'app-positions-card',
+  imports: [CurrencyPipe, InstrumentLabel],
+  templateUrl: './positions-card.html',
+  styleUrl: './positions-card.css',
+})
+export class PositionsCard {
+  readonly rows = input.required<readonly PositionRow[]>();
+  /** ISO code of the account currency, which every position value is in. */
+  readonly currency = input<string | null>(null);
+  readonly selected = output<PositionRow>();
+}

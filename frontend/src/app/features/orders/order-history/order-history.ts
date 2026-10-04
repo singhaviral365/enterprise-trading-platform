@@ -1,6 +1,6 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { OrderSide, OrderStatus } from '../../../api/generated/trade';
 import { TradeApi } from '../../../api/trade-api.service';
@@ -9,6 +9,7 @@ import { DialogService } from '../../../core/dialog.service';
 import { describeError } from '../../../core/errors/describe-error';
 import { NotificationService } from '../../../core/notification.service';
 import { OrderSortKey, SortDirection, isWorking, sortOrders } from '../../../core/order-history';
+import { InstrumentLabel } from '../../../shared/ui/instrument-label/instrument-label';
 import { MultiDropdown } from '../../../shared/ui/multi-dropdown/multi-dropdown';
 import type { DropdownOption } from '../../../shared/ui/dropdown/dropdown';
 import { OrderStatusBadge } from '../../../shared/ui/order-status/order-status';
@@ -29,7 +30,7 @@ const PAGE_SIZE = 10;
  */
 @Component({
   selector: 'app-order-history',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, MultiDropdown, OrderStatusBadge, Pagination, RouterLink, Spinner, Tooltip],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, InstrumentLabel, MultiDropdown, OrderStatusBadge, Pagination, RouterLink, Spinner, Tooltip],
   templateUrl: './order-history.html',
   styleUrl: './order-history.css',
 })
@@ -40,6 +41,7 @@ export class OrderHistory {
   private readonly trade = inject(TradeApi);
   private readonly dialog = inject(DialogService);
   private readonly notifications = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly sideOptions: readonly DropdownOption[] = [
     { value: OrderSide.Buy, label: 'Buy' },
@@ -54,7 +56,8 @@ export class OrderHistory {
 
   /** Empty means "no filter". */
   protected readonly sides = signal<readonly string[]>([]);
-  protected readonly statuses = signal<readonly string[]>([]);
+  /** `?status=NEW` (the dashboard's Open orders card) opens the page already filtered to that status. */
+  protected readonly statuses = signal<readonly string[]>(this.statusFromQuery());
   protected readonly filtersActive = computed(() => this.sides().length > 0 || this.statuses().length > 0);
 
   protected readonly sort = signal<{ key: OrderSortKey; direction: SortDirection }>({ key: 'placed', direction: 'desc' });
@@ -200,5 +203,10 @@ export class OrderHistory {
   protected resetFilters(): void {
     this.sides.set([]);
     this.statuses.set([]);
+  }
+
+  private statusFromQuery(): readonly string[] {
+    const status = this.route.snapshot.queryParamMap.get('status');
+    return status !== null && this.statusOptions.some((option) => option.value === status) ? [status] : [];
   }
 }

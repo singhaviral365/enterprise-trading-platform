@@ -20,6 +20,8 @@ export function orderEntry(orderId: string, symbol: string, status: string, crea
     orderId,
     accountId: 1001,
     symbol,
+    instrumentName: `${symbol} Inc.`,
+    iconUrl: null,
     side,
     orderPricingType: 'MARKET',
     quantity: 5,

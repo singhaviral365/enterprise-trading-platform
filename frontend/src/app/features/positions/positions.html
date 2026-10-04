@@ -3,10 +3,40 @@
     <h1 class="page-title" data-testid="positions-title">Positions</h1>
   </div>
   @if (store.linked()) {
-    <div class="flex items-center gap-12">
+    <div class="positions-tools">
       @if (store.data.isLoading()) {
         <app-spinner [inline]="true" label="Refreshing positions" />
       }
+      <div class="view-toggle" role="group" aria-label="Positions view">
+        <app-tooltip text="Card view" position="bottom">
+          <button
+            type="button"
+            class="btn is-icon-only"
+            [class.is-primary]="view() === 'card'"
+            [class.is-tertiary]="view() !== 'card'"
+            aria-label="Card view"
+            data-testid="positions-view-card"
+            [attr.aria-pressed]="view() === 'card'"
+            (click)="setView('card')"
+          >
+            <i class="fas fa-table-cells-large" aria-hidden="true"></i>
+          </button>
+        </app-tooltip>
+        <app-tooltip text="Table view" position="bottom">
+          <button
+            type="button"
+            class="btn is-icon-only"
+            [class.is-primary]="view() === 'table'"
+            [class.is-tertiary]="view() !== 'table'"
+            aria-label="Table view"
+            data-testid="positions-view-table"
+            [attr.aria-pressed]="view() === 'table'"
+            (click)="setView('table')"
+          >
+            <i class="fas fa-list" aria-hidden="true"></i>
+          </button>
+        </app-tooltip>
+      </div>
       <button type="button" class="btn is-secondary" data-testid="positions-refresh" [disabled]="store.data.isLoading()" (click)="store.refresh()">
         <i class="fas fa-rotate" aria-hidden="true"></i>
         Refresh
@@ -31,43 +61,34 @@
     <p class="empty-state-text">You don't have a trading account yet, so there are no positions to show.</p>
     <a class="btn is-primary mt-16" routerLink="/dashboard">Go to the dashboard</a>
   </div>
-} @else if (allPositions().length === 0) {
+} @else if (allRows().length === 0) {
   <div class="card empty-state" data-testid="positions-empty">
     <i class="fas fa-layer-group" aria-hidden="true"></i>
     <p class="empty-state-text">You don't hold any positions yet.</p>
     <a class="btn is-primary mt-16" routerLink="/dashboard">Find an instrument to trade</a>
   </div>
 } @else {
-  <div class="table-container">
-    <table class="data-table is-striped">
-      <caption class="visually-hidden">Positions held in this account</caption>
-      <thead>
-        <tr>
-          <th scope="col">Symbol</th>
-          <th scope="col" class="is-numeric">Quantity</th>
-          <th scope="col" class="is-numeric">Average cost</th>
-          <th scope="col" class="is-numeric">Cost basis</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of pageRows(); track row.symbol) {
-          <tr data-testid="position-row">
-            <th scope="row">{{ row.symbol }}</th>
-            <td class="is-numeric">{{ row.quantity | number }}</td>
-            <td class="is-numeric">{{ row.averageCost | currency: (currency() ?? 'USD') }}</td>
-            <td class="is-numeric">{{ row.costBasis | currency: (currency() ?? 'USD') }}</td>
-          </tr>
-        }
-      </tbody>
-      <tfoot>
-        <tr>
-          <th scope="row" colspan="3">Total cost basis</th>
-          <td class="is-numeric" data-testid="positions-total">{{ totalCostBasis() | currency: (currency() ?? 'USD') }}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-  @if (totalPages() > 1) {
-    <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
+  @if (view() === 'card') {
+    <p class="positions-summary" data-testid="positions-summary">
+      {{ allRows().length }} {{ allRows().length === 1 ? 'position' : 'positions' }} · Total cost basis
+      <strong data-testid="positions-total">{{ totalCostBasis() | currency: (currency() ?? 'USD') }}</strong>
+    </p>
+    <app-positions-card [rows]="pageRows()" [currency]="currency()" (selected)="open($event)" />
+  } @else {
+    <app-positions-table
+      [rows]="pageRows()"
+      [totalCostBasis]="totalCostBasis()"
+      [currency]="currency()"
+      (selected)="open($event)"
+    />
   }
+  <app-pagination
+    [pageSizeOptions]="pageSizes"
+    [(pageSize)]="pageSize"
+    [totalItems]="allRows().length"
+    [totalPages]="totalPages()"
+    [(currentPage)]="page"
+  />
 }
+
+<app-position-dialog [position]="dialogRow()" [currency]="currency()" (closed)="selectedSymbol.set(null)" />

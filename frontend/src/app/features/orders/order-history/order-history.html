@@ -126,7 +126,9 @@
                 }
                 {{ order.createdOn | date: 'medium' }}
               </td>
-              <th scope="row">{{ order.symbol }}</th>
+              <th scope="row">
+                <app-instrument-label [symbol]="order.symbol" [name]="order.instrumentName" [iconUrl]="order.iconUrl" [size]="32" />
+              </th>
               <td>
                 <span [class]="order.side === OrderSide.Buy ? 'is-success' : 'is-error'">{{ order.side }}</span>
               </td>

@@ -18,6 +18,8 @@ function entry(orderId: string, symbol: string, status: string, createdOn: strin
     orderId,
     accountId: 1001,
     symbol,
+    instrumentName: `${symbol} Corporation`,
+    iconUrl: symbol === 'OLD' ? '/assets/icons/OLD.svg' : null,
     side,
     orderPricingType: 'MARKET',
     quantity: 5,
@@ -35,7 +37,7 @@ describe('OrderHistory', () => {
 
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
   const rowSymbols = () =>
-    Array.from(root.querySelectorAll('[data-testid="order-row"]')).map((row) => row.querySelector('th')?.textContent?.trim());
+    Array.from(root.querySelectorAll('[data-testid="order-row"]')).map((row) => row.querySelector('th .label-symbol')?.textContent?.trim());
   /** Lets the resource settle, then paints it. */
   const render = async () => {
     await fixture.whenStable();
@@ -101,11 +103,26 @@ describe('OrderHistory', () => {
 
   afterEach(() => fixture.destroy());
 
+  const rowFor = (symbol: string) =>
+    Array.from(root.querySelectorAll<HTMLElement>('[data-testid="order-row"]')).find((r) =>
+      r.querySelector('.label-symbol')?.textContent?.includes(symbol),
+    )!;
+
   const MIXED = [
     entry('a1', 'OLD', 'FILLED', '2026-09-01T10:00:00Z'),
     entry('b2', 'NEWEST', 'REJECTED', '2026-09-30T10:00:00Z', 'SELL'),
     entry('c3', 'MIDDLE', 'CANCELLED', '2026-09-15T10:00:00Z'),
   ];
+
+  it('shows the instrument name under the symbol, with the logo when the instrument has one', async () => {
+    await start(MIXED);
+
+    const old = rowFor('OLD');
+    expect(old.querySelector('.label-name')?.textContent).toContain('OLD Corporation');
+    expect(old.querySelector('img')?.getAttribute('src')).toBe('/assets/icons/OLD.svg');
+    expect(rowFor('NEWEST').querySelector('img')).toBeNull();
+    expect(rowFor('NEWEST').querySelector('[data-testid="instrument-icon-fallback"]')?.textContent).toContain('NE');
+  });
 
   it('lists orders newest first by default, rejections included, each badge carrying its word', async () => {
     await start(MIXED);

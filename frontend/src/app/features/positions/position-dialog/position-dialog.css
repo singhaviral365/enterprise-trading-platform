@@ -1,0 +1,136 @@
+.position-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.position-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.position-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.position-subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}
+
+.position-basis {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.position-basis-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--surface-foreground-subtle);
+}
+
+.position-basis-value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.position-close {
+  flex: none;
+  align-self: flex-start;
+}
+
+.position-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.position-stats > div {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--surface-line-subtle);
+  background: var(--surface-container-background);
+}
+
+.position-stats dt {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--surface-foreground-subtle);
+}
+
+.position-stats dd {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.position-lots {
+  margin-top: 24px;
+}
+
+.position-lots .section-heading {
+  margin-bottom: 10px;
+}
+
+.position-explainer {
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.position-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.trade-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px dashed var(--surface-line-subtle);
+  border-radius: 14px;
+  color: var(--surface-foreground-subtle);
+  text-align: center;
+}
+
+.trade-note.is-error {
+  color: var(--status-error-container-fg);
+}
+
+.trade-note-actions {
+  display: flex;
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .position-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .position-header {
+    flex-wrap: wrap;
+  }
+
+  .position-basis {
+    order: 3;
+    flex-basis: 100%;
+    align-items: flex-start;
+    text-align: left;
+  }
+}
