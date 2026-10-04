@@ -82,12 +82,7 @@
   </section>
 
   <section class="card panel rise-in" style="--stagger: 5" aria-labelledby="watchlist-title">
-    <h2 id="watchlist-title" class="card-title">Watchlist</h2>
-    <div class="empty-state" data-testid="watchlist-empty">
-      <i class="fas fa-star" aria-hidden="true"></i>
-      <p>Your watchlist is empty.</p>
-      <p class="form-hint">Symbols you follow will show up here.</p>
-    </div>
+    <app-watchlist />
   </section>
 
   @if (linked(); as info) {

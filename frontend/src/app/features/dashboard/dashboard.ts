@@ -5,6 +5,7 @@ import { AuthDialogService } from '../../core/auth-dialog.service';
 import { SessionService } from '../../core/session.service';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 import { MarketBoardPanel } from './market-board/market-board';
+import { WatchlistPanel } from './watchlist/watchlist';
 
 /** Order statuses that still count as "open" (not yet finished one way or another). */
 const CLOSED_ORDER_STATUSES = new Set(['FILLED', 'CANCELLED', 'REJECTED', 'EXPIRED']);
@@ -15,7 +16,7 @@ const CLOSED_ORDER_STATUSES = new Set(['FILLED', 'CANCELLED', 'REJECTED', 'EXPIR
  */
 @Component({
   selector: 'app-dashboard',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, Spinner, MarketBoardPanel],
+  imports: [CurrencyPipe, DatePipe, DecimalPipe, Spinner, MarketBoardPanel, WatchlistPanel],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
