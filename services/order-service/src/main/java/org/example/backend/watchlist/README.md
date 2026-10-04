@@ -8,7 +8,7 @@ Contract: [`contracts/watchlist-api.yaml`](../../../../../../../../../contracts/
 
 ## Where each part lives
 
-The module and its consumer live in the Trade REST API, which is `services/order-service` (port 8080),
+The module and its consumer live in the Trade REST API, which is `services/order-service` (port 8081 locally),
 in this package. `services/executor-service` does one thing for it: it makes sure watched instruments are **published** to `market-data`.
 
 | Part | Where | What it does |
