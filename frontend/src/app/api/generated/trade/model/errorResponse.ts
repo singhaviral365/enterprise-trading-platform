@@ -14,7 +14,7 @@
  */
 export interface ErrorResponse { 
     /**
-     * | Code | HTTP | Meaning | |---|---|---| | `ACC-404` | 404 | Account not found | | `ACC-403` | 403 | Account not active | | `ACC-409` | 409 | Account not linked to the authenticated user, or the user already has an account | | `INS-404` | 404 | Instrument not found or not tradable | | `ORD-400` | 400 | Insufficient funds | | `ORD-409` | 409 | Insufficient holdings, duplicate order, or order not cancellable | | `VAL-422` | 422 | Invalid input | | `AUTH-401` | 401 | Unauthorised or invalid token | | `RES-404` | 404 | No such route | | `SRV-500` | 500 | Unexpected server error | 
+     * | Code | HTTP | Meaning | |---|---|---| | `ACC-404` | 404 | Account not found | | `ACC-403` | 403 | Account not active | | `ACC-409` | 409 | Account not linked to the authenticated user, or the user already has an account | | `INS-404` | 404 | Instrument not found or not tradable | | `ORD-400` | 400 | Insufficient funds | | `ORD-409` | 409 | Insufficient holdings, duplicate order, or order not cancellable | | `VAL-422` | 422 | Invalid input | | `AUTH-401` | 401 | Unauthorised or invalid token | | `RES-404` | 404 | No such route | | `SRV-500` | 500 | Unexpected server error | | `FX-503` | 503 | The exchange rate service is unavailable, so a price could not be converted to the account currency | 
      */
     errorCode: ErrorResponseErrorCodeEnum;
     /**
@@ -32,7 +32,8 @@ export enum ErrorResponseErrorCodeEnum {
     Val422 = 'VAL-422',
     Auth401 = 'AUTH-401',
     Res404 = 'RES-404',
-    Srv500 = 'SRV-500'
+    Srv500 = 'SRV-500',
+    Fx503 = 'FX-503'
 };
 
 

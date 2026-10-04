@@ -181,6 +181,8 @@ paths:
                     message: Account is not linked to authenticated user
         '422':
           $ref: '#/components/responses/InvalidInput'
+        '503':
+          $ref: '#/components/responses/ExchangeRateUnavailable'
 
   /api/v1/orders/{id}:
     delete:
@@ -500,6 +502,19 @@ components:
               value:
                 errorCode: ORD-400
                 message: Insufficient funds
+    ExchangeRateUnavailable:
+      description: |
+        A `LIMIT` order quoted in a currency other than the account's needs an exchange rate to be
+        recorded in the account currency, and the exchange rate service could not supply one.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            fx:
+              value:
+                errorCode: FX-503
+                message: Exchange rate unavailable
     InvalidInput:
       description: The request failed field validation.
       content:
@@ -577,6 +592,9 @@ components:
           description: |
             Required for `LIMIT` orders, forbidden for `MARKET` orders (otherwise `VAL-422`).
             Limit price per unit, to two decimal places. Must be greater than zero, business rule 5.
+            Quoted in the currency of the instrument (what the market board shows). When that differs from the
+            account currency the service converts it at the current exchange rate and records the
+            converted price, so every stored price is in the account currency.
             Serialise as a JSON number and hold it as `BigDecimal` in Java. Never use `double` for
             money in the domain.
           example: 25.50
@@ -618,13 +636,15 @@ components:
         price:
           type: [number, 'null']
           format: double
-          description: The limit price. Null for a `MARKET` order.
+          description: |
+            The limit price in the account currency (converted from the instrument currency when they
+            differ). Null for a `MARKET` order.
           example: 25.50
 
     OrderHistoryEntry:
       type: object
       additionalProperties: false
-      required: [orderId, accountId, symbol, side, orderPricingType, quantity, status, createdOn]
+      required: [orderId, accountId, symbol, instrumentName, side, orderPricingType, quantity, status, createdOn]
       properties:
         orderId:
           type: string
@@ -636,6 +656,14 @@ components:
         symbol:
           type: string
           example: ACME
+        instrumentName:
+          type: string
+          description: The instrument's display name, for showing next to the symbol.
+          example: Acme Corporation
+        iconUrl:
+          type: [string, 'null']
+          description: Public path of the company logo, e.g. `/assets/icons/ACME.svg`. Null when the instrument has none.
+          example: /assets/icons/ACME.svg
         side:
           $ref: '#/components/schemas/OrderSide'
         orderPricingType:
@@ -647,12 +675,15 @@ components:
         price:
           type: [number, 'null']
           format: double
-          description: The limit price submitted with the order. Null for a `MARKET` order.
+          description: |
+            The limit price submitted with the order, in the account currency. Null for a `MARKET` order.
           example: 25.50
         executedPrice:
           type: [number, 'null']
           format: double
-          description: The price the Trade Executor filled at. Null until the order is FILLED.
+          description: |
+            The price the Trade Executor filled at, in the account currency (the live quote converted
+            from the instrument currency when they differ). Null until the order is FILLED.
           example: 25.48
         status:
           $ref: '#/components/schemas/OrderStatus'
@@ -729,7 +760,7 @@ components:
     PositionResponse:
       type: object
       additionalProperties: false
-      required: [accountId, symbol, quantity, averageCost]
+      required: [accountId, symbol, instrumentName, quantity, averageCost]
       properties:
         accountId:
           type: integer
@@ -738,6 +769,14 @@ components:
         symbol:
           type: string
           example: ACME
+        instrumentName:
+          type: string
+          description: The instrument's display name, for showing next to the symbol.
+          example: Acme Corporation
+        iconUrl:
+          type: [string, 'null']
+          description: Public path of the company logo, e.g. `/assets/icons/ACME.svg`. Null when the instrument has none.
+          example: /assets/icons/ACME.svg
         quantity:
           type: integer
           format: int32
@@ -748,8 +787,9 @@ components:
           type: number
           format: double
           description: |
-            Weighted average cost basis per unit. A buy recalculates it. A sell reduces quantity and
-            leaves it unchanged, which is what makes realised profit and loss computable later.
+            Weighted average cost basis per unit, in the account currency. A buy recalculates it. A sell
+            reduces quantity and leaves it unchanged, which is what makes realised profit and loss
+            computable later.
           example: 25.50
 
     CreateAccountRequest:
@@ -834,7 +874,7 @@ components:
       properties:
         errorCode:
           type: string
-          enum: [ACC-404, ACC-403, ACC-409, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401, RES-404, SRV-500]
+          enum: [ACC-404, ACC-403, ACC-409, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401, RES-404, SRV-500, FX-503]
           description: |
             | Code | HTTP | Meaning |
             |---|---|---|
@@ -848,6 +888,7 @@ components:
             | `AUTH-401` | 401 | Unauthorised or invalid token |
             | `RES-404` | 404 | No such route |
             | `SRV-500` | 500 | Unexpected server error |
+            | `FX-503` | 503 | The exchange rate service is unavailable, so a price could not be converted to the account currency |
           example: ORD-409
         message:
           type: string

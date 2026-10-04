@@ -27,7 +27,7 @@ export interface PlaceOrderRequest {
      */
     quantity: number;
     /**
-     * Required for `LIMIT` orders, forbidden for `MARKET` orders (otherwise `VAL-422`). Limit price per unit, to two decimal places. Must be greater than zero, business rule 5. Serialise as a JSON number and hold it as `BigDecimal` in Java. Never use `double` for money in the domain. 
+     * Required for `LIMIT` orders, forbidden for `MARKET` orders (otherwise `VAL-422`). Limit price per unit, to two decimal places. Must be greater than zero, business rule 5. Quoted in the currency of the instrument (what the market board shows). When that differs from the account currency the service converts it at the current exchange rate and records the converted price, so every stored price is in the account currency. Serialise as a JSON number and hold it as `BigDecimal` in Java. Never use `double` for money in the domain. 
      */
     price?: number;
     /**

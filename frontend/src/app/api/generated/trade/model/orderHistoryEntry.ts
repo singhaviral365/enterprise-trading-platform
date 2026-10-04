@@ -16,15 +16,23 @@ export interface OrderHistoryEntry {
     orderId: string;
     accountId: number;
     symbol: string;
+    /**
+     * The instrument\'s display name, for showing next to the symbol.
+     */
+    instrumentName: string;
+    /**
+     * Public path of the company logo, e.g. `/assets/icons/ACME.svg`. Null when the instrument has none.
+     */
+    iconUrl?: string | null;
     side: OrderSide;
     orderPricingType: OrderPricingType;
     quantity: number;
     /**
-     * The limit price submitted with the order. Null for a `MARKET` order.
+     * The limit price submitted with the order, in the account currency. Null for a `MARKET` order. 
      */
     price?: number | null;
     /**
-     * The price the Trade Executor filled at. Null until the order is FILLED.
+     * The price the Trade Executor filled at, in the account currency (the live quote converted from the instrument currency when they differ). Null until the order is FILLED. 
      */
     executedPrice?: number | null;
     status: OrderStatus;

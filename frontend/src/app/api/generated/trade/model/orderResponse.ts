@@ -27,7 +27,7 @@ export interface OrderResponse {
     orderPricingType: OrderPricingType;
     quantity: number;
     /**
-     * The limit price. Null for a `MARKET` order.
+     * The limit price in the account currency (converted from the instrument currency when they differ). Null for a `MARKET` order. 
      */
     price?: number | null;
 }
