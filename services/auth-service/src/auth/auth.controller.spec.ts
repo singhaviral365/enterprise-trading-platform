@@ -24,6 +24,53 @@ describe('AuthController session cookies', () => {
     controller = new AuthController(authService as unknown as AuthService);
   });
 
+  describe('register and profile', () => {
+    it('registers with the username, password and email from the body', async () => {
+      const register = jest.fn().mockResolvedValue({ id: 1 });
+      (authService as unknown as { register: jest.Mock }).register = register;
+
+      await controller.register({ username: 'alice.trader1', password: 'Str0ng!Password#', email: 'a@b.co' });
+
+      expect(register).toHaveBeenCalledWith('alice.trader1', 'Str0ng!Password#', 'a@b.co');
+    });
+
+    it('returns the profile of the authenticated user', async () => {
+      const getUser = jest.fn().mockResolvedValue({ id: 1000 });
+      (authService as unknown as { getUser: jest.Mock }).getUser = getUser;
+
+      await expect(
+        controller.getCurrentUser({ userId: 1000, roles: ['CUSTOMER'], iat: 1, exp: 2 }),
+      ).resolves.toEqual({ id: 1000 });
+      expect(getUser).toHaveBeenCalledWith(1000);
+    });
+
+    it('refuses a profile request with no user on it', async () => {
+      await expect(controller.getCurrentUser(undefined as never)).rejects.toBeInstanceOf(UnauthorisedException);
+    });
+  });
+
+  describe('who is calling (login throttling key)', () => {
+    const callerFor = async (request: object) => {
+      await controller.login({ username: 'alice.trader1', password: 'pw' }, request as never, response() as never);
+      return authService.login.mock.calls[authService.login.mock.calls.length - 1][2];
+    };
+
+    it('prefers the first X-Forwarded-For entry', async () => {
+      expect(await callerFor({ headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' }, ip: '10.0.0.1' })).toBe('203.0.113.9');
+    });
+
+    it('takes the first value when the header arrives as a list', async () => {
+      expect(await callerFor({ headers: { 'x-forwarded-for': ['198.51.100.7, 10.0.0.1'] }, ip: '10.0.0.1' })).toBe(
+        '198.51.100.7',
+      );
+    });
+
+    it('falls back to the socket address, then to a fixed placeholder', async () => {
+      expect(await callerFor({ headers: {}, ip: '192.0.2.5' })).toBe('192.0.2.5');
+      expect(await callerFor({ headers: {}, ip: '  ' })).toBe('unknown-caller');
+    });
+  });
+
   describe('login', () => {
     it('sets both HttpOnly cookies and still returns the token body', async () => {
       const res = response();

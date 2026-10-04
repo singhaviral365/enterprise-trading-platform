@@ -35,6 +35,7 @@ describe('AuthService access token contract', () => {
   let refreshTokensService: {
     createRefreshToken: jest.Mock;
     verifyAndConsumeRefreshToken: jest.Mock;
+    revokeRefreshToken: jest.Mock;
   };
   let redactingLogger: {
     log: jest.Mock;

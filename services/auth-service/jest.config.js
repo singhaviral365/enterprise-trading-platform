@@ -17,6 +17,10 @@ module.exports = {
   ],
   coveragePathIgnorePatterns: ['\\\\node_modules\\\\', 'file:'],
   coverageDirectory: '../coverage',
+  // The run fails if coverage drops under these (see documentation/readme/AUTH-COVERAGE-PLAN.md).
+  coverageThreshold: {
+    global: { statements: 90, lines: 90, branches: 85, functions: 85 },
+  },
   coverageReporters: ['text-summary', 'html', 'lcov', 'cobertura'],
   testEnvironment: 'node',
   roots: ['<rootDir>', '<rootDir>/../test'],
