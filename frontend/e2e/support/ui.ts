@@ -1,6 +1,13 @@
 import { Locator, Page, expect } from '@playwright/test';
 import { Credentials } from './env';
 
+/**
+ * How long to wait for a sign-in to finish. Login hashes the password on the auth service, and with parallel
+ * workers signing in at once it has taken ~14 s here, so the shared 15 s expect timeout is too tight for it.
+ * Everything else after sign-in is fast and keeps the normal timeout.
+ */
+export const SIGN_IN_TIMEOUT = 60_000;
+
 /** Fills the sign-in dialog (which must already be open) and submits it. Does not wait for the result. */
 export async function submitLogin(page: Page, { username, password }: Credentials): Promise<void> {
   await page.getByTestId('login-username').fill(username);
@@ -17,14 +24,14 @@ export async function signInFromHome(page: Page, credentials: Credentials): Prom
   // Fail with the real reason (bad credentials, account step) instead of a bare URL timeout.
   const refused = page.getByTestId('login-error');
   const accountStep = page.getByTestId('account-setup-form');
-  await expect(refused.or(accountStep).or(page.getByTestId('dashboard-title'))).toBeVisible();
+  await expect(refused.or(accountStep).or(page.getByTestId('dashboard-title'))).toBeVisible({ timeout: SIGN_IN_TIMEOUT });
   if (await refused.isVisible()) {
     throw new Error(`Sign-in refused for "${credentials.username}": ${await refused.innerText()} Check the E2E_* credentials in .env.e2e.`);
   }
   if (await accountStep.isVisible()) {
     throw new Error(`"${credentials.username}" has no linked trading account; open one first.`);
   }
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: SIGN_IN_TIMEOUT });
   // The header shows who is signed in (the dashboard itself no longer greets by name).
   await expect(page.getByTestId('header-username')).toContainText(credentials.username);
 }

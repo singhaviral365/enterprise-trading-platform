@@ -19,7 +19,8 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   forbidOnly: !!process.env['CI'],
-  timeout: 60_000,
+  // A slow sign-in (see SIGN_IN_TIMEOUT in e2e/support/ui.ts) must not eat the whole budget of a test.
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {

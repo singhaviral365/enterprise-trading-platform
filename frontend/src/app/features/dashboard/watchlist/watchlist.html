@@ -159,7 +159,7 @@
                 <tr class="wl-row" [class.is-stale]="item.priceStatus === PriceStatus.Stale" [attr.data-testid]="'watchlist-row-' + item.tickerSymbol">
                   <th scope="row">
                     <span class="wl-symbol">
-                      <span class="ticker-tile" aria-hidden="true">{{ item.tickerSymbol.slice(0, 2) }}</span>
+                      <app-instrument-icon [symbol]="item.tickerSymbol" [iconUrl]="icons().get(item.tickerSymbol.toUpperCase())" [size]="32" />
                       <span class="ticker-text">
                         <span class="ticker">{{ item.tickerSymbol }}</span>
                         @if (changes().get(item.tickerSymbol.toUpperCase()); as move) {

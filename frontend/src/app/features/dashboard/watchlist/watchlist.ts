@@ -15,6 +15,7 @@ import {
   WatchlistItem,
   WatchlistService,
 } from '../../../core/watchlist.service';
+import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
 
@@ -26,7 +27,7 @@ type NameForm = 'create' | 'rename';
 /** Customer watchlists with the latest price beside each stock. Prices come from the Trade API, never computed here. */
 @Component({
   selector: 'app-watchlist',
-  imports: [DatePipe, DecimalPipe, Spinner, Tooltip],
+  imports: [DatePipe, DecimalPipe, InstrumentIcon, Spinner, Tooltip],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.css',
 })
@@ -73,6 +74,21 @@ export class WatchlistPanel {
     return (this.board.hasValue() ? this.board.value().quotes : [])
       .map((quote) => quote.symbol)
       .filter((symbol) => !onList.has(symbol.toUpperCase()));
+  });
+
+  /**
+   * Logo per symbol. The watchlist API carries prices only, so the logos come from the market quotes, the same
+   * source (and the same `iconUrl`) the market board uses. A symbol with no quote or no logo gets the
+   * two-letter fallback tile from `app-instrument-icon`.
+   */
+  protected readonly icons = computed(() => {
+    const bySymbol = new Map<string, string>();
+    for (const quote of this.board.hasValue() ? this.board.value().quotes : []) {
+      if (quote.iconUrl) {
+        bySymbol.set(quote.symbol.toUpperCase(), quote.iconUrl);
+      }
+    }
+    return bySymbol;
   });
 
   /** Day change per symbol, read from the market quotes (the watchlist API carries price only). */

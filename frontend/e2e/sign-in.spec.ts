@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { userCredentials } from './support/env';
-import { submitLogin } from './support/ui';
+import { SIGN_IN_TIMEOUT, submitLogin } from './support/ui';
 
 // Journey 1: the guard, a refused sign-in, a successful one, and arriving where you were going.
 // Each test starts in a fresh browser context, signed out, and leaves nothing behind.
@@ -22,7 +22,7 @@ test.describe('sign in', () => {
 
     await submitLogin(page, { username, password: 'definitely-not-the-password' });
 
-    await expect(page.getByTestId('login-error')).toHaveText(/Incorrect username or password\./);
+    await expect(page.getByTestId('login-error')).toHaveText(/Incorrect username or password\./, { timeout: SIGN_IN_TIMEOUT });
     await expect(page.getByTestId('auth-dialog')).toBeVisible();
     await expect(page).not.toHaveURL(/\/dashboard/);
     expect(await page.evaluate(() => localStorage.getItem('auth.session'))).toBeNull();
@@ -35,7 +35,7 @@ test.describe('sign in', () => {
 
     await submitLogin(page, credentials);
 
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/dashboard$/, { timeout: SIGN_IN_TIMEOUT });
     await expect(page.getByTestId('header-username')).toContainText(credentials.username);
     await expect(page.getByTestId('logout-button')).toBeVisible();
     await expect(page.getByTestId('auth-dialog')).not.toBeVisible();
@@ -47,7 +47,7 @@ test.describe('sign in', () => {
 
     await submitLogin(page, userCredentials());
 
-    await expect(page).toHaveURL(/\/orders$/);
+    await expect(page).toHaveURL(/\/orders$/, { timeout: SIGN_IN_TIMEOUT });
     await expect(page.getByTestId('orders-title')).toBeVisible();
   });
 });

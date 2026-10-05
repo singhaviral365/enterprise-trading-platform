@@ -136,6 +136,28 @@ describe('WatchlistPanel', () => {
     expect(byTestId('watchlist-status-TSLA')?.textContent).toContain('Waiting');
   });
 
+  it('shows each stock logo from the market quotes, and the two-letter tile when there is none', async () => {
+    await start(
+      [list(9, 'Tech', [item('AAPL'), item('MSFT'), item('TSLA')])],
+      [
+        { symbol: 'AAPL', iconUrl: '/assets/icons/AAPL.svg' },
+        { symbol: 'MSFT', iconUrl: null },
+      ],
+    );
+
+    const rowOf = (symbol: string) => byTestId(`watchlist-row-${symbol}`)!;
+    expect(rowOf('AAPL').querySelector('img.icon-image')?.getAttribute('src')).toContain('/assets/icons/AAPL.svg');
+    expect(rowOf('AAPL').querySelector('[data-testid="instrument-icon-fallback"]')).toBeNull();
+    expect(rowOf('MSFT').querySelector('[data-testid="instrument-icon-fallback"]')?.textContent?.trim()).toBe('MS');
+    expect(rowOf('TSLA').querySelector('[data-testid="instrument-icon-fallback"]')?.textContent?.trim()).toBe('TS');
+  });
+
+  it('matches the logo by symbol regardless of case', async () => {
+    await start([list(9, 'Tech', [item('aapl')])], [{ symbol: 'AAPL', iconUrl: '/assets/icons/AAPL.svg' }]);
+
+    expect(byTestId('watchlist-row-aapl')!.querySelector('img.icon-image')).toBeTruthy();
+  });
+
   it('shows the day change as a green or red pill beside the symbol', async () => {
     await start(
       [list(9, 'Tech', [item('AAPL'), item('AMZN'), item('TSLA')])],
