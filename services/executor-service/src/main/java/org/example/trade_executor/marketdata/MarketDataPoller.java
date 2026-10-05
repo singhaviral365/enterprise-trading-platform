@@ -137,11 +137,34 @@ public class MarketDataPoller {
                     .filter(value -> !value.isBlank())
                     .collect(Collectors.toCollection(LinkedHashSet::new)));
         }
+        symbols.addAll(loadWatchlistSymbols());
         symbols.addAll(watchSymbols);
 
         List<String> result = new ArrayList<>(symbols);
         Collections.sort(result);
         return result;
+    }
+
+    /**
+     * Symbols customers have put on a watchlist. A failure here (for example the watchlist tables
+     * not existing yet) must not stop held and open-order symbols from being priced, so it is
+     * logged and treated as "no extra symbols".
+     */
+    private Set<String> loadWatchlistSymbols() {
+        try {
+            List<String> symbols = instrumentMapper.selectWatchlistSymbolsForMarketPolling();
+            if (symbols == null) {
+                return Set.of();
+            }
+            return symbols.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("Could not load watchlist symbols for market polling; continuing without them", ex);
+            return Set.of();
+        }
     }
 
     private void publishBatch(List<String> batch, OffsetDateTime quotedAt) {

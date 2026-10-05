@@ -1,0 +1,241 @@
+<div class="wl-head">
+  <h2 id="watchlist-title" class="card-title">Watchlist</h2>
+  <div class="wl-actions">
+    <button
+      type="button"
+      class="btn is-tertiary is-icon-only is-small refresh"
+      aria-label="Refresh watchlist"
+      [disabled]="!accountId() || data.isLoading()"
+      (click)="reload()"
+    >
+      <i class="fas fa-rotate-right" [class.spinning]="data.isLoading()" aria-hidden="true"></i>
+    </button>
+    <app-tooltip [text]="'You can have up to ' + maxWatchlists + ' watchlists'" [disabled]="!atListLimit()">
+      <button
+        type="button"
+        class="btn is-secondary is-small"
+        data-testid="watchlist-new"
+        [disabled]="!accountId() || busy() || atListLimit()"
+        (click)="openNameForm('create')"
+      >
+        <i class="fas fa-plus" aria-hidden="true"></i> New list
+      </button>
+    </app-tooltip>
+  </div>
+</div>
+
+@if (noAccount()) {
+  <div class="empty-state" data-testid="watchlist-no-account">
+    <i class="fas fa-star" aria-hidden="true"></i>
+    <p>Open an account to start a watchlist.</p>
+  </div>
+} @else if (!accountId() || (data.isLoading() && !data.hasValue())) {
+  <div class="empty-state" aria-live="polite" data-testid="watchlist-loading">
+    <app-spinner [inline]="true" label="Loading your watchlists" />
+    <span>Loading your watchlists…</span>
+  </div>
+} @else if (errorMessage() && !data.hasValue()) {
+  <div class="empty-state is-error" role="alert" data-testid="watchlist-error">
+    <i class="fas fa-plug-circle-xmark" aria-hidden="true"></i>
+    <p>{{ errorMessage() }}</p>
+    <button type="button" class="btn is-secondary is-small" (click)="reload()">Try again</button>
+  </div>
+} @else {
+  @if (nameForm(); as form) {
+    <form class="wl-form" novalidate (submit)="submitName($event)" data-testid="watchlist-name-form">
+      <label class="form-label" for="watchlist-name">{{ form === 'create' ? 'New watchlist name' : 'Rename watchlist' }}</label>
+      <div class="wl-form-row">
+        <input
+          id="watchlist-name"
+          class="form-input"
+          type="text"
+          autocomplete="off"
+          data-testid="watchlist-name-input"
+          [class.is-error]="nameError()"
+          [attr.maxlength]="maxNameLength"
+          [attr.aria-invalid]="nameError() ? 'true' : null"
+          [attr.aria-describedby]="nameError() ? 'watchlist-name-error' : null"
+          [value]="nameDraft()"
+          (input)="onNameInput($event)"
+        />
+        <button type="submit" class="btn is-primary" data-testid="watchlist-name-save" [disabled]="busy()">Save</button>
+        <button type="button" class="btn is-tertiary" [disabled]="busy()" (click)="closeNameForm()">Cancel</button>
+      </div>
+      @if (nameError()) {
+        <p id="watchlist-name-error" class="form-error-text" role="alert" data-testid="watchlist-name-error">{{ nameError() }}</p>
+      }
+    </form>
+  }
+
+  @if (lists().length === 0) {
+    <div class="empty-state" data-testid="watchlist-empty">
+      <i class="fas fa-star" aria-hidden="true"></i>
+      <p>Your watchlist is empty.</p>
+      <p class="form-hint">Create a list, then add the symbols you follow.</p>
+    </div>
+  } @else {
+    <div class="wl-tabs" role="tablist" aria-label="Your watchlists">
+      @for (list of lists(); track list.watchlistId) {
+        <button
+          type="button"
+          role="tab"
+          class="wl-tab"
+          [class.is-active]="list.watchlistId === activeId()"
+          [attr.aria-selected]="list.watchlistId === activeId()"
+          [attr.data-testid]="'watchlist-tab-' + list.watchlistId"
+          (click)="select(list)"
+        >
+          {{ list.name }}
+          <span class="wl-count">{{ list.items.length }}</span>
+        </button>
+      }
+    </div>
+
+    @if (selected(); as list) {
+      <div class="wl-list-bar">
+        <h3 class="wl-list-name" data-testid="watchlist-selected-name">{{ list.name }}</h3>
+        <div class="wl-list-actions">
+          <button type="button" class="btn is-tertiary is-small" data-testid="watchlist-rename" [disabled]="busy()" (click)="openNameForm('rename')">
+            <i class="fas fa-pen" aria-hidden="true"></i> Rename
+          </button>
+          <button type="button" class="btn is-tertiary is-small" data-testid="watchlist-delete" [disabled]="busy()" (click)="deleteList()">
+            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+          </button>
+        </div>
+      </div>
+
+      <form class="wl-add" novalidate (submit)="addStock($event)" data-testid="watchlist-add-form">
+        <label class="form-label" for="watchlist-ticker">Add a stock</label>
+        <div class="wl-form-row">
+          <input
+            id="watchlist-ticker"
+            class="form-input"
+            type="text"
+            list="watchlist-symbols"
+            autocomplete="off"
+            autocapitalize="characters"
+            placeholder="e.g. AAPL"
+            data-testid="watchlist-ticker-input"
+            [class.is-error]="tickerError()"
+            [attr.maxlength]="maxTickerLength"
+            [attr.aria-invalid]="tickerError() ? 'true' : null"
+            [attr.aria-describedby]="tickerError() ? 'watchlist-ticker-error' : null"
+            [disabled]="atItemLimit()"
+            [value]="tickerDraft()"
+            (input)="onTickerInput($event)"
+          />
+          <datalist id="watchlist-symbols">
+            @for (symbol of symbolSuggestions(); track symbol) {
+              <option [value]="symbol"></option>
+            }
+          </datalist>
+          <app-tooltip [text]="'A watchlist can hold up to ' + maxItems + ' stocks'" [disabled]="!atItemLimit()">
+            <button type="submit" class="btn is-primary" data-testid="watchlist-add" [disabled]="busy() || atItemLimit()">Add</button>
+          </app-tooltip>
+        </div>
+        @if (tickerError()) {
+          <p id="watchlist-ticker-error" class="form-error-text" role="alert" data-testid="watchlist-ticker-error">{{ tickerError() }}</p>
+        }
+      </form>
+
+      @if (list.items.length === 0) {
+        <div class="empty-state" data-testid="watchlist-items-empty">
+          <i class="fas fa-chart-line" aria-hidden="true"></i>
+          <p>No stocks in this list yet.</p>
+        </div>
+      } @else {
+        <div class="table-scroll">
+          <table class="wl-table" aria-labelledby="watchlist-title" data-testid="watchlist-table">
+            <thead>
+              <tr>
+                <th scope="col">Symbol</th>
+                <th scope="col" class="num">Price</th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="sr-only">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of list.items; track item.tickerSymbol) {
+                <tr class="wl-row" [class.is-stale]="item.priceStatus === 'STALE'" [attr.data-testid]="'watchlist-row-' + item.tickerSymbol">
+                  <th scope="row">
+                    <span class="wl-symbol">
+                      <span class="ticker-tile" aria-hidden="true">{{ item.tickerSymbol.slice(0, 2) }}</span>
+                      <span class="ticker-text">
+                        <span class="ticker">{{ item.tickerSymbol }}</span>
+                        @if (changes().get(item.tickerSymbol.toUpperCase()); as move) {
+                          @let direction = (move.change ?? move.percent ?? 0);
+                          <span
+                            class="move"
+                            [class.is-up]="direction > 0"
+                            [class.is-down]="direction < 0"
+                            [attr.data-testid]="'watchlist-change-' + item.tickerSymbol"
+                          >
+                            <i
+                              class="fas"
+                              [class.fa-arrow-trend-up]="direction > 0"
+                              [class.fa-arrow-trend-down]="direction < 0"
+                              [class.fa-minus]="direction === 0"
+                              aria-hidden="true"
+                            ></i>
+                            @if (move.change !== null) {
+                              {{ move.change > 0 ? '+' : '' }}{{ move.change | number: '1.2-2' }}
+                            }
+                            @if (move.percent !== null) {
+                              ({{ move.percent > 0 ? '+' : '' }}{{ move.percent | number: '1.2-2' }}%)
+                            }
+                          </span>
+                        }
+                      </span>
+                    </span>
+                  </th>
+                  <td class="num price" [attr.data-testid]="'watchlist-price-' + item.tickerSymbol">
+                    @if (item.price === null) {
+                      <span class="muted">No quote yet</span>
+                    } @else {
+                      {{ item.price | number: '1.2-2' }}
+                    }
+                  </td>
+                  <td>
+                    @switch (item.priceStatus) {
+                      @case ('LIVE') {
+                        <span class="badge is-live" [attr.data-testid]="'watchlist-status-' + item.tickerSymbol">
+                          <span class="live-dot" aria-hidden="true"></span> Live
+                        </span>
+                      }
+                      @case ('STALE') {
+                        <span class="badge is-delayed" [attr.data-testid]="'watchlist-status-' + item.tickerSymbol">
+                          <i class="fas fa-clock" aria-hidden="true"></i> Delayed
+                        </span>
+                      }
+                      @default {
+                        <span class="badge is-none" [attr.data-testid]="'watchlist-status-' + item.tickerSymbol">Waiting</span>
+                      }
+                    }
+                    @if (item.quotedAt) {
+                      <span class="updated">{{ item.quotedAt | date: 'mediumTime' }}</span>
+                    }
+                  </td>
+                  <td class="num">
+                    <button
+                      type="button"
+                      class="btn is-tertiary is-icon-only is-small"
+                      [attr.aria-label]="'Remove ' + item.tickerSymbol + ' from ' + list.name"
+                      [attr.data-testid]="'watchlist-remove-' + item.tickerSymbol"
+                      [disabled]="busy()"
+                      (click)="removeStock(item)"
+                    >
+                      <i class="fas fa-xmark" aria-hidden="true"></i>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (errorMessage()) {
+          <p class="form-hint" role="status">{{ errorMessage() }} Showing the last prices we received.</p>
+        }
+      }
+    }
+  }
+}

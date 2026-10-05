@@ -14,5 +14,11 @@ public interface InstrumentMapper {
     List<Instrument> selectTradableInstruments();
 
     List<String> selectSymbolsForMarketPolling();
+
+    /**
+     * Tradable symbols that appear on at least one customer watchlist, so they get priced even
+     * when nobody holds them or has an open order on them. Read-only.
+     */
+    List<String> selectWatchlistSymbolsForMarketPolling();
 }
 

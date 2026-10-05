@@ -109,4 +109,25 @@
 
         </select>
 
+        <!--
+          Symbols customers are watching. Kept as its own statement (not folded into the query
+          above) so that if the watchlist tables do not exist yet, only this lookup fails and the
+          poller still prices held and open-order symbols.
+        -->
+        <select id="selectWatchlistSymbolsForMarketPolling"
+                        resultType="String">
+
+                SELECT DISTINCT i.instrument_ticker
+
+                FROM instrument i
+
+                JOIN watchlist_item w
+                        ON w.ticker_symbol = i.instrument_ticker
+
+                WHERE i.instrument_status = 'TRADING'
+
+                ORDER BY i.instrument_ticker
+
+        </select>
+
 </mapper>

@@ -12,9 +12,11 @@ import { LinePoint, LineChart } from '../../shared/ui/line-chart/line-chart';
 import { InstrumentLabel } from '../../shared/ui/instrument-label/instrument-label';
 import { OrderStatusBadge } from '../../shared/ui/order-status/order-status';
 import { Spinner } from '../../shared/ui/spinner/spinner';
+import { WatchlistPanel } from './watchlist/watchlist';
 
 /** How many orders the Recent orders panel shows; the full list lives on the Order history page. */
 const RECENT_ORDER_LIMIT = 5;
+
 
 /** Order statuses that still count as "open" (not yet finished one way or another). */
 const CLOSED_ORDER_STATUSES: ReadonlySet<string> = new Set<string>([
@@ -44,6 +46,7 @@ export const OTHER_SLICE = 'Other';
     OrderStatusBadge,
     RouterLink,
     Spinner,
+    WatchlistPanel
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
