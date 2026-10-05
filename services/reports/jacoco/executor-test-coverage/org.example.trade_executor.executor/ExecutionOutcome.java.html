@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutionOutcome.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">trade-executor</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.executor</a> &gt; <span class="el_source">ExecutionOutcome.java</span></div><h1>ExecutionOutcome.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.executor;
+
+import org.example.backend.enums.OrderStatus;
+
+import java.math.BigDecimal;
+import java.util.Objects;
+
+public record ExecutionOutcome(
+        OrderStatus status,
+        BigDecimal executionPrice,
+        ExecutionRejectReason rejectReason) {
+
+<span class="fc" id="L13">    public ExecutionOutcome {</span>
+<span class="fc" id="L14">        Objects.requireNonNull(status, &quot;status is required&quot;);</span>
+
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        if (status == OrderStatus.FILLED) {</span>
+<span class="fc" id="L17">            Objects.requireNonNull(executionPrice, &quot;executionPrice is required when filled&quot;);</span>
+<span class="pc bpc" id="L18" title="1 of 2 branches missed.">            if (rejectReason != null) {</span>
+<span class="nc" id="L19">                throw new IllegalArgumentException(&quot;rejectReason must be null when filled&quot;);</span>
+            }
+        }
+
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        if (status == OrderStatus.REJECTED) {</span>
+<span class="fc" id="L24">            Objects.requireNonNull(rejectReason, &quot;rejectReason is required when rejected&quot;);</span>
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">            if (executionPrice != null) {</span>
+<span class="nc" id="L26">                throw new IllegalArgumentException(&quot;executionPrice must be null when rejected&quot;);</span>
+            }
+        }
+
+<span class="pc bpc" id="L30" title="1 of 4 branches missed.">        if (status != OrderStatus.FILLED &amp;&amp; status != OrderStatus.REJECTED) {</span>
+<span class="nc" id="L31">            throw new IllegalArgumentException(&quot;ExecutionOutcome only supports FILLED or REJECTED&quot;);</span>
+        }
+<span class="fc" id="L33">    }</span>
+
+    public static ExecutionOutcome filled(BigDecimal executionPrice) {
+<span class="fc" id="L36">        return new ExecutionOutcome(OrderStatus.FILLED, executionPrice, null);</span>
+    }
+
+    public static ExecutionOutcome rejected(ExecutionRejectReason rejectReason) {
+<span class="fc" id="L40">        return new ExecutionOutcome(OrderStatus.REJECTED, null, rejectReason);</span>
+    }
+
+    public boolean isFilled() {
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        return status == OrderStatus.FILLED;</span>
+    }
+
+    public boolean isRejected() {
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        return status == OrderStatus.REJECTED;</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,39 @@
+/* The <dialog> is only a transparent hit-area; the visible panel is .modal-content (global styles). */
+.app-dialog {
+  /* The global reset zeroes margins, which removes the browser's `margin: auto` that centres modal dialogs. */
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.app-dialog::backdrop {
+  background: var(--surface-foreground);
+  opacity: 0.5;
+}
+
+.dialog-modal {
+  width: min(450px, calc(100vw - 32px));
+  min-width: 0;
+  border: 1px solid var(--surface-line-subtle);
+}
+
+.dialog-modal.is-warning .modal-title {
+  color: var(--status-warning-container-fg);
+}
+
+.dialog-modal.is-error .modal-title {
+  color: var(--status-error-container-fg);
+}
+
+.dialog-modal.is-info .modal-title {
+  color: var(--status-info-container-fg);
+}
+
+.dialog-modal.is-success .modal-title {
+  color: var(--status-success-container-fg);
+}

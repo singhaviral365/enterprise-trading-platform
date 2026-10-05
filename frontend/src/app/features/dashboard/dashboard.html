@@ -1,0 +1,208 @@
+<header class="dashboard-header">
+  <div>
+    <h1 class="page-title" data-testid="dashboard-title">Dashboard</h1>
+    <!-- <p class="dashboard-greeting">
+      Signed in as <strong data-testid="dashboard-username">{{ session.username() }}</strong>
+    </p> -->
+  </div>
+</header>
+
+@if (data.isLoading() && !data.hasValue()) {
+  <div class="card loading-card" aria-live="polite">
+    <app-spinner [inline]="true" label="Loading your account" />
+    <span>Loading your account…</span>
+  </div>
+} @else if (errorMessage()) {
+  <div class="card error-card" role="alert" data-testid="dashboard-error">
+    <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+    <p>{{ errorMessage() }}</p>
+    <button type="button" class="btn is-secondary" (click)="data.reload()">Try again</button>
+  </div>
+} @else if (linked(); as info) {
+  @if (info.overview.account.status !== AccountStatus.Active) {
+    <div class="notice" role="status" data-testid="dashboard-status-notice">
+      <i class="fas fa-circle-info" aria-hidden="true"></i>
+      This account is {{ info.overview.account.status.toLowerCase() }}, so new orders cannot be placed.
+    </div>
+  }
+
+  <section class="stats" aria-label="Account summary">
+    <article class="stat card is-featured rise-in" style="--stagger: 0">
+      <button class="btn is-primary is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-wallet"></i></button>
+      <div>
+        <h2 class="stat-label">Cash balance</h2>
+        <p class="stat-value" data-testid="dashboard-cash-balance">
+          {{ info.overview.balance.cashBalance | currency: info.overview.balance.currency }}
+        </p>
+      </div>
+      <svg class="featured-spark" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,32 L15,28 L30,30 L45,20 L60,23 L75,14 L90,17 L105,7 L120,9" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+      </svg>
+    </article>
+    <article class="stat card is-lift rise-in" style="--stagger: 1">
+      <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-chart-pie"></i></button>
+      <div>
+        <h2 class="stat-label">Invested (at cost)</h2>
+        <p class="stat-value">{{ investedValue() | currency: info.overview.balance.currency }}</p>
+      </div>
+    </article>
+    <article class="stat is-link card is-lift rise-in" style="--stagger: 2">
+      <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-layer-group"></i></button>
+      <div>
+        <h2 class="stat-label"><a class="stat-link" routerLink="/positions" data-testid="positions-link">Positions</a></h2>
+        <p class="stat-value" data-testid="positions-count">{{ info.overview.positions.length }}</p>
+      </div>
+    </article>
+    <article class="stat is-link card is-lift rise-in" style="--stagger: 3">
+      <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-receipt"></i></button>
+      <div>
+        <h2 class="stat-label"><a class="stat-link" routerLink="/orders" data-testid="total-orders-link">Total orders</a></h2>
+        <p class="stat-value" data-testid="total-orders-count">{{ info.overview.orders.length }}</p>
+      </div>
+    </article>
+    <article class="stat is-link card is-lift rise-in" style="--stagger: 4">
+      <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-list-check"></i></button>
+      <div>
+        <h2 class="stat-label">
+          <a class="stat-link" routerLink="/orders" [queryParams]="{ status: 'NEW' }" data-testid="open-orders-link">Open orders</a>
+        </h2>
+        <p class="stat-value" data-testid="open-orders-count">{{ openOrders() }}</p>
+      </div>
+    </article>
+  </section>
+} @else if (data.hasValue()) {
+  <section class="card setup-card rise-in" aria-labelledby="setup-title" data-testid="dashboard-no-account">
+    <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-building-columns"></i></button>
+    <h2 id="setup-title" class="setup-title">Open your trading account</h2>
+    <p class="setup-text">
+      Your login isn't linked to a trading account yet. Add a few details and we'll open one for you,
+      with a 20,000 opening balance unless you choose more.
+    </p>
+    <button type="button" class="btn is-primary is-large" data-testid="dashboard-open-account" (click)="openAccountSetup()">
+      Open my account
+    </button>
+  </section>
+}
+
+@if (linked(); as info) {
+  <div class="panels">
+    <section class="card panel growth-panel rise-in" style="--stagger: 3" aria-labelledby="growth-title">
+      <h2 id="growth-title" class="card-title">Investments Over Time</h2>
+      @if (investedHistory().length) {
+        <app-line-chart
+          [points]="investedHistory()"
+          seriesName="Invested at cost"
+          [valueFormatter]="formatMoney()"
+          [axisFormatter]="formatAxis()"
+          [ariaLabel]="investedHistoryLabel()"
+        />
+        <!-- <p class="form-hint growth-hint" data-testid="growth-hint">
+          What your holdings cost, after each filled order. It does not move with market prices.
+        </p> -->
+      } @else {
+        <div class="empty-state" data-testid="growth-empty">
+          <i class="fas fa-chart-line" aria-hidden="true"></i>
+          <p>Your chart starts with your first filled order.</p>
+          <a class="view-more" routerLink="/market">
+            Find an instrument to trade
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      }
+    </section>
+
+    <section class="card panel allocation-panel rise-in" style="--stagger: 4" aria-labelledby="allocation-title">
+      <h2 id="allocation-title" class="card-title">Investments</h2>
+      @if (allocation().length) {
+        <app-donut-chart
+          [slices]="allocation()"
+          centerLabel="Invested"
+          [centerValue]="formatMoney()(investedValue())"
+          [valueFormatter]="formatMoney()"
+          [ariaLabel]="allocationLabel()"
+        />
+        <div class="panel-footer">
+          <a class="view-more" routerLink="/positions" data-testid="positions-view-more">
+            View more
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      } @else {
+        <div class="empty-state" data-testid="allocation-empty">
+          <i class="fas fa-chart-pie" aria-hidden="true"></i>
+          <p>You don't hold any investments yet.</p>
+          <a class="view-more" routerLink="/market" data-testid="allocation-find">
+            Find an instrument to trade
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      }
+    </section>
+
+    <section class="card panel orders-panel rise-in" style="--stagger: 5" aria-labelledby="orders-title">
+      <h2 id="orders-title" class="card-title">Recent orders</h2>
+      @if (info.overview.orders.length) {
+        <div class="table-scroll">
+          <table class="simple-table">
+            <thead>
+              <tr>
+                <th scope="col">Placed</th>
+                <th scope="col">Instrument</th>
+                <th scope="col">Side</th>
+                <th scope="col">Type</th>
+                <th scope="col" class="num">Quantity</th>
+                <th scope="col" class="num">Price</th>
+                <th scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of recentOrders(); track order.orderId) {
+                <tr>
+                  <td>{{ order.createdOn | date: 'mediumDate' }}</td>
+                  <th scope="row">
+                    <app-instrument-label [symbol]="order.symbol" [name]="order.instrumentName" [iconUrl]="order.iconUrl" [size]="28" />
+                  </th>
+                  <td>
+                    <span class="side" [class.is-buy]="order.side === OrderSide.Buy" [class.is-sell]="order.side === OrderSide.Sell">
+                      {{ order.side }}
+                    </span>
+                  </td>
+                  <td>{{ order.orderPricingType }}</td>
+                  <td class="num">{{ order.quantity | number }}</td>
+                  <td class="num">
+                    @if (order.executedPrice ?? order.price; as price) {
+                      {{ price | currency: info.overview.balance.currency }}
+                    } @else {
+                      Market
+                    }
+                  </td>
+                  <td><app-order-status [status]="order.status" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="panel-footer">
+          <a class="view-more" routerLink="/orders" data-testid="orders-view-more">
+            View more
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      } @else {
+        <div class="empty-state">
+          <i class="fas fa-receipt" aria-hidden="true"></i>
+          <p>You haven't placed any orders yet.</p>
+        </div>
+      }
+    </section>
+
+    <section class="card panel rise-in" style="--stagger: 6" aria-labelledby="watchlist-title">
+      <h2 id="watchlist-title" class="card-title">Watchlist</h2>
+      <div class="empty-state" data-testid="watchlist-empty">
+        <i class="fas fa-star" aria-hidden="true"></i>
+        <p>Your watchlist is empty.</p>
+        <p class="form-hint">Symbols you follow will show up here.</p>
+      </div>
+    </section>
+  </div>
+}

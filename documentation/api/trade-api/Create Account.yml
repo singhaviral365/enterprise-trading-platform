@@ -1,0 +1,28 @@
+info:
+  name: Create Account
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: accounts/create
+  body:
+    type: json
+    data: |-
+      {
+      "client_name": "sasi FMRI",
+      "phone_no": "+91 9876543210",
+      "email": "soham.fmri@example.com",
+      "dob": "1999-08-21",
+      "balance": 45000.00
+      }
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

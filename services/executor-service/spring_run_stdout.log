@@ -1,0 +1,92 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< org.example:trade-executor >---------------------
+[INFO] Building trade-executor 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.1:run (default-cli) > test-compile @ trade-executor >>>
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ trade-executor ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 5 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ trade-executor ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ trade-executor ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ trade-executor ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] <<< spring-boot:4.1.1:run (default-cli) < test-compile @ trade-executor <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.1:run (default-cli) @ trade-executor ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.1)
+
+2026-09-18T05:38:50.968Z  INFO 8736 --- [trade-executor] [           main] o.e.t.TradeExecutorApplication           : Starting TradeExecutorApplication using Java 25.0.3 with PID 8736 (C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes started by Administrator in C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor)
+2026-09-18T05:38:50.974Z  INFO 8736 --- [trade-executor] [           main] o.e.t.TradeExecutorApplication           : No active profile set, falling back to 1 default profile: "default"
+2026-09-18T05:38:52.771Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\AccountMapper.class]
+2026-09-18T05:38:52.774Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\HoldingMapper.class]
+2026-09-18T05:38:52.778Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\InstrumentMapper.class]
+2026-09-18T05:38:52.781Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\OrderMapper.class]
+2026-09-18T05:38:52.784Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'accountMapper' and 'org.example.backend.mapper.AccountMapper' mapperInterface
+2026-09-18T05:38:52.788Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'accountMapper'.
+2026-09-18T05:38:52.790Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'holdingMapper' and 'org.example.backend.mapper.HoldingMapper' mapperInterface
+2026-09-18T05:38:52.792Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'holdingMapper'.
+2026-09-18T05:38:52.795Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'instrumentMapper' and 'org.example.backend.mapper.InstrumentMapper' mapperInterface
+2026-09-18T05:38:52.798Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'instrumentMapper'.
+2026-09-18T05:38:52.800Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'orderMapper' and 'org.example.backend.mapper.OrderMapper' mapperInterface
+2026-09-18T05:38:52.802Z DEBUG 8736 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'orderMapper'.
+2026-09-18T05:38:53.319Z  INFO 8736 --- [trade-executor] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8082 (http)
+2026-09-18T05:38:53.334Z  INFO 8736 --- [trade-executor] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-18T05:38:53.337Z  INFO 8736 --- [trade-executor] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-18T05:38:53.405Z  INFO 8736 --- [trade-executor] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 2360 ms
+2026-09-18T05:38:53.975Z DEBUG 8736 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Property 'configuration' or 'configLocation' not specified, using default MyBatis Configuration
+2026-09-18T05:38:54.140Z DEBUG 8736 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\AccountMapper.xml]'
+2026-09-18T05:38:54.156Z DEBUG 8736 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\HoldingMapper.xml]'
+2026-09-18T05:38:54.168Z DEBUG 8736 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\InstrumentMapper.xml]'
+2026-09-18T05:38:54.197Z DEBUG 8736 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\OrderMapper.xml]'
+2026-09-18T05:38:55.208Z  INFO 8736 --- [trade-executor] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-18T05:38:55.372Z  WARN 8736 --- [trade-executor] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-09-18T05:38:55.404Z  INFO 8736 --- [trade-executor] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-09-18T05:38:55.430Z ERROR 8736 --- [trade-executor] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8082 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8082 or configure this application to listen on another port.
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  10.226 s
+[INFO] Finished at: 2026-09-18T05:38:55Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.1:run (default-cli) on project trade-executor: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

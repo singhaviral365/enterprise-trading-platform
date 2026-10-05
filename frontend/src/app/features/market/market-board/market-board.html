@@ -1,0 +1,177 @@
+<app-split-view
+  [open]="!!selectedRow()"
+  labelledBy="detail-title"
+  testId="quote-detail"
+  (closed)="selectedSymbol.set(null)"
+>
+  <section class="card board-card" list aria-labelledby="market-title">
+    <div class="market-head">
+      <h2 id="market-title" class="card-title">Market</h2>
+      <div class="market-status" aria-live="polite">
+        @if (latest(); as current) {
+          @if (current.stale) {
+            <span class="badge is-delayed" data-testid="market-delayed"
+              ><i class="fas fa-clock" aria-hidden="true"></i> Delayed</span
+            >
+          } @else {
+            <span class="badge is-live"
+              ><span class="live-dot" aria-hidden="true"></span> Live</span
+            >
+          }
+          <span class="updated">Updated {{ current.asOf | date: 'mediumTime' }}</span>
+        }
+        <button
+          type="button"
+          class="btn is-tertiary is-icon-only is-small refresh"
+          aria-label="Refresh market data"
+          [disabled]="board.isLoading()"
+          (click)="board.reload()"
+        >
+          <i
+            class="fas fa-rotate-right"
+            [class.spinning]="board.isLoading()"
+            aria-hidden="true"
+          ></i>
+        </button>
+      </div>
+    </div>
+
+    @if (board.isLoading() && !latest()) {
+      <div class="market-empty" aria-live="polite">
+        <app-spinner [inline]="true" label="Loading market data" />
+        <span>Loading market data…</span>
+      </div>
+    } @else if (errorMessage() && !latest()) {
+      <div class="market-empty is-error" role="alert" data-testid="market-error">
+        <i class="fas fa-plug-circle-xmark" aria-hidden="true"></i>
+        <p>{{ errorMessage() }}</p>
+        <button type="button" class="btn is-secondary is-small" (click)="board.reload()">
+          Try again
+        </button>
+      </div>
+    } @else if (rows().length === 0) {
+      <div class="market-empty">
+        <i class="fas fa-chart-line" aria-hidden="true"></i>
+        <p>No instruments are available to trade yet.</p>
+      </div>
+    } @else {
+      <div class="row-table-scroll">
+        <table class="row-table" aria-labelledby="market-title" data-testid="market-table">
+          <thead>
+            <tr>
+              <th scope="col">Instrument</th>
+              <th scope="col" class="num">Price</th>
+              <th scope="col" class="num col-extra">Change</th>
+              <th scope="col" class="num col-last">% Change</th>
+              <th scope="col" class="num col-extra">Prev. close</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of visibleRows(); track row.quote.symbol) {
+              <tr
+                class="market-row"
+                [class.is-up]="(row.change ?? row.changePercent ?? 0) > 0"
+                [class.is-down]="(row.change ?? row.changePercent ?? 0) < 0"
+                [class.is-selected]="row.quote.symbol === selectedSymbol()"
+              >
+                <th scope="row">
+                  <!-- The button covers the whole row (see .row-link::after) so any cell opens the quote. -->
+                  <button
+                    type="button"
+                    class="row-link"
+                    [attr.data-testid]="'market-row-' + row.quote.symbol"
+                    [attr.aria-label]="
+                      'View ' +
+                      row.quote.symbol +
+                      (row.quote.name ? ', ' + row.quote.name : '') +
+                      ' details'
+                    "
+                    [attr.aria-current]="row.quote.symbol === selectedSymbol() ? 'true' : null"
+                    (click)="open(row)"
+                  >
+                    <app-instrument-icon
+                      [symbol]="row.quote.symbol"
+                      [iconUrl]="row.quote.iconUrl"
+                      [size]="36"
+                    />
+                    <span class="ticker-text">
+                      <span class="ticker">{{ row.quote.symbol }}</span>
+                      @if (row.quote.name) {
+                        <span class="ticker-name">{{ row.quote.name }}</span>
+                      }
+                    </span>
+                  </button>
+                </th>
+                <td class="num price">
+                  @if (row.quote.price === null) {
+                    <span class="muted">No quote</span>
+                  } @else if (row.currency) {
+                    {{ row.quote.price | currency: row.currency }}
+                  } @else {
+                    {{ row.quote.price | number: '1.2-2' }}
+                  }
+                </td>
+                <td class="num delta col-extra">
+                  @if (row.change === null) {
+                    <span class="muted">—</span>
+                  } @else {
+                    {{ row.change > 0 ? '+' : '' }}{{ row.change | number: '1.2-2' }}
+                  }
+                </td>
+                <td class="num col-last">
+                  @if (row.changePercent === null) {
+                    <span class="muted">—</span>
+                  } @else {
+                    <span class="pct-chip">
+                      <i
+                        class="fas"
+                        [class.fa-caret-up]="row.changePercent > 0"
+                        [class.fa-caret-down]="row.changePercent < 0"
+                        [class.fa-minus]="row.changePercent === 0"
+                        aria-hidden="true"
+                      ></i>
+                      {{ row.changePercent | number: '1.2-2' }}%
+                    </span>
+                  }
+                </td>
+                <td
+                  class="num col-extra"
+                  [attr.data-testid]="'market-prev-close-' + row.quote.symbol"
+                >
+                  @if (row.previousClose === null) {
+                    <span class="muted">—</span>
+                  } @else if (row.currency) {
+                    {{ row.previousClose | currency: row.currency }}
+                  } @else {
+                    {{ row.previousClose | number: '1.2-2' }}
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer" data-testid="market-pagination">
+        <app-pagination
+          [pageSizeOptions]="pageSizes"
+          [(pageSize)]="pageSize"
+          [totalItems]="rows().length"
+          [totalPages]="totalPages()"
+          [(currentPage)]="page"
+        />
+      </div>
+      @if (errorMessage()) {
+        <p class="form-hint refresh-error" role="status">
+          {{ errorMessage() }} Showing the last prices we received.
+        </p>
+      }
+    }
+  </section>
+
+  <div detail>
+    @if (selectedRow(); as current) {
+      <app-quote-detail [row]="current" (closed)="selectedSymbol.set(null)" />
+    }
+  </div>
+</app-split-view>

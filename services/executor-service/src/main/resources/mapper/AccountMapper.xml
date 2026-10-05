@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  AccountMapper.xml - MyBatis XML mapper for Account entity
+
+  SECURITY NOTICE:
+  - ALL external parameters are bound as JDBC bind parameters (#{...})
+  - NO string interpolation or ${...} syntax used for external parameters
+  - This prevents SQL injection attacks, including parameter-based injection
+  - Example attack prevented: account_number: "AAPL' OR '1'='1"
+-->
+
+<mapper namespace="org.example.backend.mapper.AccountMapper">
+
+    <!--
+      Result mapping for Account entity.
+      Maps database columns to Account object properties.
+    -->
+    <resultMap id="AccountResultMap" type="org.example.backend.entities.Account">
+        <constructor>
+            <idArg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="account_number" javaType="String" name="accountNumber"/>
+            <arg column="opening_date" javaType="java.time.LocalDate" name="openingDate"/>
+            <arg column="balance" javaType="java.math.BigDecimal" name="balance"/>
+            <arg column="purchasing_power" javaType="java.math.BigDecimal" name="purchasingPower"/>
+            <arg column="account_status" javaType="org.example.backend.enums.AccountStatus" name="accountStatus"/>
+            <arg column="currency" javaType="String" name="currency"/>
+            <arg column="version" javaType="_long" name="version"/>
+            <arg column="suspended_at" javaType="java.time.OffsetDateTime" name="suspendedAt"/>
+            <arg column="closed_at" javaType="java.time.OffsetDateTime" name="closedAt"/>
+            <arg column="user_id" javaType="_int" name="clientId"/>
+        </constructor>
+    </resultMap>
+
+    <!-- ===================================================
+         INSERT Operations
+         =================================================== -->
+
+    <!--
+      Insert a new account.
+      All values are bound as JDBC bind parameters.
+      Returns the number of rows affected.
+    -->
+    <insert id="insertAccount" parameterType="org.example.backend.entities.Account">
+        INSERT INTO account (
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        ) VALUES (
+            #{account.accountId},
+            #{account.accountNumber},
+            #{account.openingDate},
+            #{account.balance},
+            #{account.purchasingPower},
+            #{account.accountStatus},
+            #{account.currency},
+            #{account.version},
+            #{account.suspendedAt},
+            #{account.closedAt},
+            #{account.clientId}
+        )
+    </insert>
+
+    <!-- ===================================================
+         SELECT Operations (Single Row)
+         =================================================== -->
+
+    <!--
+      Select account by account ID.
+      Account ID is bound as a parameter.
+      Safe from SQL injection.
+    -->
+    <select id="selectAccountById" parameterType="int" resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+        WHERE account_id = #{accountId}
+    </select>
+
+    <!--
+      Select account by account number (key).
+      Account number is bound as a parameter.
+      The account_number is a legitimate business key and is parameterized.
+      Safe from SQL injection (e.g., "ACC' OR '1'='1" is treated as a literal string).
+    -->
+    <select id="selectAccountByNumber" parameterType="String" resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+        WHERE account_number = #{accountNumber}
+    </select>
+
+    <!-- ===================================================
+         SELECT Operations (Multiple Rows)
+         =================================================== -->
+
+    <!--
+      Select all accounts for a specific client.
+      Client ID is bound as a parameter.
+    -->
+    <select id="selectAccountsByClientId" parameterType="int" resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+          WHERE user_id = #{clientId}
+        ORDER BY account_id
+    </select>
+
+    <!--
+      Select accounts by status filter.
+      Status is bound as a parameter (enum).
+      The status filter is critical for security:
+      - Status values are constrained to a fixed enum (ACTIVE, SUSPENDED, CLOSED)
+      - No injection possible via status parameter
+    -->
+    <select id="selectAccountsByStatus" parameterType="org.example.backend.enums.AccountStatus"
+            resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+        WHERE account_status = #{accountStatus}
+        ORDER BY account_id
+    </select>
+
+    <!--
+      Select accounts by status and client ID.
+      Both parameters are bound.
+    -->
+    <select id="selectAccountsByClientIdAndStatus" resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+        WHERE user_id = #{clientId}
+          AND account_status = #{accountStatus}
+        ORDER BY account_id
+    </select>
+
+    <!--
+      Select accounts within a date range.
+      Both date parameters are bound.
+    -->
+    <select id="selectAccountsByOpeningDateRange" resultMap="AccountResultMap">
+        SELECT
+            account_id,
+            account_number,
+            opening_date,
+            balance,
+            purchasing_power,
+            account_status,
+            currency,
+            version,
+            suspended_at,
+            closed_at,
+            user_id
+        FROM account
+        WHERE opening_date BETWEEN #{fromDate} AND #{toDate}
+        ORDER BY opening_date DESC, account_id
+    </select>
+
+    <!-- ===================================================
+         UPDATE Operations
+         =================================================== -->
+
+    <!--
+      Update account status.
+      Account ID and new status are bound as parameters.
+      Returns the number of rows affected (for transaction verification).
+    -->
+    <update id="updateAccountStatus">
+        UPDATE account
+        SET account_status = #{newStatus}
+        WHERE account_id = #{accountId}
+    </update>
+
+    <!--
+      Update account balance and purchasing power.
+      All values are bound as parameters.
+    -->
+    <update id="updateAccountBalance">
+        UPDATE account
+        SET
+            balance = #{newBalance},
+            purchasing_power = #{newPurchasingPower}
+        WHERE account_id = #{accountId}
+    </update>
+
+    <!--
+      Update account suspension timestamp.
+      Account ID and timestamp are bound as parameters.
+    -->
+    <update id="updateSuspensionTimestamp">
+        UPDATE account
+        SET suspended_at = #{suspendedAt}
+        WHERE account_id = #{accountId}
+    </update>
+
+    <!--
+      Update account closure timestamp.
+      Account ID and timestamp are bound as parameters.
+    -->
+    <update id="updateClosureTimestamp">
+        UPDATE account
+        SET closed_at = #{closedAt}
+        WHERE account_id = #{accountId}
+    </update>
+
+    <!-- ===================================================
+         COUNT Operations
+         =================================================== -->
+
+    <!--
+      Count all accounts.
+    -->
+    <select id="countAllAccounts" resultType="long">
+        SELECT COUNT(*) FROM account
+    </select>
+
+    <!-- ===================================================
+         EXISTS Check Operations
+         =================================================== -->
+
+    <!--
+      Check if an account number exists.
+      Account number is bound as a parameter.
+    -->
+    <select id="accountNumberExists" parameterType="String" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM account
+        WHERE account_number = #{accountNumber}
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Optimistic Locking
+         =================================================== -->
+
+    <update id="updateAccountBalanceWithVersion">
+
+        UPDATE account
+
+        SET
+            balance = #{balance},
+            purchasing_power = #{balance},
+            version = version + 1
+
+        WHERE account_id = #{accountId}
+          AND version = #{version}
+
+    </update>
+
+</mapper>

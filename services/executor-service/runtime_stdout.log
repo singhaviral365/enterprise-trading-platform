@@ -1,0 +1,488 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< org.example:trade-executor >---------------------
+[INFO] Building trade-executor 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:4.1.1:run (default-cli) > test-compile @ trade-executor >>>
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ trade-executor ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 5 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ trade-executor ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ trade-executor ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ trade-executor ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] <<< spring-boot:4.1.1:run (default-cli) < test-compile @ trade-executor <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:4.1.1:run (default-cli) @ trade-executor ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.1.1)
+
+2026-09-18T05:15:10.443Z  INFO 15100 --- [trade-executor] [           main] o.e.t.TradeExecutorApplication           : Starting TradeExecutorApplication using Java 25.0.3 with PID 15100 (C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes started by Administrator in C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor)
+2026-09-18T05:15:10.449Z  INFO 15100 --- [trade-executor] [           main] o.e.t.TradeExecutorApplication           : No active profile set, falling back to 1 default profile: "default"
+2026-09-18T05:15:11.761Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\AccountMapper.class]
+2026-09-18T05:15:11.764Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\HoldingMapper.class]
+2026-09-18T05:15:11.766Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\InstrumentMapper.class]
+2026-09-18T05:15:11.769Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\OrderMapper.class]
+2026-09-18T05:15:11.772Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'accountMapper' and 'org.example.backend.mapper.AccountMapper' mapperInterface
+2026-09-18T05:15:11.776Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'accountMapper'.
+2026-09-18T05:15:11.778Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'holdingMapper' and 'org.example.backend.mapper.HoldingMapper' mapperInterface
+2026-09-18T05:15:11.781Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'holdingMapper'.
+2026-09-18T05:15:11.784Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'instrumentMapper' and 'org.example.backend.mapper.InstrumentMapper' mapperInterface
+2026-09-18T05:15:11.786Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'instrumentMapper'.
+2026-09-18T05:15:11.788Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'orderMapper' and 'org.example.backend.mapper.OrderMapper' mapperInterface
+2026-09-18T05:15:11.791Z DEBUG 15100 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'orderMapper'.
+2026-09-18T05:15:12.317Z  INFO 15100 --- [trade-executor] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8082 (http)
+2026-09-18T05:15:12.332Z  INFO 15100 --- [trade-executor] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-18T05:15:12.335Z  INFO 15100 --- [trade-executor] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-18T05:15:12.401Z  INFO 15100 --- [trade-executor] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1883 ms
+2026-09-18T05:15:12.971Z DEBUG 15100 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Property 'configuration' or 'configLocation' not specified, using default MyBatis Configuration
+2026-09-18T05:15:13.139Z DEBUG 15100 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\AccountMapper.xml]'
+2026-09-18T05:15:13.158Z DEBUG 15100 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\HoldingMapper.xml]'
+2026-09-18T05:15:13.171Z DEBUG 15100 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\InstrumentMapper.xml]'
+2026-09-18T05:15:13.190Z DEBUG 15100 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\OrderMapper.xml]'
+2026-09-18T05:15:14.082Z  INFO 15100 --- [trade-executor] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-09-18T05:15:14.188Z  INFO 15100 --- [trade-executor] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8082 (http) with context path '/'
+2026-09-18T05:15:14.234Z  INFO 15100 --- [trade-executor] [           main] o.a.kafka.common.config.AbstractConfig   : ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [10.8.78.105:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-trade-executor-1
+	client.rack = 
+	config.providers = []
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	enable.metrics.push = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = trade-executor
+	group.instance.id = null
+	group.protocol = classic
+	group.remote.assignor = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metadata.recovery.rebootstrap.trigger.ms = 300000
+	metadata.recovery.strategy = rebootstrap
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.assertion.algorithm = RS256
+	sasl.oauthbearer.assertion.claim.aud = null
+	sasl.oauthbearer.assertion.claim.exp.seconds = 300
+	sasl.oauthbearer.assertion.claim.iss = null
+	sasl.oauthbearer.assertion.claim.jti.include = false
+	sasl.oauthbearer.assertion.claim.nbf.seconds = 60
+	sasl.oauthbearer.assertion.claim.sub = null
+	sasl.oauthbearer.assertion.file = null
+	sasl.oauthbearer.assertion.private.key.file = null
+	sasl.oauthbearer.assertion.private.key.passphrase = null
+	sasl.oauthbearer.assertion.template.file = null
+	sasl.oauthbearer.client.credentials.client.id = null
+	sasl.oauthbearer.client.credentials.client.secret = null
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = []
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.jwt.retriever.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever
+	sasl.oauthbearer.jwt.validator.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator
+	sasl.oauthbearer.scope = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	share.acknowledgement.mode = implicit
+	share.acquire.mode = BATCH_OPTIMIZED
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = []
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+2026-09-18T05:15:14.274Z  INFO 15100 --- [trade-executor] [           main] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-09-18T05:15:14.686Z  INFO 15100 --- [trade-executor] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 4.2.1
+2026-09-18T05:15:14.689Z  INFO 15100 --- [trade-executor] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 92f61c44867f39dc
+2026-09-18T05:15:14.691Z  INFO 15100 --- [trade-executor] [           main] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1789708514684
+2026-09-18T05:15:14.704Z  INFO 15100 --- [trade-executor] [           main] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Subscribed to topic(s): orders
+2026-09-18T05:15:14.740Z  INFO 15100 --- [trade-executor] [           main] o.e.t.TradeExecutorApplication           : Started TradeExecutorApplication in 4.787 seconds (process running for 5.4)
+2026-09-18T05:15:15.345Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] org.apache.kafka.clients.Metadata        : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Cluster ID: MkQrQXtsTmyQ1mLvSstIngQ
+2026-09-18T05:15:15.349Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Discovered group coordinator 10.8.78.105:9092 (id: 2147483646 rack: null isFenced: false)
+2026-09-18T05:15:15.353Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:15:15.375Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: need to re-join with the given member-id: consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b
+2026-09-18T05:15:15.377Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:15:16.173Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=21, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:15:16.178Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=21, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:15:16.182Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1])
+2026-09-18T05:15:16.185Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1]
+2026-09-18T05:15:16.193Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:15:16.197Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=12, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:15:16.211Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:15:16.215Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1]
+2026-09-18T05:19:19.223Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:19:19.226Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1]
+2026-09-18T05:19:19.229Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1]
+2026-09-18T05:19:19.232Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:19:19.238Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=22, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:19:19.246Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 22: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1, orders-2])}
+2026-09-18T05:19:19.251Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=22, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:19:19.253Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1, orders-2])
+2026-09-18T05:19:19.255Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1, orders-2]
+2026-09-18T05:19:19.259Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:19:19.261Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:19:19.264Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=12, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:19:19.477Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:19:19.480Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:19:19.482Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1, orders-2]
+2026-09-18T05:19:28.241Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:19:28.243Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1, orders-2]
+2026-09-18T05:19:28.245Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1, orders-2]
+2026-09-18T05:19:28.247Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:19:28.251Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=23, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:19:28.254Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 23: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-2]), consumer-trade-executor-1-8f4d7553-8315-448d-84a1-e2464acdd473=Assignment(partitions=[orders-0, orders-1])}
+2026-09-18T05:19:28.258Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=23, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:19:28.260Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-2])
+2026-09-18T05:19:28.263Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-2]
+2026-09-18T05:19:28.266Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:19:28.520Z  INFO 15100 --- [trade-executor] [ trade-executor] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:19:28.522Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-2]
+2026-09-18T05:26:40.527Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:26:40.528Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-2]
+2026-09-18T05:26:40.529Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-2]
+2026-09-18T05:26:40.530Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:26:40.532Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=24, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:26:40.534Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 24: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1, orders-2])}
+2026-09-18T05:26:40.537Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=24, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:26:40.539Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1, orders-2])
+2026-09-18T05:26:40.540Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1, orders-2]
+2026-09-18T05:26:40.542Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:26:40.543Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:26:40.544Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=13, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:26:40.563Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:26:40.565Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:26:40.566Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1, orders-2]
+2026-09-18T05:30:21.003Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:30:21.005Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:30:22.254Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 13 for partition orders-0
+2026-09-18T05:30:22.256Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:30:22.261Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:30:22.263Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:30:23.615Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 13 for partition orders-0
+2026-09-18T05:30:23.617Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:30:23.622Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:30:23.626Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:30:24.714Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.kafka.common.config.AbstractConfig   : ProducerConfig values: 
+	acks = -1
+	batch.size = 16384
+	bootstrap.servers = [10.8.78.105:9092]
+	buffer.memory = 33554432
+	client.dns.lookup = use_all_dns_ips
+	client.id = trade-executor-producer-1
+	compression.gzip.level = -1
+	compression.lz4.level = 9
+	compression.type = none
+	compression.zstd.level = 3
+	config.providers = []
+	connections.max.idle.ms = 540000
+	delivery.timeout.ms = 120000
+	enable.idempotence = true
+	enable.metrics.push = true
+	interceptor.classes = []
+	key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+	linger.ms = 5
+	max.block.ms = 60000
+	max.in.flight.requests.per.connection = 5
+	max.request.size = 1048576
+	metadata.max.age.ms = 300000
+	metadata.max.idle.ms = 300000
+	metadata.recovery.rebootstrap.trigger.ms = 300000
+	metadata.recovery.strategy = rebootstrap
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partitioner.adaptive.partitioning.enable = true
+	partitioner.availability.timeout.ms = 0
+	partitioner.class = null
+	partitioner.ignore.keys = false
+	receive.buffer.bytes = 32768
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 10
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.assertion.algorithm = RS256
+	sasl.oauthbearer.assertion.claim.aud = null
+	sasl.oauthbearer.assertion.claim.exp.seconds = 300
+	sasl.oauthbearer.assertion.claim.iss = null
+	sasl.oauthbearer.assertion.claim.jti.include = false
+	sasl.oauthbearer.assertion.claim.nbf.seconds = 60
+	sasl.oauthbearer.assertion.claim.sub = null
+	sasl.oauthbearer.assertion.file = null
+	sasl.oauthbearer.assertion.private.key.file = null
+	sasl.oauthbearer.assertion.private.key.passphrase = null
+	sasl.oauthbearer.assertion.template.file = null
+	sasl.oauthbearer.client.credentials.client.id = null
+	sasl.oauthbearer.client.credentials.client.secret = null
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = []
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.jwt.retriever.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever
+	sasl.oauthbearer.jwt.validator.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator
+	sasl.oauthbearer.scope = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = []
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	transaction.timeout.ms = 60000
+	transaction.two.phase.commit.enable = false
+	transactional.id = null
+	value.serializer = class org.apache.kafka.common.serialization.StringSerializer
+
+2026-09-18T05:30:24.717Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.t.i.KafkaMetricsCollector        : initializing Kafka metrics collector
+2026-09-18T05:30:24.728Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.clients.producer.KafkaProducer     : [Producer clientId=trade-executor-producer-1] Instantiated an idempotent producer.
+2026-09-18T05:30:24.748Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 4.2.1
+2026-09-18T05:30:24.751Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 92f61c44867f39dc
+2026-09-18T05:30:24.753Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1789709424748
+2026-09-18T05:30:24.756Z  INFO 15100 --- [trade-executor] [utor-producer-1] org.apache.kafka.clients.Metadata        : [Producer clientId=trade-executor-producer-1] Cluster ID: MkQrQXtsTmyQ1mLvSstIngQ
+2026-09-18T05:30:24.758Z  INFO 15100 --- [trade-executor] [utor-producer-1] o.a.k.c.p.internals.TransactionManager   : [Producer clientId=trade-executor-producer-1] ProducerId set to 1009 with epoch 0
+2026-09-18T05:32:59.288Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:32:59.291Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1, orders-2]
+2026-09-18T05:32:59.293Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1, orders-2]
+2026-09-18T05:32:59.295Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:32:59.298Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=25, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:32:59.301Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 25: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-2]), consumer-trade-executor-1-8cacfd11-1e32-4307-8efe-2befebce37f5=Assignment(partitions=[orders-0, orders-1])}
+2026-09-18T05:32:59.304Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=25, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:32:59.307Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-2])
+2026-09-18T05:32:59.309Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-2]
+2026-09-18T05:32:59.311Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:32:59.662Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:32:59.665Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-2]
+2026-09-18T05:39:41.518Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:39:41.520Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-2]
+2026-09-18T05:39:41.523Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-2]
+2026-09-18T05:39:41.526Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:39:41.530Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=26, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:39:41.533Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 26: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1, orders-2])}
+2026-09-18T05:39:41.537Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=26, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:39:41.540Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1, orders-2])
+2026-09-18T05:39:41.542Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1, orders-2]
+2026-09-18T05:39:41.546Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:39:41.548Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:39:41.550Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=15, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:39:41.991Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:39:41.994Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:39:41.996Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1, orders-2]
+2026-09-18T05:40:48.106Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:40:48.109Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1, orders-2]
+2026-09-18T05:40:48.111Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1, orders-2]
+2026-09-18T05:40:48.113Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:40:48.116Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=27, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:40:48.118Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 27: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1]), consumer-trade-executor-1-eb82d0d3-832d-443c-84ef-8dcdbe6c85c7=Assignment(partitions=[orders-2])}
+2026-09-18T05:40:48.122Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=27, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:40:48.125Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1])
+2026-09-18T05:40:48.127Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1]
+2026-09-18T05:40:48.130Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:40:48.131Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=15, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:40:48.215Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:40:48.218Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1]
+2026-09-18T05:41:03.915Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:41:03.918Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:41:05.192Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 15 for partition orders-0
+2026-09-18T05:41:05.194Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:41:05.199Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:41:05.201Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:41:06.453Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 15 for partition orders-0
+2026-09-18T05:41:06.455Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:41:06.459Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:41:06.461Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:42:33.953Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:42:33.956Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1]
+2026-09-18T05:42:33.958Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1]
+2026-09-18T05:42:33.961Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:42:33.964Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=28, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:42:33.967Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 28: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1, orders-2])}
+2026-09-18T05:42:33.971Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=28, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:42:33.974Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1, orders-2])
+2026-09-18T05:42:33.975Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1, orders-2]
+2026-09-18T05:42:33.979Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:42:33.981Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:42:33.983Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=16, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:42:33.987Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:42:33.989Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:42:33.992Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1, orders-2]
+2026-09-18T05:42:39.967Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:42:39.970Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1, orders-2]
+2026-09-18T05:42:39.971Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1, orders-2]
+2026-09-18T05:42:39.974Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:42:39.978Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=29, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:42:39.980Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 29: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1]), consumer-trade-executor-1-f4e81c8a-992e-4a60-a36b-1a51e52a75b7=Assignment(partitions=[orders-2])}
+2026-09-18T05:42:39.984Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=29, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:42:39.986Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1])
+2026-09-18T05:42:39.988Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1]
+2026-09-18T05:42:39.991Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:42:39.993Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=16, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:42:40.013Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:42:40.015Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1]
+2026-09-18T05:42:48.402Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:42:48.405Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:42:49.564Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 16 for partition orders-0
+2026-09-18T05:42:49.566Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:42:49.571Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:42:49.573Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:42:50.817Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.i.ClassicKafkaConsumer         : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Seeking to offset 16 for partition orders-0
+2026-09-18T05:42:50.820Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : Record in retry and not yet recovered
+2026-09-18T05:42:50.824Z DEBUG 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.jdbc.support.JdbcTransactionManager  : Creating new transaction with name [org.example.trade_executor.service.TradeExecutorService.execute]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2026-09-18T05:42:50.826Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-18T05:44:19.021Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:44:19.024Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1]
+2026-09-18T05:44:19.026Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1]
+2026-09-18T05:44:19.028Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:44:19.032Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=30, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:44:19.034Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 30: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-0, orders-1, orders-2])}
+2026-09-18T05:44:19.038Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=30, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:44:19.040Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-0, orders-1, orders-2])
+2026-09-18T05:44:19.042Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-0, orders-1, orders-2]
+2026-09-18T05:44:19.045Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-1
+2026-09-18T05:44:19.047Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:44:19.049Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerUtils        : Setting offset for partition orders-0 to the committed offset FetchPosition{offset=17, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}
+2026-09-18T05:44:19.230Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:44:19.232Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:44:19.234Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-0, orders-1, orders-2]
+2026-09-18T05:46:49.122Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Request joining group due to: group is already rebalancing
+2026-09-18T05:46:49.124Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Revoke previously assigned partitions [orders-0, orders-1, orders-2]
+2026-09-18T05:46:49.126Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions revoked: [orders-0, orders-1, orders-2]
+2026-09-18T05:46:49.128Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] (Re-)joining group
+2026-09-18T05:46:49.132Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully joined group with generation Generation{generationId=31, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:46:49.136Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Finished assignment for group at generation 31: {consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b=Assignment(partitions=[orders-2]), consumer-trade-executor-1-36b727ae-8dd2-4856-80f2-8c7d4ed4b9f6=Assignment(partitions=[orders-0, orders-1])}
+2026-09-18T05:46:49.140Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Successfully synced group in generation Generation{generationId=31, memberId='consumer-trade-executor-1-b168643d-51fc-4f3f-b279-b4cf3f98485b', protocol='range'}
+2026-09-18T05:46:49.143Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Notifying assignor about the new Assignment(partitions=[orders-2])
+2026-09-18T05:46:49.145Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] k.c.c.i.ConsumerRebalanceListenerInvoker : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Adding newly assigned partitions: [orders-2]
+2026-09-18T05:46:49.149Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.ConsumerCoordinator  : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Found no committed offset for partition orders-2
+2026-09-18T05:46:49.569Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.a.k.c.c.internals.SubscriptionState    : [Consumer clientId=consumer-trade-executor-1, groupId=trade-executor] Resetting offset for partition orders-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[10.8.78.105:9092 (id: 1 rack: null isFenced: false)], epoch=6}}.
+2026-09-18T05:46:49.571Z  INFO 15100 --- [trade-executor] [ntainer#0-0-C-1] o.s.k.l.KafkaMessageListenerContainer    : trade-executor: partitions assigned: [orders-2]

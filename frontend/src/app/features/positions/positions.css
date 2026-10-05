@@ -1,0 +1,47 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.positions-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.positions-header .page-title {
+  margin-bottom: 4px;
+}
+
+/* Spinner, card / table switch and Refresh sit together at the top right. */
+.positions-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.positions-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.positions-summary {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}
+
+.positions-summary strong {
+  color: var(--surface-foreground);
+  font-variant-numeric: tabular-nums;
+}

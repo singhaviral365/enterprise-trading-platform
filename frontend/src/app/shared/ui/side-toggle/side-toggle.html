@@ -1,0 +1,14 @@
+<fieldset class="segmented side-toggle" [class.is-sell]="side() === OrderSide.Sell">
+  <legend class="visually-hidden">Order side</legend>
+  <span class="segment-thumb" aria-hidden="true"></span>
+  <label class="segment" [class.is-active]="side() === OrderSide.Buy">
+    <input type="radio" name="order-side" value="BUY" data-testid="order-side-buy" [checked]="side() === OrderSide.Buy" (change)="side.set(OrderSide.Buy)" />
+    <i class="fas fa-circle-plus" aria-hidden="true"></i>
+    Buy
+  </label>
+  <label class="segment" [class.is-active]="side() === OrderSide.Sell">
+    <input type="radio" name="order-side" value="SELL" data-testid="order-side-sell" [checked]="side() === OrderSide.Sell" (change)="side.set(OrderSide.Sell)" />
+    <i class="fas fa-circle-minus" aria-hidden="true"></i>
+    Sell
+  </label>
+</fieldset>

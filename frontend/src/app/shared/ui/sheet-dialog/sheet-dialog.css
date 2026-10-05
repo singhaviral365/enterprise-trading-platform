@@ -1,0 +1,54 @@
+.sheet {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  perspective: 1200px;
+}
+
+/* Dims the page with the theme foreground colour at 35% opacity (no hardcoded colour). */
+.sheet::backdrop {
+  background: var(--surface-foreground);
+  opacity: 0.35;
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(8px) saturate(120%);
+  animation: backdrop-in 0.2s ease-out;
+}
+
+.sheet-panel {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 22px;
+  transform-origin: 50% 100%;
+  animation: panel-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotateX(10deg) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet::backdrop,
+  .sheet-panel {
+    animation: none;
+  }
+}

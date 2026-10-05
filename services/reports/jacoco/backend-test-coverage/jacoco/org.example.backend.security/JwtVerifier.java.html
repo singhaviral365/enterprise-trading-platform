@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtVerifier.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.security</a> &gt; <span class="el_source">JwtVerifier.java</span></div><h1>JwtVerifier.java</h1><pre class="source lang-java linenums">package org.example.backend.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+
+/**
+ * Verifies JWT tokens in order: signature → expiry → algorithm → claims.
+ * All token failures are logged server-side for investigation, never returned to client.
+ */
+@Component
+public class JwtVerifier {
+
+<span class="fc" id="L23">    private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);</span>
+    private static final String ACCOUNT_ID_CLAIM = &quot;accountId&quot;;
+    private static final String ALGORITHM_CLAIM = &quot;alg&quot;;
+
+    private final JwtConfiguration jwtConfig;
+
+<span class="fc" id="L29">    public JwtVerifier(JwtConfiguration jwtConfig) {</span>
+<span class="fc" id="L30">        this.jwtConfig = jwtConfig;</span>
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * Verifies JWT token and extracts account ID.
+     * Check order: signature → expiry → algorithm → claims.
+     * 
+     * @param token the JWT token string
+     * @return the account ID from the token
+     * @throws JwtVerificationException if any verification fails
+     */
+    public Long verifyAndExtractAccountId(String token) {
+        try {
+<span class="fc" id="L43">            return verifyTokenSignature(token);</span>
+<span class="fc" id="L44">        } catch (JwtVerificationException e) {</span>
+            // Already logged by specific handler
+<span class="fc" id="L46">            throw e;</span>
+<span class="nc" id="L47">        } catch (Exception e) {</span>
+<span class="nc" id="L48">            logger.error(&quot;Unexpected error verifying token&quot;, e);</span>
+<span class="nc" id="L49">            throw new JwtVerificationException(&quot;Token verification failed&quot;);</span>
+        }
+    }
+
+    private Long verifyTokenSignature(String token) {
+<span class="fc" id="L54">        SecretKey key = jwtConfig.getSigningKey();</span>
+        
+        try {
+<span class="fc" id="L57">            Claims claims = Jwts.parser()</span>
+<span class="fc" id="L58">                    .verifyWith(key)</span>
+<span class="fc" id="L59">                    .build()</span>
+<span class="fc" id="L60">                    .parseSignedClaims(token)</span>
+<span class="fc" id="L61">                    .getPayload();</span>
+            
+            // Verify algorithm (implicitly checked above, but can add explicit check)
+<span class="fc" id="L64">            String algorithm = claims.get(ALGORITHM_CLAIM, String.class);</span>
+<span class="pc bpc" id="L65" title="3 of 4 branches missed.">            if (algorithm != null &amp;&amp; !algorithm.startsWith(&quot;HS&quot;)) {</span>
+<span class="nc" id="L66">                logger.error(&quot;Unexpected algorithm in token: {}&quot;, algorithm);</span>
+<span class="nc" id="L67">                throw new JwtVerificationException(&quot;Invalid algorithm&quot;);</span>
+            }
+            
+            // Extract and validate account ID
+<span class="fc" id="L71">            Long accountId = extractAccountId(claims);</span>
+<span class="fc bfc" id="L72" title="All 4 branches covered.">            if (accountId == null || accountId &lt; 1) {</span>
+<span class="fc" id="L73">                logger.error(&quot;Invalid accountId in token: {}&quot;, accountId);</span>
+<span class="fc" id="L74">                throw new JwtVerificationException(&quot;Invalid account ID in token&quot;);</span>
+            }
+            
+<span class="fc" id="L77">            return accountId;</span>
+            
+<span class="fc" id="L79">        } catch (SignatureException e) {</span>
+<span class="fc" id="L80">            logger.warn(&quot;Invalid JWT signature: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L81">            throw new JwtVerificationException(&quot;Invalid signature&quot;);</span>
+<span class="fc" id="L82">        } catch (ExpiredJwtException e) {</span>
+<span class="fc" id="L83">            logger.warn(&quot;JWT token has expired: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L84">            throw new JwtVerificationException(&quot;Token expired&quot;);</span>
+<span class="nc" id="L85">        } catch (UnsupportedJwtException e) {</span>
+<span class="nc" id="L86">            logger.warn(&quot;Unsupported JWT format: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L87">            throw new JwtVerificationException(&quot;Unsupported token format&quot;);</span>
+<span class="fc" id="L88">        } catch (MalformedJwtException e) {</span>
+<span class="fc" id="L89">            logger.warn(&quot;Malformed JWT: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L90">            throw new JwtVerificationException(&quot;Malformed token&quot;);</span>
+<span class="nc" id="L91">        } catch (JwtException e) {</span>
+<span class="nc" id="L92">            logger.warn(&quot;JWT verification failed: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L93">            throw new JwtVerificationException(&quot;Token verification failed&quot;);</span>
+        }
+    }
+
+    private Long extractAccountId(Claims claims) {
+<span class="fc" id="L98">        Object rawAccountId = claims.get(ACCOUNT_ID_CLAIM);</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (rawAccountId == null) {</span>
+<span class="fc" id="L100">            return null;</span>
+        }
+        
+<span class="fc bfc" id="L103" title="All 2 branches covered.">        if (rawAccountId instanceof Number num) {</span>
+<span class="fc" id="L104">            return num.longValue();</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">        } else if (rawAccountId instanceof String str) {</span>
+            try {
+<span class="fc" id="L107">                return Long.parseLong(str);</span>
+<span class="nc" id="L108">            } catch (NumberFormatException e) {</span>
+<span class="nc" id="L109">                logger.error(&quot;Invalid accountId format: {}&quot;, str);</span>
+<span class="nc" id="L110">                return null;</span>
+            }
+        }
+        
+<span class="nc" id="L114">        return null;</span>
+    }
+
+    /**
+     * Custom exception for JWT verification failures.
+     * All verification failures map to AUTH-401 (Unauthorised).
+     */
+    public static class JwtVerificationException extends RuntimeException {
+        public JwtVerificationException(String message) {
+<span class="fc" id="L123">            super(message);</span>
+<span class="fc" id="L124">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

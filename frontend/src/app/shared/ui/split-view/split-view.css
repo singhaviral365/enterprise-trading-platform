@@ -1,0 +1,110 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Closed: the list has the whole width and the detail column is zero wide. Open: half and half (the list
+   gives up the gap's share). Both column sizes are lengths or `1fr`, so the grid interpolates smoothly: the list
+   glides narrower while the detail column opens from the right. The panel inside keeps its final width the whole
+   time and the column just clips it, so the detail reveals rather than reflows. */
+.split {
+  --split-gap: 20px;
+  --split-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 1fr 0;
+  align-items: start;
+  transition: grid-template-columns 0.45s var(--split-ease);
+}
+
+.split.is-open {
+  grid-template-columns: 1fr calc(50% + var(--split-gap) / 2);
+}
+
+.split-list {
+  min-width: 0;
+}
+
+/* Hidden (and out of the accessibility tree) once the slide-out has finished. */
+.split-detail {
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+  min-width: 0;
+  max-height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+  overflow: hidden auto;
+  border-radius: 22px;
+  outline: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    visibility 0s linear 0.45s;
+}
+
+.split.is-open .split-detail {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 0.35s ease 0.1s,
+    visibility 0s;
+}
+
+.split-detail:focus-visible {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}
+
+.split-detail-panel {
+  box-sizing: border-box;
+  width: calc(50cqw - var(--split-gap) / 2);
+  margin-left: var(--split-gap);
+  padding: 24px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 22px;
+}
+
+/* Card grids: no column animation (the cards would re-wrap every frame). The columns change at once, the cards
+   settle with a short fade, and the detail panel glides in from the right edge, clipped by its column. */
+.split.is-cards {
+  transition: none;
+}
+
+.split.is-cards.is-open .split-list {
+  animation: split-cards-settle 0.4s ease both;
+}
+
+.split.is-cards .split-detail-panel {
+  transform: translateX(48px);
+  transition: transform 0.45s var(--split-ease);
+}
+
+.split.is-cards.is-open .split-detail-panel {
+  transform: none;
+}
+
+@keyframes split-cards-settle {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .split.is-cards .split-detail-panel,
+  .split.is-cards.is-open .split-list {
+    transform: none;
+    animation: none;
+    transition: none;
+  }
+
+  .split,
+  .split-detail,
+  .split.is-open .split-detail {
+    transition: none;
+  }
+}

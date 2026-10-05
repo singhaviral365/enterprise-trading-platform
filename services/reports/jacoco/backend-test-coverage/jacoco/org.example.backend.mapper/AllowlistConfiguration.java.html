@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AllowlistConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.mapper</a> &gt; <span class="el_source">AllowlistConfiguration.java</span></div><h1>AllowlistConfiguration.java</h1><pre class="source lang-java linenums">package org.example.backend.mapper;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Allowlist Configuration for MyBatis Mapper Dynamic SQL
+ *
+ * PURPOSE:
+ * This class maintains allowlists for column names and sort directions that
+ * CANNOT be bound as JDBC parameters. These are checked before use to prevent
+ * SQL injection via dynamic columns and sort orders.
+ *
+ * SECURITY REQUIREMENT (from story):
+ * &quot;If a column name or sort direction genuinely cannot be a bind parameter,
+ *  check it against a fixed list of permitted names first and declare it in
+ *  the manifest allowlist with a comment saying what does that checking.&quot;
+ *
+ * RATIONALE:
+ * - ORDER BY, GROUP BY, and SELECT list items cannot use JDBC bind parameters
+ * - Column names and aliases must be part of SQL text, not parameters
+ * - Sort directions (ASC, DESC) must be part of SQL text
+ * - Therefore, these must be validated against a whitelist before use
+ *
+ * INJECTION PREVENTION:
+ * - Invalid column names are rejected immediately
+ * - Invalid sort directions are rejected immediately
+ * - All other values remain as JDBC bind parameters
+ */
+<span class="nc" id="L31">public class AllowlistConfiguration {</span>
+
+    // ========================================================
+    // ALLOWED COLUMN NAMES
+    // ========================================================
+    // Allowlist for column names that can appear in ORDER BY or GROUP BY.
+    // Only columns that exist in the schema are permitted.
+    // This checking prevents: &quot; ORDER BY account_id; DROP TABLE account;--&quot;
+    // ========================================================
+
+<span class="nc" id="L41">    public static final Set&lt;String&gt; ALLOWED_ACCOUNT_COLUMNS = Collections.unmodifiableSet(</span>
+<span class="nc" id="L42">            new HashSet&lt;String&gt;() {{</span>
+<span class="nc" id="L43">                add(&quot;account_id&quot;);</span>
+<span class="nc" id="L44">                add(&quot;account_number&quot;);</span>
+<span class="nc" id="L45">                add(&quot;opening_date&quot;);</span>
+<span class="nc" id="L46">                add(&quot;balance&quot;);</span>
+<span class="nc" id="L47">                add(&quot;purchasing_power&quot;);</span>
+<span class="nc" id="L48">                add(&quot;account_status&quot;);</span>
+<span class="nc" id="L49">                add(&quot;currency&quot;);</span>
+<span class="nc" id="L50">                add(&quot;version&quot;);</span>
+<span class="nc" id="L51">                add(&quot;suspended_at&quot;);</span>
+<span class="nc" id="L52">                add(&quot;closed_at&quot;);</span>
+<span class="nc" id="L53">                add(&quot;client_id&quot;);</span>
+<span class="nc" id="L54">            }}</span>
+    );
+
+<span class="nc" id="L57">    public static final Set&lt;String&gt; ALLOWED_ORDER_COLUMNS = Collections.unmodifiableSet(</span>
+<span class="nc" id="L58">            new HashSet&lt;String&gt;() {{</span>
+<span class="nc" id="L59">                add(&quot;order_id&quot;);</span>
+<span class="nc" id="L60">                add(&quot;idempotency_key&quot;);</span>
+<span class="nc" id="L61">                add(&quot;order_status&quot;);</span>
+<span class="nc" id="L62">                add(&quot;received_at&quot;);</span>
+<span class="nc" id="L63">                add(&quot;order_type&quot;);</span>
+<span class="nc" id="L64">                add(&quot;price&quot;);</span>
+<span class="nc" id="L65">                add(&quot;quantity&quot;);</span>
+<span class="nc" id="L66">                add(&quot;transaction_date&quot;);</span>
+<span class="nc" id="L67">                add(&quot;account_id&quot;);</span>
+<span class="nc" id="L68">                add(&quot;instrument_id&quot;);</span>
+<span class="nc" id="L69">            }}</span>
+    );
+
+<span class="nc" id="L72">    public static final Set&lt;String&gt; ALLOWED_HOLDING_COLUMNS = Collections.unmodifiableSet(</span>
+<span class="nc" id="L73">            new HashSet&lt;String&gt;() {{</span>
+<span class="nc" id="L74">                add(&quot;holding_id&quot;);</span>
+<span class="nc" id="L75">                add(&quot;quantity&quot;);</span>
+<span class="nc" id="L76">                add(&quot;purchase_price&quot;);</span>
+<span class="nc" id="L77">                add(&quot;account_id&quot;);</span>
+<span class="nc" id="L78">                add(&quot;instrument_id&quot;);</span>
+<span class="nc" id="L79">            }}</span>
+    );
+
+<span class="nc" id="L82">    public static final Set&lt;String&gt; ALLOWED_INSTRUMENT_COLUMNS = Collections.unmodifiableSet(</span>
+<span class="nc" id="L83">            new HashSet&lt;String&gt;() {{</span>
+<span class="nc" id="L84">                add(&quot;instrument_id&quot;);</span>
+<span class="nc" id="L85">                add(&quot;instrument_ticker&quot;);</span>
+<span class="nc" id="L86">                add(&quot;instrument_name&quot;);</span>
+<span class="nc" id="L87">                add(&quot;asset_class&quot;);</span>
+<span class="nc" id="L88">                add(&quot;instrument_status&quot;);</span>
+<span class="nc" id="L89">            }}</span>
+    );
+
+    // ========================================================
+    // ALLOWED SORT DIRECTIONS
+    // ========================================================
+    // Allowlist for sort directions in ORDER BY clauses.
+    // Only ASC (ascending) and DESC (descending) are permitted.
+    // This checking prevents: &quot; ORDER BY account_id; UPDATE account SET...&quot;
+    // ========================================================
+
+<span class="nc" id="L100">    public static final Set&lt;String&gt; ALLOWED_SORT_DIRECTIONS = Collections.unmodifiableSet(</span>
+<span class="nc" id="L101">            new HashSet&lt;String&gt;() {{</span>
+<span class="nc" id="L102">                add(&quot;ASC&quot;);</span>
+<span class="nc" id="L103">                add(&quot;DESC&quot;);</span>
+<span class="nc" id="L104">                add(&quot;asc&quot;);</span>
+<span class="nc" id="L105">                add(&quot;desc&quot;);</span>
+<span class="nc" id="L106">            }}</span>
+    );
+
+    // ========================================================
+    // VALIDATION METHODS
+    // ========================================================
+
+    /**
+     * Validate that a column name is in the allowed list.
+     * Throws an exception if the column is not allowed.
+     *
+     * @param columnName the column name to validate
+     * @param allowedColumns the set of allowed column names
+     * @throws IllegalArgumentException if column is not in allowlist
+     */
+    public static void validateColumnName(String columnName, Set&lt;String&gt; allowedColumns) {
+<span class="nc bnc" id="L122" title="All 4 branches missed.">        if (columnName == null || columnName.isBlank()) {</span>
+<span class="nc" id="L123">            throw new IllegalArgumentException(&quot;Column name cannot be null or blank&quot;);</span>
+        }
+
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (!allowedColumns.contains(columnName.toLowerCase())) {</span>
+<span class="nc" id="L127">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L128">                    String.format(</span>
+                            &quot;Column '%s' is not in the allowlist. Permitted columns: %s&quot;,
+                            columnName,
+                            allowedColumns
+                    )
+            );
+        }
+<span class="nc" id="L135">    }</span>
+
+    /**
+     * Validate that a sort direction is in the allowed list.
+     * Throws an exception if the direction is not allowed.
+     *
+     * @param sortDirection the sort direction to validate (ASC or DESC)
+     * @throws IllegalArgumentException if direction is not in allowlist
+     */
+    public static void validateSortDirection(String sortDirection) {
+<span class="nc bnc" id="L145" title="All 4 branches missed.">        if (sortDirection == null || sortDirection.isBlank()) {</span>
+<span class="nc" id="L146">            throw new IllegalArgumentException(&quot;Sort direction cannot be null or blank&quot;);</span>
+        }
+
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        if (!ALLOWED_SORT_DIRECTIONS.contains(sortDirection)) {</span>
+<span class="nc" id="L150">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L151">                    String.format(</span>
+                            &quot;Sort direction '%s' is not in the allowlist. Use ASC or DESC.&quot;,
+                            sortDirection
+                    )
+            );
+        }
+<span class="nc" id="L157">    }</span>
+
+    /**
+     * Validate and sanitize a column name for use in ORDER BY.
+     * Throws an exception if the column is not allowed.
+     *
+     * @param columnName the column name to validate
+     * @param allowedColumns the set of allowed columns for this entity
+     * @return the validated column name (lowercase for consistency)
+     * @throws IllegalArgumentException if column is not in allowlist
+     */
+    public static String sanitizeColumnName(String columnName, Set&lt;String&gt; allowedColumns) {
+<span class="nc" id="L169">        validateColumnName(columnName, allowedColumns);</span>
+<span class="nc" id="L170">        return columnName.toLowerCase();</span>
+    }
+
+    /**
+     * Validate and sanitize a sort direction.
+     * Throws an exception if the direction is not allowed.
+     *
+     * @param sortDirection the sort direction (ASC or DESC)
+     * @return the validated sort direction (uppercase for consistency)
+     * @throws IllegalArgumentException if direction is not in allowlist
+     */
+    public static String sanitizeSortDirection(String sortDirection) {
+<span class="nc" id="L182">        validateSortDirection(sortDirection);</span>
+<span class="nc" id="L183">        return sortDirection.toUpperCase();</span>
+    }
+
+    /**
+     * Create a safe ORDER BY clause.
+     * Both column name and sort direction are validated.
+     *
+     * @param columnName the column to sort by
+     * @param sortDirection ASC or DESC
+     * @param allowedColumns the set of allowed columns
+     * @return a safe ORDER BY clause (e.g., &quot;ORDER BY account_id ASC&quot;)
+     * @throws IllegalArgumentException if column or direction is invalid
+     */
+    public static String createSafeOrderByClause(
+            String columnName,
+            String sortDirection,
+            Set&lt;String&gt; allowedColumns) {
+
+<span class="nc" id="L201">        String safeColumn = sanitizeColumnName(columnName, allowedColumns);</span>
+<span class="nc" id="L202">        String safeDirection = sanitizeSortDirection(sortDirection);</span>
+
+<span class="nc" id="L204">        return String.format(&quot;ORDER BY %s %s&quot;, safeColumn, safeDirection);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

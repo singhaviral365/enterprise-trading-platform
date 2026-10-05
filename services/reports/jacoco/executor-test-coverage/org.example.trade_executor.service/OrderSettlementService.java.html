@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderSettlementService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">trade-executor</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.service</a> &gt; <span class="el_source">OrderSettlementService.java</span></div><h1>OrderSettlementService.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.service;
+
+import org.example.backend.entities.Account;
+import org.example.backend.entities.Holding;
+import org.example.backend.entities.Instrument;
+import org.example.backend.entities.Order;
+import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderSide;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.backend.mapper.AccountMapper;
+import org.example.backend.mapper.HoldingMapper;
+import org.example.backend.mapper.InstrumentMapper;
+import org.example.backend.mapper.OrderMapper;
+import org.example.trade_executor.events.OrderResolvedEvent;
+import org.example.trade_executor.executor.ExecutionOutcome;
+import org.example.trade_executor.executor.ExecutionRejectReason;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+
+@Service
+public class OrderSettlementService {
+
+    private final AccountMapper accountMapper;
+    private final HoldingMapper holdingMapper;
+    private final InstrumentMapper instrumentMapper;
+    private final OrderMapper orderMapper;
+
+    public OrderSettlementService(
+            AccountMapper accountMapper,
+            HoldingMapper holdingMapper,
+            InstrumentMapper instrumentMapper,
+<span class="fc" id="L37">            OrderMapper orderMapper) {</span>
+
+<span class="fc" id="L39">        this.accountMapper = accountMapper;</span>
+<span class="fc" id="L40">        this.holdingMapper = holdingMapper;</span>
+<span class="fc" id="L41">        this.instrumentMapper = instrumentMapper;</span>
+<span class="fc" id="L42">        this.orderMapper = orderMapper;</span>
+<span class="fc" id="L43">    }</span>
+
+    @Transactional
+    public Optional&lt;OrderResolvedEvent&gt; settle(long orderId, ExecutionOutcome marketOutcome) {
+<span class="fc" id="L47">        Order order = orderMapper.selectOrderById(orderId).orElse(null);</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        if (order == null) {</span>
+<span class="nc" id="L49">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L52">        Instrument instrument = instrumentMapper</span>
+<span class="fc" id="L53">                .selectInstrumentById(order.getInstrumentId())</span>
+<span class="fc" id="L54">                .orElse(null);</span>
+
+<span class="fc" id="L56">        SettlementDecision settlementDecision = determineSettlementDecision(</span>
+                order,
+                instrument,
+                marketOutcome);
+
+<span class="fc" id="L61">        OffsetDateTime transactionDate = OffsetDateTime.now();</span>
+
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (settlementDecision.outcome().isRejected()) {</span>
+<span class="fc" id="L64">            int updatedRows = orderMapper.rejectOrderIfNew(orderId, transactionDate);</span>
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">            if (updatedRows == 0) {</span>
+<span class="nc" id="L66">                return Optional.empty();</span>
+            }
+
+<span class="fc" id="L69">            return Optional.of(orderResolvedEvent(order, instrument, settlementDecision.outcome(), transactionDate));</span>
+        }
+
+<span class="fc" id="L72">        BigDecimal executionPrice = settlementDecision.executionPrice();</span>
+<span class="fc" id="L73">        int updatedRows = orderMapper.fillOrderIfNew(orderId, executionPrice, transactionDate);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        if (updatedRows == 0) {</span>
+<span class="fc" id="L75">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L78">        applyFilledSettlement(order, settlementDecision.account(), settlementDecision.holding(), executionPrice);</span>
+<span class="fc" id="L79">        return Optional.of(orderResolvedEvent(order, instrument, ExecutionOutcome.filled(executionPrice), transactionDate));</span>
+    }
+
+    private SettlementDecision determineSettlementDecision(
+            Order order,
+            Instrument instrument,
+            ExecutionOutcome marketOutcome) {
+
+<span class="pc bpc" id="L87" title="2 of 4 branches missed.">        if (instrument == null || !instrument.isTradable()) {</span>
+<span class="nc" id="L88">            return new SettlementDecision(</span>
+<span class="nc" id="L89">                    ExecutionOutcome.rejected(ExecutionRejectReason.INSTRUMENT_NOT_TRADABLE),</span>
+                    null,
+                    null,
+                    null);
+        }
+
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">        if (marketOutcome.isRejected()) {</span>
+<span class="nc" id="L96">            return new SettlementDecision(marketOutcome, null, null, null);</span>
+        }
+
+<span class="fc" id="L99">        Account account = accountMapper</span>
+<span class="fc" id="L100">                .selectAccountById(order.getAccountId())</span>
+<span class="fc" id="L101">                .orElse(null);</span>
+
+<span class="pc bpc" id="L103" title="1 of 4 branches missed.">        if (account == null || account.getAccountStatus() != AccountStatus.ACTIVE) {</span>
+<span class="fc" id="L104">            return new SettlementDecision(</span>
+<span class="fc" id="L105">                    ExecutionOutcome.rejected(ExecutionRejectReason.ACCOUNT_NOT_ACTIVE),</span>
+                    account,
+                    null,
+                    null);
+        }
+
+<span class="fc" id="L111">        BigDecimal storedExecutionPrice = normaliseExecutionPrice(marketOutcome.executionPrice());</span>
+
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (order.getOrderSide() == OrderSide.BUY) {</span>
+<span class="fc" id="L114">            BigDecimal orderValue = calculateOrderValue(storedExecutionPrice, order.getQuantity());</span>
+<span class="fc bfc" id="L115" title="All 2 branches covered.">            if (!account.canAfford(orderValue)) {</span>
+<span class="fc" id="L116">                return new SettlementDecision(</span>
+<span class="fc" id="L117">                        ExecutionOutcome.rejected(ExecutionRejectReason.INSUFFICIENT_FUNDS),</span>
+                        account,
+                        null,
+                        storedExecutionPrice);
+            }
+
+<span class="fc" id="L123">            return new SettlementDecision(</span>
+<span class="fc" id="L124">                    ExecutionOutcome.filled(storedExecutionPrice),</span>
+                    account,
+                    null,
+                    storedExecutionPrice);
+        }
+
+<span class="nc" id="L130">        Holding holding = holdingMapper</span>
+<span class="nc" id="L131">                .selectHoldingByAccountAndInstrument(order.getAccountId(), order.getInstrumentId())</span>
+<span class="nc" id="L132">                .orElse(null);</span>
+
+<span class="nc bnc" id="L134" title="All 4 branches missed.">        if (holding == null || holding.getQuantity() &lt; order.getQuantity()) {</span>
+<span class="nc" id="L135">            return new SettlementDecision(</span>
+<span class="nc" id="L136">                    ExecutionOutcome.rejected(ExecutionRejectReason.INSUFFICIENT_HOLDINGS),</span>
+                    account,
+                    holding,
+                    storedExecutionPrice);
+        }
+
+<span class="nc" id="L142">        return new SettlementDecision(</span>
+<span class="nc" id="L143">                ExecutionOutcome.filled(storedExecutionPrice),</span>
+                account,
+                holding,
+                storedExecutionPrice);
+    }
+
+    private void applyFilledSettlement(
+            Order order,
+            Account account,
+            Holding holding,
+            BigDecimal executionPrice) {
+
+<span class="fc" id="L155">        BigDecimal orderValue = calculateOrderValue(executionPrice, order.getQuantity());</span>
+
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">        if (order.getOrderSide() == OrderSide.BUY) {</span>
+<span class="fc" id="L158">            account.debit(orderValue);</span>
+        } else {
+<span class="nc" id="L160">            account.credit(orderValue);</span>
+        }
+
+<span class="fc" id="L163">        int updatedRows = accountMapper.updateAccountBalanceWithVersion(</span>
+<span class="fc" id="L164">                order.getAccountId(),</span>
+<span class="fc" id="L165">                account.getBalance(),</span>
+<span class="fc" id="L166">                account.getVersion());</span>
+
+<span class="fc bfc" id="L168" title="All 2 branches covered.">        if (updatedRows == 0) {</span>
+<span class="fc" id="L169">            throw new OptimisticLockException();</span>
+        }
+
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">        if (order.getOrderSide() == OrderSide.BUY) {</span>
+<span class="fc" id="L173">            upsertBuyHolding(order, executionPrice);</span>
+<span class="fc" id="L174">            return;</span>
+        }
+
+<span class="nc" id="L177">        long remainingQuantity = holding.getQuantity() - order.getQuantity();</span>
+<span class="nc" id="L178">        int holdingUpdatedRows = holdingMapper.updateHoldingQuantity(holding.getHoldingId(), remainingQuantity);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (holdingUpdatedRows == 0) {</span>
+<span class="nc" id="L180">            throw new IllegalStateException(&quot;Holding update affected no rows&quot;);</span>
+        }
+<span class="nc" id="L182">    }</span>
+
+    private void upsertBuyHolding(Order order, BigDecimal executionPrice) {
+<span class="fc" id="L185">        Holding existingHolding = holdingMapper</span>
+<span class="fc" id="L186">                .selectHoldingByAccountAndInstrument(order.getAccountId(), order.getInstrumentId())</span>
+<span class="fc" id="L187">                .orElse(null);</span>
+
+<span class="pc bpc" id="L189" title="1 of 2 branches missed.">        if (existingHolding == null) {</span>
+<span class="nc" id="L190">            Holding newHolding = new Holding(</span>
+<span class="nc" id="L191">                    holdingMapper.nextHoldingId(),</span>
+<span class="nc" id="L192">                    order.getQuantity(),</span>
+                    executionPrice,
+<span class="nc" id="L194">                    order.getAccountId(),</span>
+<span class="nc" id="L195">                    order.getInstrumentId());</span>
+<span class="nc" id="L196">            int insertedRows = holdingMapper.insertHolding(newHolding);</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">            if (insertedRows == 0) {</span>
+<span class="nc" id="L198">                throw new IllegalStateException(&quot;Holding insert affected no rows&quot;);</span>
+            }
+<span class="nc" id="L200">            return;</span>
+        }
+
+<span class="fc" id="L203">        long newQuantity = existingHolding.getQuantity() + order.getQuantity();</span>
+<span class="fc" id="L204">        BigDecimal currentValue = existingHolding.getPurchasePrice()</span>
+<span class="fc" id="L205">                .multiply(BigDecimal.valueOf(existingHolding.getQuantity()));</span>
+<span class="fc" id="L206">        BigDecimal incomingValue = executionPrice.multiply(BigDecimal.valueOf(order.getQuantity()));</span>
+<span class="fc" id="L207">        BigDecimal newAveragePrice = currentValue</span>
+<span class="fc" id="L208">                .add(incomingValue)</span>
+<span class="fc" id="L209">                .divide(BigDecimal.valueOf(newQuantity), 2, RoundingMode.HALF_UP);</span>
+
+<span class="fc" id="L211">        int updatedRows = holdingMapper.updateHoldingQuantityAndPrice(</span>
+<span class="fc" id="L212">                existingHolding.getHoldingId(),</span>
+                newQuantity,
+                newAveragePrice);
+<span class="fc bfc" id="L215" title="All 2 branches covered.">        if (updatedRows == 0) {</span>
+<span class="fc" id="L216">            throw new IllegalStateException(&quot;Holding update affected no rows&quot;);</span>
+        }
+<span class="fc" id="L218">    }</span>
+
+    private OrderResolvedEvent orderResolvedEvent(
+            Order order,
+            Instrument instrument,
+            ExecutionOutcome outcome,
+            OffsetDateTime transactionDate) {
+<span class="fc" id="L225">        return new OrderResolvedEvent(</span>
+<span class="fc bfc" id="L226" title="All 2 branches covered.">                outcome.isFilled() ? &quot;ORDER_FILLED&quot; : &quot;ORDER_REJECTED&quot;,</span>
+<span class="fc" id="L227">                order.getOrderId(),</span>
+<span class="fc" id="L228">                order.getAccountId(),</span>
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">                instrument == null ? String.valueOf(order.getInstrumentId()) : instrument.getInstrumentTicker(),</span>
+<span class="fc" id="L230">                order.getOrderSide(),</span>
+<span class="fc" id="L231">                order.getQuantity(),</span>
+<span class="fc" id="L232">                outcome.executionPrice(),</span>
+<span class="fc" id="L233">                outcome.rejectReason(),</span>
+                transactionDate);
+    }
+
+    private static BigDecimal calculateOrderValue(BigDecimal price, long quantity) {
+<span class="fc" id="L238">        return price</span>
+<span class="fc" id="L239">                .multiply(BigDecimal.valueOf(quantity))</span>
+<span class="fc" id="L240">                .setScale(2, RoundingMode.HALF_UP);</span>
+    }
+
+    private static BigDecimal normaliseExecutionPrice(BigDecimal executionPrice) {
+<span class="fc" id="L244">        return executionPrice.setScale(2, RoundingMode.HALF_UP);</span>
+    }
+
+<span class="fc" id="L247">    private record SettlementDecision(</span>
+            ExecutionOutcome outcome,
+            Account account,
+            Holding holding,
+            BigDecimal executionPrice) {
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

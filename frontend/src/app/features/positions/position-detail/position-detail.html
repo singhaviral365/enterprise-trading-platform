@@ -1,0 +1,170 @@
+<ng-template #header let-current>
+  <header class="position-header">
+    <app-instrument-icon [symbol]="current.symbol" [iconUrl]="current.iconUrl" [size]="48" />
+    <div class="position-heading">
+      <h2 id="detail-title" class="position-title">{{ current.symbol }}</h2>
+      <p class="position-subtitle">{{ current.name }}</p>
+    </div>
+    <button
+      type="button"
+      class="btn is-tertiary is-icon-only position-close"
+      aria-label="Close"
+      data-testid="position-dialog-close"
+      (click)="closed.emit()"
+    >
+      <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+  </header>
+</ng-template>
+
+@if (position(); as current) {
+  @if (mode() === 'order') {
+    @if (tradeRow(); as row) {
+      <!-- The same buy / sell screen the market page shows: header, price card, ticket. -->
+      <app-trade-panel
+        [row]="row"
+        [(side)]="side"
+        (cancelled)="mode.set('details')"
+        (done)="closed.emit()"
+        (closed)="closed.emit()"
+      />
+    } @else {
+      <ng-container
+        [ngTemplateOutlet]="header"
+        [ngTemplateOutletContext]="{ $implicit: current }"
+      />
+      @if (board.isLoading()) {
+        <div class="trade-note" aria-live="polite" data-testid="position-dialog-loading">
+          <app-spinner [inline]="true" label="Loading the live price" />
+          <span>Loading the live price…</span>
+        </div>
+      } @else if (boardError()) {
+        <div class="trade-note is-error" role="alert" data-testid="position-dialog-error">
+          <p>{{ boardError() }}</p>
+          <div class="trade-note-actions">
+            <button type="button" class="btn is-secondary" (click)="mode.set('details')">
+              Back
+            </button>
+            <button type="button" class="btn is-primary" (click)="board.reload()">Try again</button>
+          </div>
+        </div>
+      } @else {
+        <div class="trade-note" role="status" data-testid="position-dialog-untradable">
+          <p>{{ current.symbol }} is not available to trade right now.</p>
+          <div class="trade-note-actions">
+            <button type="button" class="btn is-secondary" (click)="mode.set('details')">
+              Back
+            </button>
+          </div>
+        </div>
+      }
+    }
+  } @else {
+    <ng-container [ngTemplateOutlet]="header" [ngTemplateOutletContext]="{ $implicit: current }" />
+
+    <dl class="position-stats" data-testid="position-dialog-stats">
+      <div>
+        <dt>Quantity</dt>
+        <dd data-testid="position-dialog-quantity">{{ current.quantity | number }}</dd>
+      </div>
+      <div>
+        <dt>Average cost</dt>
+        <dd data-testid="position-dialog-average">
+          {{ current.averageCost | currency: currency() ?? 'USD' }}
+        </dd>
+      </div>
+      <div>
+        <dt>Cost basis</dt>
+        <dd>{{ current.costBasis | currency: currency() ?? 'USD' }}</dd>
+      </div>
+    </dl>
+
+    <section class="position-lots" aria-labelledby="position-lots-title">
+      <h3 id="position-lots-title" class="section-heading">How your cost basis adds up</h3>
+      @if (breakdown(); as lots) {
+        @if (lots.lots.length) {
+          <div class="table-container is-scrollable">
+            <table class="data-table is-compact" data-testid="position-lots">
+              <caption class="visually-hidden">
+                Filled buy orders that make up
+                {{
+                  current.symbol
+                }}
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Bought</th>
+                  <th scope="col" class="is-numeric">Quantity</th>
+                  <th scope="col" class="is-numeric">Price</th>
+                  <th scope="col" class="is-numeric">Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (lot of lots.lots; track lot.orderId) {
+                  <tr data-testid="position-lot">
+                    <td>{{ lot.boughtOn | date: 'mediumDate' }}</td>
+                    <td class="is-numeric">{{ lot.quantity | number }}</td>
+                    <td class="is-numeric">{{ lot.price | currency: currency() ?? 'USD' }}</td>
+                    <td class="is-numeric">{{ lot.cost | currency: currency() ?? 'USD' }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Total bought</th>
+                  <td class="is-numeric" data-testid="position-lots-quantity">
+                    {{ lots.boughtQuantity | number }}
+                  </td>
+                  <td class="is-numeric" data-testid="position-lots-average">
+                    {{ lots.averagePrice | currency: currency() ?? 'USD' }}
+                  </td>
+                  <td class="is-numeric" data-testid="position-lots-cost">
+                    {{ lots.boughtCost | currency: currency() ?? 'USD' }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="form-hint position-explainer" data-testid="position-dialog-explainer">
+            Average cost is the total cost of your buys divided by the shares bought:
+            {{ lots.boughtCost | currency: currency() ?? 'USD' }} ÷
+            {{ lots.boughtQuantity | number }} =
+            {{ lots.averagePrice | currency: currency() ?? 'USD' }}.
+            @if (lots.soldQuantity > 0) {
+              You have sold {{ lots.soldQuantity | number }} since. Selling lowers the quantity you
+              hold but not your average cost.
+            }
+            @if (!accountsForHolding()) {
+              Some older orders may not appear in this list.
+            }
+          </p>
+        } @else {
+          <p class="form-hint" data-testid="position-dialog-no-lots">
+            No filled buy orders were found for this position.
+          </p>
+        }
+      }
+    </section>
+
+    <footer class="position-actions">
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="position-buy"
+        (click)="openTicket(OrderSide.Buy)"
+      >
+        <i class="fas fa-circle-plus" aria-hidden="true"></i>
+        Buy more
+      </button>
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="position-sell"
+        (click)="openTicket(OrderSide.Sell)"
+      >
+        <i class="fas fa-circle-minus" aria-hidden="true"></i>
+        Sell
+      </button>
+    </footer>
+  }
+}

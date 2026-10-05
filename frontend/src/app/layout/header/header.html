@@ -1,0 +1,58 @@
+<header class="app-header">
+  <div class="header-left">
+    @if (session.isLoggedIn()) {
+      <app-tooltip position="right" text="Toggle sidebar">
+        <button
+          type="button"
+          class="btn is-transparent is-icon-only"
+          aria-label="Toggle sidebar"
+          aria-controls="app-sidebar"
+          [attr.aria-expanded]="sidebarOpen()"
+          (click)="toggleSidebar.emit()"
+        >
+          <i class="fas fa-bars" aria-hidden="true"></i>
+        </button>
+      </app-tooltip>
+    } 
+
+    <a routerLink="/" class="header-logo">
+      @if (!session.isLoggedIn()) {
+        <button class="btn is-tertiary is-transparent is-icon-only"><i class="fa-solid fa-coins"></i></button>
+      }
+      Enterprise Trading Platform
+    </a>
+  </div>
+
+  <div class="header-right">
+    <app-tooltip position="bottom" [text]="theme.isDark() ? 'Light mode' : 'Dark mode'">
+      <button
+        type="button"
+        class="btn is-tertiary is-icon-only"
+        [attr.aria-label]="theme.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+        (click)="theme.toggle()"
+      >
+        <i class="fas" [class.fa-sun]="theme.isDark()" [class.fa-moon]="!theme.isDark()" aria-hidden="true"></i>
+      </button>
+    </app-tooltip>
+
+    @if (session.isLoggedIn()) {
+      <app-account-menu />
+      <app-tooltip position="bottom" text="Logout">
+        <button type="button" class="btn is-error is-icon-only" aria-label="Logout" data-testid="logout-button" (click)="logout()">
+          <i class="fas fa-power-off" aria-hidden="true"></i>
+        </button>
+      </app-tooltip>
+    } @else {
+      <button
+        type="button"
+        class="btn is-primary"
+        aria-haspopup="dialog"
+        data-testid="open-auth-dialog"
+        (click)="authDialog.open('login')"
+      >
+        <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+        Login / Register
+      </button>
+    }
+  </div>
+</header>

@@ -1,0 +1,40 @@
+<div
+  class="split"
+  [class.is-open]="inline() && open()"
+  [class.is-cards]="layout() === 'cards'"
+  data-testid="split-view"
+>
+  <div class="split-list">
+    <ng-content select="[list]" />
+  </div>
+
+  @if (inline()) {
+    <aside
+      #pane
+      class="split-detail"
+      tabindex="-1"
+      [attr.aria-labelledby]="open() ? labelledBy() : null"
+      [attr.data-testid]="testId()"
+      (keydown.escape)="closed.emit()"
+    >
+      @if (open()) {
+        <div class="split-detail-panel">
+          <ng-container [ngTemplateOutlet]="detail" />
+        </div>
+      }
+    </aside>
+  }
+</div>
+
+@if (!inline()) {
+  <app-sheet-dialog
+    [open]="open()"
+    [labelledBy]="labelledBy()"
+    [testId]="testId()"
+    (closed)="closed.emit()"
+  >
+    <ng-container [ngTemplateOutlet]="detail" />
+  </app-sheet-dialog>
+}
+
+<ng-template #detail><ng-content select="[detail]" /></ng-template>

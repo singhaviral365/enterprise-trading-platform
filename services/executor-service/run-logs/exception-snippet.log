@@ -1,0 +1,41 @@
+    42: 2026-09-18T05:25:26.793Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\InstrumentMapper.class]
+    43: 2026-09-18T05:25:26.795Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Identified candidate component class: file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\org\example\backend\mapper\OrderMapper.class]
+    44: 2026-09-18T05:25:26.799Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'accountMapper' and 'org.example.backend.mapper.AccountMapper' mapperInterface
+    45: 2026-09-18T05:25:26.802Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'accountMapper'.
+    46: 2026-09-18T05:25:26.804Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'holdingMapper' and 'org.example.backend.mapper.HoldingMapper' mapperInterface
+    47: 2026-09-18T05:25:26.808Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'holdingMapper'.
+    48: 2026-09-18T05:25:26.810Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'instrumentMapper' and 'org.example.backend.mapper.InstrumentMapper' mapperInterface
+    49: 2026-09-18T05:25:26.813Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'instrumentMapper'.
+    50: 2026-09-18T05:25:26.815Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Creating MapperFactoryBean with name 'orderMapper' and 'org.example.backend.mapper.OrderMapper' mapperInterface
+    51: 2026-09-18T05:25:26.817Z DEBUG 19332 --- [trade-executor] [           main] o.m.s.mapper.ClassPathMapperScanner      : Enabling autowire by type for MapperFactoryBean with name 'orderMapper'.
+    52: 2026-09-18T05:25:27.371Z  INFO 19332 --- [trade-executor] [           main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8082 (http)
+    53: 2026-09-18T05:25:27.388Z  INFO 19332 --- [trade-executor] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+    54: 2026-09-18T05:25:27.390Z  INFO 19332 --- [trade-executor] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+    55: 2026-09-18T05:25:27.449Z  INFO 19332 --- [trade-executor] [           main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1937 ms
+    56: 2026-09-18T05:25:28.013Z DEBUG 19332 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Property 'configuration' or 'configLocation' not specified, using default MyBatis Configuration
+    57: 2026-09-18T05:25:28.185Z DEBUG 19332 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\AccountMapper.xml]'
+    58: 2026-09-18T05:25:28.204Z DEBUG 19332 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\HoldingMapper.xml]'
+    59: 2026-09-18T05:25:28.216Z DEBUG 19332 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\InstrumentMapper.xml]'
+    60: 2026-09-18T05:25:28.241Z DEBUG 19332 --- [trade-executor] [           main] o.mybatis.spring.SqlSessionFactoryBean   : Parsed mapper file: 'file [C:\Users\Administrator\Documents\GitHub\chennai-capstone-SE3-team3\trade_executor\target\classes\mapper\OrderMapper.xml]'
+    61: 2026-09-18T05:25:29.131Z  INFO 19332 --- [trade-executor] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+    62: 2026-09-18T05:25:29.265Z  WARN 19332 --- [trade-executor] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+    63: 2026-09-18T05:25:29.290Z  INFO 19332 --- [trade-executor] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+    64: 
+    65: Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+    66: 2026-09-18T05:25:29.305Z ERROR 19332 --- [trade-executor] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+    67: 
+    68: ***************************
+    69: APPLICATION FAILED TO START
+    70: ***************************
+    71: 
+    72: Description:
+    73: 
+    74: Web server failed to start. Port 8082 was already in use.
+    75: 
+    76: Action:
+    77: 
+    78: Identify and stop the process that's listening on port 8082 or configure this application to listen on another port.
+    79: 
+    80: [INFO] ------------------------------------------------------------------------
+    81: [INFO] BUILD FAILURE
+    82: [INFO] ------------------------------------------------------------------------

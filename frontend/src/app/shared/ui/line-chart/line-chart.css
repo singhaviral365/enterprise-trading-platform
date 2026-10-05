@@ -1,0 +1,97 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. Every selector
+   starts with .line-chart so nothing leaks. Colours come only from the design tokens. */
+
+/* The chart fills whatever height its card gives it (a flex column), with a sensible minimum. */
+app-line-chart {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 260px;
+}
+
+.line-chart {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+.line-chart .line-plot {
+  flex: 1;
+  width: 100%;
+  min-height: 260px;
+}
+
+/* Highcharts' invisible hit areas for hover: transparent, never the default black fill. */
+.line-chart .highcharts-tracker-area,
+.line-chart .highcharts-tracker-line {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.line-chart .highcharts-tracker-line {
+  stroke-width: 22px;
+}
+
+.line-chart .highcharts-background,
+.line-chart .highcharts-plot-background,
+.line-chart .highcharts-plot-border,
+.line-chart .highcharts-halo {
+  fill: none;
+  stroke: none;
+}
+
+.line-chart .highcharts-credits,
+.line-chart .highcharts-title,
+.line-chart .highcharts-legend {
+  display: none;
+}
+
+.line-chart .highcharts-grid-line {
+  stroke: var(--surface-line-subtle);
+  stroke-width: 1px;
+}
+
+.line-chart .highcharts-axis-line,
+.line-chart .highcharts-tick {
+  stroke: var(--surface-line-subtle);
+}
+
+.line-chart .highcharts-axis-labels text {
+  fill: var(--surface-foreground-subtle);
+  font-size: 12px;
+}
+
+.line-chart .highcharts-crosshair {
+  stroke: var(--surface-line);
+  stroke-dasharray: 4 4;
+}
+
+.line-chart .highcharts-graph {
+  fill: none;
+  stroke: var(--accent-primary-background);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+.line-chart .highcharts-area {
+  fill: var(--accent-primary-background);
+  fill-opacity: 0.14;
+  stroke: none;
+}
+
+.line-chart .highcharts-point {
+  fill: var(--accent-primary-background);
+  stroke: var(--surface-background-bright);
+  stroke-width: 2px;
+}
+
+.line-chart .highcharts-tooltip-box {
+  fill: var(--surface-background-bright);
+  stroke: var(--surface-line);
+  stroke-width: 1px;
+}
+
+.line-chart .highcharts-tooltip text {
+  fill: var(--surface-foreground);
+  font-size: 13px;
+}

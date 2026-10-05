@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  OrderMapper.xml - MyBatis XML mapper for Order entity
+
+  SECURITY CRITICAL:
+  - ALL external parameters are bound as JDBC bind parameters (#{...})
+  - NO string interpolation or ${...} syntax used for external parameters
+  - OWASP A03 Prevention:
+    An attacker cannot inject SQL via order details like:
+    - Account key: "ACC' OR '1'='1"
+    - Symbol/Instrument: "AAPL' OR '1'='1" (returns all positions)
+    - Idempotency key: malicious SQL
+    - Order side: "BUY' OR '1'='1"
+  - All parameters are type-safe and bound before SQL execution
+-->
+
+<mapper namespace="org.example.backend.mapper.OrderMapper">
+
+    <!--
+      Result mapping for Order entity.
+      Maps database columns to Order object properties.
+    -->
+    <resultMap id="OrderResultMap" type="org.example.backend.entities.Order">
+        <constructor>
+            <idArg column="order_id" javaType="_long" name="orderId"/>
+            <arg column="idempotency_key" javaType="String" name="idempotencyKey"/>
+            <arg column="order_status" javaType="org.example.backend.enums.OrderStatus" name="orderStatus"/>
+            <arg column="received_at" javaType="java.time.OffsetDateTime" name="receivedAt"/>
+            <arg column="order_type" javaType="org.example.backend.enums.OrderSide" name="orderSide"/>
+            <arg column="order_pricing_type" javaType="org.example.backend.enums.OrderPricingType" name="pricingType"/>
+            <arg column="price" javaType="java.math.BigDecimal" name="price"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="transaction_date" javaType="java.time.OffsetDateTime" name="transactionDate"/>
+            <arg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
+        </constructor>
+    </resultMap>
+
+    <!-- ===================================================
+         INSERT Operations
+         =================================================== -->
+
+    <!--
+      Insert a new order.
+      All values including account_key, symbol reference, and status are bound.
+      The idempotency_key is a critical field for idempotency and is fully parameterized.
+      Returns the number of rows affected (1 on success).
+      Constraint violations are surfaced to the caller.
+    -->
+    <insert id="insertOrder" parameterType="org.example.backend.entities.Order">
+        INSERT INTO orders (
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        ) VALUES (
+            #{order.orderId},
+            #{order.idempotencyKey},
+            #{order.orderStatus},
+            #{order.receivedAt},
+            #{order.orderSide},
+            #{order.pricingType},
+            #{order.price},
+            #{order.quantity},
+            #{order.transactionDate},
+            #{order.accountId},
+            #{order.instrumentId}
+        )
+    </insert>
+
+    <!-- ===================================================
+         SELECT Operations (Single Row)
+         =================================================== -->
+
+    <!--
+      Select order by order ID.
+      Order ID is bound as a parameter.
+      Safe from SQL injection.
+    -->
+    <select id="selectOrderById" parameterType="long" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE order_id = #{orderId}
+    </select>
+
+    <!--
+      Select order by idempotency key.
+      The idempotency key is bound as a parameter, never interpolated.
+      This ensures the key is treated as data, not SQL code.
+      Safe from SQL injection via malicious idempotency key.
+    -->
+    <select id="selectOrderByIdempotencyKey" parameterType="String" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE idempotency_key = #{idempotencyKey}
+    </select>
+
+    <!-- ===================================================
+         SELECT Operations (Multiple Rows)
+         =================================================== -->
+
+    <!--
+      Select all orders for a specific account.
+      Account ID is bound as a parameter.
+      This is the primary query for retrieving account positions.
+    -->
+    <select id="selectOrdersByAccountId" parameterType="int" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE account_id = #{accountId}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!--
+      Select orders for an account with a specific status.
+      Both account ID and status are bound as parameters.
+      Status is an enum (RECEIVED, FILLED, CANCELLED, REJECTED).
+    -->
+    <select id="selectOrdersByAccountIdAndStatus" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND order_status = #{orderStatus}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!--
+      Select orders by status filter.
+      Status is bound as a parameter (enum).
+      The status is constrained to valid enum values.
+    -->
+    <select id="selectOrdersByStatus" parameterType="org.example.backend.enums.OrderStatus"
+            resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE order_status = #{orderStatus}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!--
+      Select orders by instrument (symbol).
+      Instrument ID is bound as a parameter (not the symbol string itself).
+      This is safer than passing symbol strings directly, which could be exploited.
+      Example attack prevented: symbol = "AAPL' OR '1'='1"
+    -->
+    <select id="selectOrdersByInstrumentId" parameterType="int" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE instrument_id = #{instrumentId}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!--
+      Select orders within a time range.
+      Timestamps are bound as parameters.
+      Both fromDate and toDate are fully parameterized.
+    -->
+    <select id="selectOrdersByReceivedDateRange" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE received_at BETWEEN #{fromDate} AND #{toDate}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!--
+      Select recent orders for an account.
+      Account ID and limit are bound as parameters.
+      Limit prevents DOS attacks via large result sets.
+    -->
+    <select id="selectRecentOrdersByAccountId" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE account_id = #{accountId}
+        ORDER BY received_at DESC, order_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <!--
+      Select orders with order side filter.
+      Both account ID and order side are bound as parameters.
+      Order side is an enum (BUY or SELL).
+    -->
+    <select id="selectOrdersByAccountIdAndSide" resultMap="OrderResultMap">
+        SELECT
+            order_id,
+            idempotency_key,
+            order_status,
+            received_at,
+            order_type,
+            order_pricing_type,
+            price,
+            quantity,
+            transaction_date,
+            account_id,
+            instrument_id
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND order_type = #{orderSide}
+        ORDER BY received_at DESC, order_id DESC
+    </select>
+
+    <!-- ===================================================
+         UPDATE Operations
+         =================================================== -->
+
+    <!--
+      Update order status.
+      Order ID and new status are bound as parameters.
+      Returns the number of rows affected (for transaction verification).
+      Database triggers enforce terminal state immutability.
+    -->
+    <update id="updateOrderStatus">
+        UPDATE orders
+        SET order_status = #{newStatus}
+        WHERE order_id = #{orderId}
+    </update>
+
+    <!--
+      Update order status and transaction date.
+      All values are bound as parameters.
+      Used for terminal status transitions (FILLED, CANCELLED, REJECTED).
+    -->
+    <update id="updateOrderStatusAndDate">
+        UPDATE orders
+        SET
+            order_status = #{newStatus},
+            transaction_date = #{transactionDate}
+        WHERE order_id = #{orderId}
+    </update>
+
+    <update id="fillOrderIfNew">
+        UPDATE orders
+        SET
+            order_status = 'FILLED',
+            price = #{executionPrice},
+            transaction_date = #{transactionDate}
+        WHERE order_id = #{orderId}
+          AND order_status = 'NEW'
+    </update>
+
+    <update id="rejectOrderIfNew">
+        UPDATE orders
+        SET
+            order_status = 'REJECTED',
+            transaction_date = #{transactionDate}
+        WHERE order_id = #{orderId}
+          AND order_status = 'NEW'
+    </update>
+
+    <!-- ===================================================
+         COUNT Operations
+         =================================================== -->
+
+    <!--
+      Count orders for an account.
+      Account ID is bound as a parameter.
+    -->
+    <select id="countOrdersByAccountId" parameterType="int" resultType="long">
+        SELECT COUNT(*) FROM orders WHERE account_id = #{accountId}
+    </select>
+
+    <!--
+      Count orders by status.
+      Status is bound as a parameter (enum).
+    -->
+    <select id="countOrdersByStatus" parameterType="org.example.backend.enums.OrderStatus"
+            resultType="long">
+        SELECT COUNT(*) FROM orders WHERE order_status = #{orderStatus}
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Generate Order ID
+         =================================================== -->
+
+    <select id="nextOrderId"
+            resultType="long">
+
+        SELECT nextval(
+                       pg_get_serial_sequence(
+                               'orders',
+                               'order_id'
+                       )
+               )
+
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Conditional Cancellation
+         =================================================== -->
+
+    <update id="cancelOrder">
+
+        UPDATE orders
+
+        SET
+            order_status = 'CANCELLED',
+            transaction_date = CURRENT_TIMESTAMP
+
+        WHERE order_id = #{orderId}
+          AND account_id = #{accountId}
+          AND order_status = 'NEW'
+
+    </update>
+
+</mapper>

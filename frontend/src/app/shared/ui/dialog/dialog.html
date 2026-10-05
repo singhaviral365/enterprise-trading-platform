@@ -1,0 +1,42 @@
+<dialog
+  #dialogElement
+  class="app-dialog"
+  aria-labelledby="app-dialog-title"
+  aria-describedby="app-dialog-message"
+  (cancel)="onCancel($event)"
+  (click)="onClick($event)"
+>
+  <div [class]="'modal-content dialog-modal is-' + dialog.options().type">
+    <div class="modal-header">
+      <h2 id="app-dialog-title" class="modal-title flex items-center gap-8">
+        @switch (dialog.options().type) {
+          @case ('warning') {
+            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+          }
+          @case ('error') {
+            <i class="fas fa-times-circle" aria-hidden="true"></i>
+          }
+          @case ('success') {
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+          }
+          @default {
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+          }
+        }
+        {{ dialog.options().title }}
+      </h2>
+      <button type="button" class="btn is-secondary is-icon-only" aria-label="Close dialog" (click)="dialog.cancel()">
+        <i class="fas fa-times" aria-hidden="true"></i>
+      </button>
+    </div>
+    <p id="app-dialog-message" class="modal-body">{{ dialog.options().message }}</p>
+    <div class="modal-footer">
+      <button type="button" [class]="'btn ' + cancelClass()" (click)="dialog.cancel()">
+        {{ dialog.options().cancelText }}
+      </button>
+      <button type="button" [class]="'btn ' + confirmClass()" (click)="dialog.proceed()">
+        {{ dialog.options().confirmText }}
+      </button>
+    </div>
+  </div>
+</dialog>

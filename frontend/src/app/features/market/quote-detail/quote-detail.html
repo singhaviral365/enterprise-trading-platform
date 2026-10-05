@@ -1,0 +1,52 @@
+@if (mode() === 'order') {
+  <app-trade-panel
+    [row]="row()"
+    [(side)]="side"
+    (cancelled)="mode.set('quote')"
+    (done)="closed.emit()"
+    (closed)="closed.emit()"
+  />
+} @else {
+  <app-quote-summary [row]="row()" (closed)="closed.emit()" />
+
+  <!-- Placeholder: a price chart for this symbol will replace this block. -->
+  <section class="chart-placeholder" aria-label="Price chart" data-testid="quote-chart">
+    <svg class="chart-skeleton" viewBox="0 0 300 100" preserveAspectRatio="none" aria-hidden="true">
+      <path
+        d="M0,78 L30,70 L60,74 L90,56 L120,60 L150,42 L180,48 L210,30 L240,36 L270,18 L300,24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linejoin="round"
+        stroke-dasharray="5 5"
+      />
+    </svg>
+    <p class="chart-label">
+      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      Price chart coming soon
+    </p>
+  </section>
+
+  <footer class="quote-actions">
+    <div class="action-buttons">
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="quote-buy"
+        (click)="openTicket(OrderSide.Buy)"
+      >
+        <i class="fas fa-circle-plus" aria-hidden="true"></i>
+        Buy
+      </button>
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="quote-sell"
+        (click)="openTicket(OrderSide.Sell)"
+      >
+        <i class="fas fa-circle-minus" aria-hidden="true"></i>
+        Sell
+      </button>
+    </div>
+  </footer>
+}

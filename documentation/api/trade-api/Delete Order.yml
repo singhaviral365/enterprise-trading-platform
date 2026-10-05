@@ -1,0 +1,17 @@
+info:
+  name: Delete Order
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: orders/3
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

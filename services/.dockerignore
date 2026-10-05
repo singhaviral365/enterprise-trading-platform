@@ -1,0 +1,9 @@
+# Exclude everything by default, then allow only backend build inputs.
+**
+
+!backend/
+backend/**
+!backend/pom.xml
+!backend/src/
+!backend/src/**
+!backend/Dockerfile

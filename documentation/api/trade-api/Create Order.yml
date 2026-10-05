@@ -1,0 +1,30 @@
+info:
+  name: Create Order
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: orders
+  body:
+    type: json
+    data: |
+      {
+        "accountId": 1001,
+        "symbol": "AAPL",
+        "side": "BUY",
+        "orderPricingType": "LIMIT",
+        "quantity": 10,
+        "price": 300,
+        "idempotencyKey": "6py2cgg-6a1e-4a4f-9c0d-2f7a1b3c4d5e"
+      }
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
