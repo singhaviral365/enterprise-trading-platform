@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "analytics-etl"
+version = "0.1.0"
+description = "Analytics ETL pipeline for Fauxnance candle data"
+requires-python = ">=3.10"
+
+dependencies = [
+    "pandas",
+    "requests",
+    "python-dotenv",
+    "duckdb"
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
+
+
+[tool.setuptools]
+packages = [
+    "analytics",
+    "analytics.src"
+]
+
+
+[tool.setuptools.package-dir]
+analytics = "."
+"analytics.src" = "src"
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,14 @@
+candidate,date,value,unit
+Largest daily gain,2026-07-13,1.064124783362212,%
+Largest daily decline,2026-07-06,-0.8266463752075138,%
+Largest intraday range,2026-07-13,1.2772963604852654,%
+Smallest intraday range,2026-07-14,0.7269360673444639,%
+Highest volume day,2026-07-13,9128500.0,shares
+Top 9 days volume share,,100.0,%
+Top 9 days share of valid-volume days,,100.0,%
+Volume / price movement correlation,,0.8096857174063724,correlation
+Number of positive days,,5.0,days
+Number of negative days,,4.0,days
+Number of flat days,,0.0,days
+Average positive-day movement,,0.6896728804557227,%
+Average absolute negative-day movement,,0.5320696093652126,%

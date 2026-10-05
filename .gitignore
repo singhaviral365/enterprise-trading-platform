@@ -50,3 +50,8 @@ __pycache__/
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Analytics DB, Cache and Dumps
+analytics/cache/
+analytics/output/
+*.duckdb
