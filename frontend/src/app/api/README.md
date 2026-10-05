@@ -7,6 +7,7 @@ Typed Angular clients for the two platform contracts, **generated** from
 |---|---|---|
 | `contracts/auth-api.yaml` | `generated/auth` | `http://localhost:3000` |
 | `contracts/trade-api.yaml` | `generated/trade` | same origin (`''`), proxied to the order-service by `ng serve` |
+| `contracts/watchlist-api.yaml` | `generated/watchlist` | same origin as the Trade API (it is a module of the same service) |
 
 ## Regenerate
 
@@ -15,7 +16,7 @@ Requires Node and **Java 11+** (the generator is a JAR that npm downloads on fir
 ```bash
 cd frontend
 npm ci
-npm run api:generate     # wipes src/app/api/generated, then regenerates both contracts
+npm run api:generate     # wipes src/app/api/generated, then regenerates every contract
 npm run api:check        # regenerates and fails if the committed output differs (use in CI / before a PR)
 ```
 
@@ -24,7 +25,7 @@ Run `npm run api:generate` and commit the result **every time a contract changes
 ## Configuration and pinning
 
 Everything lives in [`frontend/openapitools.json`](../../../openapitools.json): one entry per contract
-(`auth-api`, `trade-api`), each writing into its own subdirectory of `generated/`.
+(`auth-api`, `trade-api`, `watchlist-api`), each writing into its own subdirectory of `generated/`.
 
 - Generator: `@openapitools/openapi-generator-cli` pinned **exactly** to `2.41.0` in `package.json`, and the
   generator JAR pinned to **7.25.0** in `openapitools.json` (`generator-cli.version`). Change both deliberately, together.

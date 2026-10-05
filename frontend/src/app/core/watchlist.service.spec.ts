@@ -1,12 +1,13 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { authInterceptor } from './auth.interceptor';
+import { provideApiClients } from '../api/api.config';
+import { authInterceptor } from './interceptors/auth.interceptor';
 import { SessionService } from './session.service';
-import { WatchlistError, WatchlistService } from './watchlist.service';
+import { Watchlist, WatchlistError, WatchlistService } from './watchlist.service';
 
 const BASE = '/api/v1/accounts/1004/watchlists';
-const LIST = {
+const LIST: Watchlist = {
   watchlistId: 9,
   accountId: 1004,
   name: 'Tech',
@@ -22,13 +23,7 @@ describe('WatchlistService', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting()],
-    });
-    TestBed.inject(SessionService).start('alice.trader', {
-      accessToken: 'jwt-token',
-      refreshToken: 'r',
-      tokenType: 'Bearer',
-      expiresIn: 900,
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     });
     service = TestBed.inject(WatchlistService);
     http = TestBed.inject(HttpTestingController);
@@ -36,11 +31,10 @@ describe('WatchlistService', () => {
 
   afterEach(() => http.verify());
 
-  it('lists watchlists and sends the access token', async () => {
+  it('lists watchlists through the generated client', async () => {
     const result = service.list(1004);
     const request = http.expectOne(BASE);
     expect(request.request.method).toBe('GET');
-    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
     request.flush([LIST]);
     await expect(result).resolves.toEqual([LIST]);
   });
@@ -131,5 +125,25 @@ describe('WatchlistService', () => {
       const error = await failWith(500, { errorCode: 'SRV-500', message: 'boom' });
       expect(error.message).toContain('having trouble');
     });
+  });
+});
+
+describe('WatchlistService with the session interceptor', () => {
+  it('sends the session cookie and the CSRF header, like every other platform call', async () => {
+    localStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(), provideApiClients()],
+    });
+    TestBed.inject(SessionService).start('alice.trader', { expiresIn: 900 });
+    const http = TestBed.inject(HttpTestingController);
+
+    const result = TestBed.inject(WatchlistService).list(1004);
+    const request = http.expectOne(BASE);
+    expect(request.request.withCredentials).toBe(true);
+    expect(request.request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+    request.flush([LIST]);
+
+    await expect(result).resolves.toEqual([LIST]);
+    http.verify();
   });
 });

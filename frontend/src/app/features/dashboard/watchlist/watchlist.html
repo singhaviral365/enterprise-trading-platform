@@ -156,7 +156,7 @@
             </thead>
             <tbody>
               @for (item of list.items; track item.tickerSymbol) {
-                <tr class="wl-row" [class.is-stale]="item.priceStatus === 'STALE'" [attr.data-testid]="'watchlist-row-' + item.tickerSymbol">
+                <tr class="wl-row" [class.is-stale]="item.priceStatus === PriceStatus.Stale" [attr.data-testid]="'watchlist-row-' + item.tickerSymbol">
                   <th scope="row">
                     <span class="wl-symbol">
                       <span class="ticker-tile" aria-hidden="true">{{ item.tickerSymbol.slice(0, 2) }}</span>
@@ -197,12 +197,12 @@
                   </td>
                   <td>
                     @switch (item.priceStatus) {
-                      @case ('LIVE') {
+                      @case (PriceStatus.Live) {
                         <span class="badge is-live" [attr.data-testid]="'watchlist-status-' + item.tickerSymbol">
                           <span class="live-dot" aria-hidden="true"></span> Live
                         </span>
                       }
-                      @case ('STALE') {
+                      @case (PriceStatus.Stale) {
                         <span class="badge is-delayed" [attr.data-testid]="'watchlist-status-' + item.tickerSymbol">
                           <i class="fas fa-clock" aria-hidden="true"></i> Delayed
                         </span>

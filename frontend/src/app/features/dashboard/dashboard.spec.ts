@@ -4,7 +4,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideApiClients } from '../../api/api.config';
 import { AuthDialogService } from '../../core/auth-dialog.service';
+import { MarketService } from '../../core/market.service';
 import { SessionService } from '../../core/session.service';
+import { WatchlistService } from '../../core/watchlist.service';
 import { HIGHCHARTS_LOADER } from '../../shared/ui/donut-chart/highcharts-loader';
 import {
   LINK_URL,
@@ -50,6 +52,9 @@ describe('Dashboard', () => {
         provideApiClients(),
         provideRouter([]),
         { provide: HIGHCHARTS_LOADER, useValue: () => Promise.resolve({ chart }) },
+        // The watchlist panel has its own spec; here it only has to stay quiet and not hold requests open.
+        { provide: WatchlistService, useValue: { list: () => Promise.resolve([]) } },
+        { provide: MarketService, useValue: { getBoard: () => Promise.resolve({ quotes: [], asOf: '', stale: false }) } },
       ],
     }).compileComponents();
     TestBed.inject(SessionService).start('alice.trader', TEST_TOKENS);

@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideApiClients } from '../../../api/api.config';
 import { DialogService } from '../../../core/dialog.service';
 import { SessionService } from '../../../core/session.service';
-import type { Watchlist, WatchlistItem } from '../../../core/watchlist.service';
+import { PriceStatus, type Watchlist, type WatchlistItem } from '../../../core/watchlist.service';
 import { WatchlistPanel } from './watchlist';
 
 const BASE = '/api/v1/accounts/1001/watchlists';
@@ -14,7 +15,7 @@ function item(tickerSymbol: string, over: Partial<WatchlistItem> = {}): Watchlis
     addedAt: '2026-10-04T06:00:00Z',
     price: 189.5,
     quotedAt: '2026-10-04T09:00:00Z',
-    priceStatus: 'LIVE',
+    priceStatus: PriceStatus.Live,
     ...over,
   };
 }
@@ -97,14 +98,9 @@ describe('WatchlistPanel', () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [WatchlistPanel],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients()],
     }).compileComponents();
-    TestBed.inject(SessionService).start('alice.trader', {
-      accessToken: 'a',
-      refreshToken: 'r',
-      tokenType: 'Bearer',
-      expiresIn: 900,
-    });
+    TestBed.inject(SessionService).start('alice.trader', { expiresIn: 900 });
     fixture = TestBed.createComponent(WatchlistPanel);
     http = TestBed.inject(HttpTestingController);
     root = fixture.nativeElement as HTMLElement;
@@ -127,8 +123,8 @@ describe('WatchlistPanel', () => {
     await start([
       list(9, 'Tech', [
         item('AAPL'),
-        item('AMZN', { priceStatus: 'STALE', price: 250 }),
-        item('TSLA', { priceStatus: 'UNAVAILABLE', price: null, quotedAt: null }),
+        item('AMZN', { priceStatus: PriceStatus.Stale, price: 250 }),
+        item('TSLA', { priceStatus: PriceStatus.Unavailable, price: null, quotedAt: null }),
       ]),
     ]);
 

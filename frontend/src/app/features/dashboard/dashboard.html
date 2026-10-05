@@ -138,10 +138,6 @@
         </div>
       }
     </section>
-  <section class="card panel rise-in" style="--stagger: 5" aria-labelledby="watchlist-title">
-    <app-watchlist />
-  </section>
-
     <section class="card panel orders-panel rise-in" style="--stagger: 5" aria-labelledby="orders-title">
       <h2 id="orders-title" class="card-title">Recent orders</h2>
       @if (info.overview.orders.length) {
@@ -199,13 +195,8 @@
       }
     </section>
 
-    <section class="card panel rise-in" style="--stagger: 6" aria-labelledby="watchlist-title">
-      <h2 id="watchlist-title" class="card-title">Watchlist</h2>
-      <div class="empty-state" data-testid="watchlist-empty">
-        <i class="fas fa-star" aria-hidden="true"></i>
-        <p>Your watchlist is empty.</p>
-        <p class="form-hint">Symbols you follow will show up here.</p>
-      </div>
+    <section class="card panel watchlist-panel rise-in" style="--stagger: 6" aria-labelledby="watchlist-title">
+      <app-watchlist />
     </section>
   </div>
 }

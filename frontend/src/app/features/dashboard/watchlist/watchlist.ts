@@ -1,7 +1,6 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, linkedSignal, resource, signal } from '@angular/core';
-import { AccountOverviewStore } from '../../../core/account-overview.store';
-import { accountIdFromNumber } from '../../../core/account.service';
+import { AccountOverviewStore, accountIdFromNumber } from '../../../core/account-overview.store';
 import { DialogService } from '../../../core/dialog.service';
 import { CHANGE_FIELDS, CHANGE_PERCENT_FIELDS, MarketService, quoteNumber } from '../../../core/market.service';
 import { NotificationService } from '../../../core/notification.service';
@@ -10,6 +9,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_TICKER_LENGTH,
   MAX_WATCHLISTS,
+  PriceStatus,
   Watchlist,
   WatchlistError,
   WatchlistItem,
@@ -36,6 +36,9 @@ export class WatchlistPanel {
   private readonly market = inject(MarketService);
   private readonly dialog = inject(DialogService);
   private readonly notifications = inject(NotificationService);
+
+  /** Exposed so the template compares against the generated enum, never string literals. */
+  protected readonly PriceStatus = PriceStatus;
 
   protected readonly maxWatchlists = MAX_WATCHLISTS;
   protected readonly maxItems = MAX_ITEMS_PER_WATCHLIST;

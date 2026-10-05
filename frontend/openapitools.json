@@ -29,6 +29,19 @@
           "stringEnums": true
         },
         "globalProperty": "apis,models,supportingFiles=api.base.service.ts:api.module.ts:configuration.ts:encoder.ts:index.ts:param.ts:provide-api.ts:query.params.ts:variables.ts:models.ts:api.ts"
+      },
+      "watchlist-api": {
+        "generatorName": "typescript-angular",
+        "inputSpec": "../contracts/watchlist-api.yaml",
+        "output": "src/app/api/generated/watchlist",
+        "skipValidateSpec": true,
+        "additionalProperties": {
+          "ngVersion": "20.0.0",
+          "providedIn": "root",
+          "withInterfaces": true,
+          "stringEnums": true
+        },
+        "globalProperty": "apis,models,supportingFiles=api.base.service.ts:api.module.ts:configuration.ts:encoder.ts:index.ts:param.ts:provide-api.ts:query.params.ts:variables.ts:models.ts:api.ts"
       }
     }
   }
