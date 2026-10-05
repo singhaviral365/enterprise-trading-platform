@@ -2,7 +2,7 @@
   position: fixed;
   top: var(--header-height);
   left: 0;
-  bottom: var(--footer-height);
+  bottom: 0;
   width: var(--sidebar-width-closed);
   background: var(--surface-background-bright);
   border-right: 1px solid var(--surface-line-subtle);

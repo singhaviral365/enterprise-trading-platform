@@ -4,8 +4,7 @@ import { Component } from '@angular/core';
   selector: 'app-footer',
   template: `
     <footer class="app-footer">
-      <span class="footer-content">Trading Platform</span>
-      <span class="footer-content">&copy; 2026. All Rights Reserved.</span>
+      <span class="footer-content">Trading Platform &copy; 2026. All Rights Reserved.</span>
     </footer>
   `,
   styleUrl: './footer.css',
