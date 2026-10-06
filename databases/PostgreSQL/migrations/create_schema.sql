@@ -515,4 +515,71 @@ CREATE TABLE IF NOT EXISTS watchlist_item
 CREATE INDEX IF NOT EXISTS idx_watchlist_item_ticker
     ON watchlist_item(ticker_symbol);
 
+-- ============================================================
+-- 10. CUSTOMER PREFERENCE
+-- ============================================================
+-- One row per account, created the first time the customer saves their settings (no row = all defaults).
+-- Holds switches and display choices only: no email address or phone number, which stay where they already live.
+-- A database created before this table existed is upgraded by add_customer_preferences.sql.
+
+CREATE TABLE IF NOT EXISTS customer_preference
+(
+    account_id              INTEGER PRIMARY KEY,
+
+    -- Display currency for estimates. account.currency never changes (balances and orders are stored in it).
+    preferred_currency      CHAR(3) NOT NULL DEFAULT 'USD',
+
+    -- Alert channels. All three false means "No notifications".
+    channel_sms             BOOLEAN NOT NULL DEFAULT FALSE,
+    channel_email           BOOLEAN NOT NULL DEFAULT FALSE,
+    channel_in_app          BOOLEAN NOT NULL DEFAULT TRUE,
+
+    -- Notification categories.
+    notify_order_status     BOOLEAN NOT NULL DEFAULT TRUE,
+    notify_watchlist_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+
+    -- Display formats.
+    date_format             VARCHAR(16) NOT NULL DEFAULT 'MON_DD_YYYY',
+    time_format             VARCHAR(3) NOT NULL DEFAULT 'H12',
+    number_format           VARCHAR(2) NOT NULL DEFAULT 'US',
+
+    -- true shows the chatbot icon.
+    ai_assistant_enabled    BOOLEAN NOT NULL DEFAULT FALSE,
+
+    -- Light extras, applied by the browser.
+    theme                   VARCHAR(6) NOT NULL DEFAULT 'SYSTEM',
+    landing_page            VARCHAR(10) NOT NULL DEFAULT 'DASHBOARD',
+    default_order_type      VARCHAR(6) NOT NULL DEFAULT 'MARKET',
+
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_customer_preference_account
+        FOREIGN KEY (account_id)
+        REFERENCES account(account_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT chk_customer_preference_currency
+        CHECK (preferred_currency ~ '^[A-Z]{3}$'),
+
+    CONSTRAINT chk_customer_preference_date_format
+        CHECK (date_format IN
+            ('DD_MM_YYYY', 'MM_DD_YYYY', 'DD_MONTH_YYYY', 'DD_MON_YYYY', 'YYYY_MM_DD', 'MON_DD_YYYY')),
+
+    CONSTRAINT chk_customer_preference_time_format
+        CHECK (time_format IN ('H12', 'H24')),
+
+    CONSTRAINT chk_customer_preference_number_format
+        CHECK (number_format IN ('US', 'IN')),
+
+    CONSTRAINT chk_customer_preference_theme
+        CHECK (theme IN ('LIGHT', 'DARK', 'SYSTEM')),
+
+    CONSTRAINT chk_customer_preference_landing_page
+        CHECK (landing_page IN ('DASHBOARD', 'MARKET', 'POSITIONS', 'ORDERS')),
+
+    CONSTRAINT chk_customer_preference_order_type
+        CHECK (default_order_type IN ('MARKET', 'LIMIT'))
+);
+
 COMMIT;
