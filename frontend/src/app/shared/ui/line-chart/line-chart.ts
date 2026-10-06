@@ -8,7 +8,10 @@ import {
   input,
   viewChild,
 } from '@angular/core';
+import { formatDate } from '@angular/common';
 import type { Chart, Options } from 'highcharts';
+import { FormatPreferences } from '../../../core/format-preferences';
+import { resolveDatePattern } from '../../../core/preferences';
 import { HIGHCHARTS_LOADER } from '../donut-chart/highcharts-loader';
 
 /** One point of the line: epoch milliseconds and a value. */
@@ -47,6 +50,7 @@ export class LineChart {
   readonly zeroBased = input(true);
 
   private readonly loadHighcharts = inject(HIGHCHARTS_LOADER);
+  private readonly formats = inject(FormatPreferences);
   private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
 
   private chart: Chart | null = null;
@@ -78,6 +82,7 @@ export class LineChart {
     const formatValue = (value: number) => this.valueFormatter()(value);
     const formatAxis = (value: number) => (this.axisFormatter() ?? this.valueFormatter())(value);
     const name = this.seriesName();
+    const formats = this.formats;
     const animate = !prefersReducedMotion();
     const options: Options = {
       chart: { type: 'area', styledMode: true, animation: animate, spacing: [8, 8, 4, 0] },
@@ -108,11 +113,8 @@ export class LineChart {
       },
       tooltip: {
         formatter() {
-          const date = new Date(Number(this.x)).toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          });
+          const pattern = resolveDatePattern('mediumDate', formats.dateFormat(), formats.timeFormat()) ?? 'mediumDate';
+          const date = formatDate(Number(this.x), pattern, 'en-US');
           return `${date}<br/><b>${name}</b>: ${formatValue(this.y ?? 0)}`;
         },
       },

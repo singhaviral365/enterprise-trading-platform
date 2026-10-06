@@ -1,9 +1,9 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
 import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthDialogService } from '../../../core/auth-dialog.service';
 import { SessionService } from '../../../core/session.service';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { PreferenceCurrencyPipe, PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
 
 /**
  * The username chip in the header. Hovering, focusing or clicking it reveals the linked account's
@@ -12,7 +12,7 @@ import { Spinner } from '../../../shared/ui/spinner/spinner';
  */
 @Component({
   selector: 'app-account-menu',
-  imports: [CurrencyPipe, DatePipe, Spinner],
+  imports: [PreferenceCurrencyPipe, PreferenceDatePipe, Spinner],
   templateUrl: './account-menu.html',
   styleUrl: './account-menu.css',
   host: {

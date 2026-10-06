@@ -1,7 +1,7 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { InstrumentLabel } from '../../../shared/ui/instrument-label/instrument-label';
 import { PositionRow } from '../position-row';
+import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 /**
  * Table view of the positions: quantity, average cost and cost basis per holding, with a total row. Each row is
@@ -9,7 +9,7 @@ import { PositionRow } from '../position-row';
  */
 @Component({
   selector: 'app-positions-table',
-  imports: [CurrencyPipe, DecimalPipe, InstrumentLabel],
+  imports: [PreferenceCurrencyPipe, PreferenceDecimalPipe, InstrumentLabel],
   templateUrl: './positions-table.html',
   styleUrl: './positions-table.css',
 })

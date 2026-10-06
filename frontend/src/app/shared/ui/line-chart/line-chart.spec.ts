@@ -62,12 +62,12 @@ describe('LineChart', () => {
     );
   });
 
-  it('formats the tooltip with the date, the series name and the money, and the axis with the money', async () => {
+  it('formats the tooltip with the date (in the chosen date format), the series name and the money, and the axis with the money', async () => {
     await render();
 
     const tooltip = options().tooltip?.formatter as (this: unknown) => string;
     expect(tooltip.call({ x: Date.UTC(2026, 8, 1), y: 1000 })).toMatch(
-      /^1 Sep\w* 2026<br\/><b>Invested at cost<\/b>: \$1000$/,
+      /^Sep 1, 2026<br\/><b>Invested at cost<\/b>: \$1000$/,
     );
     const axis = (options().yAxis as { labels: { formatter: (this: unknown) => string } }).labels
       .formatter;

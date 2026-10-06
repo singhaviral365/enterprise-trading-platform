@@ -1,4 +1,3 @@
-import { CurrencyPipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AccountOverviewStore } from '../../core/account-overview.store';
@@ -10,6 +9,7 @@ import { PositionDetail } from './position-detail/position-detail';
 import { PositionRow, toPositionRow } from './position-row';
 import { PositionsCard } from './positions-card/positions-card';
 import { PositionsTable } from './positions-table/positions-table';
+import { PreferenceCurrencyPipe } from '../../shared/formatting/preference-pipes';
 
 export type PositionsView = 'card' | 'table';
 
@@ -35,7 +35,7 @@ function readStoredView(): PositionsView {
 @Component({
   selector: 'app-positions',
   imports: [
-    CurrencyPipe,
+    PreferenceCurrencyPipe,
     Pagination,
     PositionDetail,
     PositionsCard,

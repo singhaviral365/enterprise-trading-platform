@@ -1,4 +1,3 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -16,6 +15,7 @@ import { OrderStatusBadge } from '../../../shared/ui/order-status/order-status';
 import { Pagination } from '../../../shared/ui/pagination/pagination';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
+import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 const PAGE_SIZE = 10;
 
@@ -30,7 +30,7 @@ const PAGE_SIZE = 10;
  */
 @Component({
   selector: 'app-order-history',
-  imports: [CurrencyPipe, DatePipe, DecimalPipe, InstrumentLabel, MultiDropdown, OrderStatusBadge, Pagination, RouterLink, Spinner, Tooltip],
+  imports: [PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe, InstrumentLabel, MultiDropdown, OrderStatusBadge, Pagination, RouterLink, Spinner, Tooltip],
   templateUrl: './order-history.html',
   styleUrl: './order-history.css',
 })

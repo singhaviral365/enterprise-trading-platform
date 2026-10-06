@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
@@ -18,6 +18,7 @@ import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-ic
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
 import { PositionRow } from '../position-row';
+import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 /**
  * What the positions page shows for the selected position (in the side pane on a wide screen, in a dialog on a narrow one): the symbol, name and cost basis on one line,
@@ -27,9 +28,9 @@ import { PositionRow } from '../position-row';
 @Component({
   selector: 'app-position-detail',
   imports: [
-    CurrencyPipe,
-    DatePipe,
-    DecimalPipe,
+    PreferenceCurrencyPipe,
+    PreferenceDatePipe,
+    PreferenceDecimalPipe,
     InstrumentIcon,
     NgTemplateOutlet,
     Spinner,
