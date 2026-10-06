@@ -41,6 +41,10 @@ export class LineChart {
   readonly valueFormatter = input<(value: number) => string>((value) => String(value));
   /** Shorter format for the value axis (e.g. "$3K"); defaults to `valueFormatter`. */
   readonly axisFormatter = input<((value: number) => string) | null>(null);
+  /** Hold each value until the next point (discrete events); false draws a straight line between points (prices). */
+  readonly step = input(true);
+  /** Start the value axis at 0; false fits it to the data, so small moves in a large value stay visible. */
+  readonly zeroBased = input(true);
 
   private readonly loadHighcharts = inject(HIGHCHARTS_LOADER);
   private readonly plot = viewChild.required<ElementRef<HTMLElement>>('plot');
@@ -93,7 +97,7 @@ export class LineChart {
       },
       yAxis: {
         title: { text: undefined },
-        min: 0,
+        min: this.zeroBased() ? 0 : undefined,
         tickAmount: 5,
         labels: {
           x: -8,
@@ -113,7 +117,12 @@ export class LineChart {
         },
       },
       plotOptions: {
-        area: { step: 'left', marker: { enabled: false }, animation: animate },
+        area: {
+          step: this.step() ? 'left' : undefined,
+          threshold: this.zeroBased() ? 0 : null,
+          marker: { enabled: false },
+          animation: animate,
+        },
       },
       series: [{ type: 'area', name, data }],
     };

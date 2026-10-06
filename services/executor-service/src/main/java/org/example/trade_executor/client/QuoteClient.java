@@ -1,5 +1,6 @@
 package org.example.trade_executor.client;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -38,6 +39,14 @@ public interface QuoteClient {
             details.put(symbol, new QuoteDetails(quote.symbol(), quote.price(), fields));
         });
         return details;
+    }
+
+    /**
+     * Historical candles for {@code symbol} between {@code from} and {@code to} (inclusive). The default has no
+     * history; FauxnanceQuoteClient calls the /candles endpoint.
+     */
+    default PriceHistory getCandles(String symbol, LocalDate from, LocalDate to, String interval) {
+        return PriceHistory.empty(symbol, interval);
     }
 }
 

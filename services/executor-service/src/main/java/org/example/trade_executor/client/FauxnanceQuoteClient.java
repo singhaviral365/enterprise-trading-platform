@@ -16,6 +16,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -155,6 +156,59 @@ public class FauxnanceQuoteClient implements QuoteClient {
 
         URI quoteUri = resolveBatchQuoteUri(cleanSymbols);
         return fetch(quoteUri, String.join(",", cleanSymbols), this::parseQuoteDetails, Map.of());
+    }
+
+    @Override
+    public PriceHistory getCandles(String symbol, LocalDate from, LocalDate to, String interval) {
+        String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+        URI candlesUri = baseUri.resolve("candles/" + encodedSymbol
+                + "?from=" + from
+                + "&to=" + to
+                + "&interval=" + URLEncoder.encode(interval, StandardCharsets.UTF_8));
+        return fetch(candlesUri, symbol, body -> parseCandles(body, symbol, interval), PriceHistory.empty(symbol, interval));
+    }
+
+    /** Reads {@code {"data": {"symbol", "interval", "currency", "candles": [...]}}}; candles without a close are skipped. */
+    private PriceHistory parseCandles(String body, String symbol, String interval) throws IOException {
+        if (body == null || body.isBlank()) {
+            return PriceHistory.empty(symbol, interval);
+        }
+
+        JsonNode root = objectMapper.readTree(body);
+        JsonNode data = root.has("data") ? root.get("data") : root;
+        JsonNode candleNodes = data.get("candles");
+        if (candleNodes == null || !candleNodes.isArray()) {
+            return PriceHistory.empty(symbol, interval);
+        }
+
+        List<PriceHistory.Candle> candles = new java.util.ArrayList<>(candleNodes.size());
+        for (JsonNode node : candleNodes) {
+            JsonNode date = node.get("date");
+            BigDecimal close = extractPrice(node.get("close"));
+            if (date == null || !date.isTextual() || close == null) {
+                continue;
+            }
+            JsonNode volume = node.get("volume");
+            JsonNode synthetic = node.get("synthetic");
+            candles.add(new PriceHistory.Candle(
+                    date.asText(),
+                    extractPrice(node.get("open")),
+                    extractPrice(node.get("high")),
+                    extractPrice(node.get("low")),
+                    close,
+                    volume != null && volume.isNumber() ? volume.asLong() : null,
+                    synthetic != null && synthetic.asBoolean(false)));
+        }
+
+        return new PriceHistory(
+                textOr(data.get("symbol"), symbol),
+                textOr(data.get("currency"), null),
+                textOr(data.get("interval"), interval),
+                candles);
+    }
+
+    private static String textOr(JsonNode node, String fallback) {
+        return node != null && node.isTextual() && !node.asText().isBlank() ? node.asText() : fallback;
     }
 
     private Map<String, LiveQuote> fetchQuotes(URI quoteUri, String symbolContext) {

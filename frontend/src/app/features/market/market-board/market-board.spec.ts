@@ -107,6 +107,13 @@ describe('MarketBoardPanel', () => {
     await load();
 
     byTestId<HTMLButtonElement>('market-row-MSFT')!.click();
+    // the detail asks for the instrument's price history; no candles keeps Highcharts out of this test
+    (await vi.waitFor(() => http.expectOne('/api/v1/market/candles/MSFT'))).flush({
+      symbol: 'MSFT',
+      currency: 'USD',
+      interval: '1d',
+      candles: [],
+    });
     await fixture.whenStable();
 
     const dialog = byTestId<HTMLDialogElement>('quote-detail')!;

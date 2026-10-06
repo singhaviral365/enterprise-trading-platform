@@ -47,6 +47,26 @@ export function convertCurrency(rates: FxRates | null, amount: number, from: str
   return fromRate && toRate ? (amount / fromRate) * toRate : null;
 }
 
+/** One daily candle; `synthetic` candles are filled in by Fauxnance for days the market was closed. */
+export interface PriceCandle {
+  /** ISO date, `yyyy-MM-dd`. */
+  readonly date: string;
+  readonly open: number | null;
+  readonly high: number | null;
+  readonly low: number | null;
+  readonly close: number;
+  readonly volume: number | null;
+  readonly synthetic: boolean;
+}
+
+/** A year of daily candles for one symbol, oldest first (the trade-executor calls Fauxnance's /candles). */
+export interface PriceHistory {
+  readonly symbol: string;
+  readonly currency: string | null;
+  readonly interval: string;
+  readonly candles: readonly PriceCandle[];
+}
+
 /** Error thrown by `MarketService`; `message` is safe to show to the user as-is. */
 export class MarketError extends Error {
   constructor(
@@ -75,6 +95,17 @@ export class MarketService {
         this.latestRates.set({ base: board.baseCurrency, rates: board.fxRates });
       }
       return board;
+    } catch (error) {
+      throw toMarketError(error);
+    }
+  }
+
+  /** Daily closes for the past year, up to today. */
+  async getPriceHistory(symbol: string): Promise<PriceHistory> {
+    try {
+      return await firstValueFrom(
+        this.http.get<PriceHistory>(`${this.baseUrl}/candles/${encodeURIComponent(symbol)}`),
+      );
     } catch (error) {
       throw toMarketError(error);
     }

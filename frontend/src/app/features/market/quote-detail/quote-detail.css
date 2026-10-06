@@ -2,16 +2,59 @@
   display: block;
 }
 
-/* Placeholder box for the future price chart. */
+/* One-year price chart card. */
+.price-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px 12px 8px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 16px;
+  background: var(--surface-container-background);
+}
+
+.chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.chart-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--surface-foreground-subtle);
+}
+
+.chart-change {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-change.is-up {
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+}
+
+.chart-change.is-down {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+}
+
+/* Shown while the history loads, or when there is none; as tall as the chart (260px) so nothing jumps. */
 .chart-placeholder {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 180px;
-  margin-top: 16px;
+  min-height: 260px;
   border: 1px dashed var(--surface-line);
-  border-radius: 16px;
-  background: var(--surface-container-background);
+  border-radius: 12px;
   overflow: hidden;
 }
 
