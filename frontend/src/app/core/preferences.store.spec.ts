@@ -27,7 +27,7 @@ const URL = '/api/v1/accounts/1001/preferences';
 
 const SAVED: Preferences = {
   accountId: 1001,
-  preferredCurrency: Currency.Inr,
+  preferredCurrency: Currency.Eur,
   channels: [NotificationChannel.Email],
   categories: [NotificationCategory.OrderStatus],
   dateFormat: DateFormat.DdMmYyyy,
@@ -51,6 +51,7 @@ describe('PreferencesStore', () => {
   let http: HttpTestingController;
   let linked: ReturnType<typeof signal<unknown>>;
   let theme: { apply: ReturnType<typeof vi.fn> };
+  let refresh: ReturnType<typeof vi.fn>;
 
   const linkedAccount = {
     linked: true,
@@ -62,12 +63,13 @@ describe('PreferencesStore', () => {
     localStorage.clear();
     linked = signal<unknown>(options.account === undefined ? linkedAccount : options.account);
     theme = { apply: vi.fn() };
+    refresh = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideApiClients(),
-        { provide: AccountOverviewStore, useValue: { linked } },
+        { provide: AccountOverviewStore, useValue: { linked, refresh } },
         { provide: ThemeService, useValue: theme },
       ],
     });
@@ -100,9 +102,9 @@ describe('PreferencesStore', () => {
     await vi.waitFor(() => expect(store.state()).toBe('ready'));
     TestBed.tick();
 
-    expect(store.current().preferredCurrency).toBe(Currency.Inr);
+    expect(store.current().preferredCurrency).toBe(Currency.Eur);
     expect(store.customised()).toBe(true);
-    expect(store.preferredCurrency()).toBe('INR');
+    expect(store.preferredCurrency()).toBe('EUR');
     expect(store.aiAssistantEnabled()).toBe(true);
     expect(store.defaultOrderType()).toBe(OrderType.Limit);
     expect(store.landingRoute()).toBe('/market');
@@ -177,6 +179,35 @@ describe('PreferencesStore', () => {
     expect(store.customised()).toBe(true);
     expect(store.aiAssistantEnabled()).toBe(true);
     expect(theme.apply).toHaveBeenCalledWith(Theme.Light);
+  });
+
+  it('reads the account again after a save that moves it to another currency, and not otherwise', async () => {
+    const store = setUp();
+    http.expectOne(URL).flush(DEFAULTS);
+    await vi.waitFor(() => expect(store.state()).toBe('ready'));
+
+    const same = store.save({ ...store.current(), theme: Theme.Light });
+    http.expectOne(URL).flush({ ...DEFAULTS, theme: Theme.Light, updatedAt: '2026-10-06T11:00:00Z' });
+    await same;
+    expect(refresh).not.toHaveBeenCalled();
+
+    const changed = store.save({ ...store.current(), preferredCurrency: Currency.Usd });
+    const put = http.expectOne(URL);
+    expect(put.request.body.preferredCurrency).toBe(Currency.Usd);
+    put.flush({ ...DEFAULTS, preferredCurrency: Currency.Usd, updatedAt: '2026-10-06T11:05:00Z' });
+    await changed;
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(store.current().preferredCurrency).toBe(Currency.Usd);
+  });
+
+  it('takes the currency from the account while it is loaded, whatever an older row says', async () => {
+    const store = setUp();
+
+    http.expectOne(URL).flush({ ...SAVED, preferredCurrency: Currency.Inr });
+    await vi.waitFor(() => expect(store.state()).toBe('ready'));
+
+    expect(store.preferredCurrency()).toBe('EUR');
   });
 
   it('rejects a save the server refuses, and keeps what it had', async () => {

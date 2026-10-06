@@ -33,7 +33,7 @@ export interface PreferencesServiceInterface {
     getPreferences(accountId: number, extraHttpRequestParams?: any): Observable<Preferences>;
 
     /**
-     * Replace the account\&#39;s preferences
+     * Replace the account\&#39;s preferences (a different currency converts the account)
      * 
      * @endpoint put /api/v1/accounts/{accountId}/preferences
      * @param accountId The numeric account key. Must be an account the token\&#39;s user owns.

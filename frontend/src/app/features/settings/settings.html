@@ -81,7 +81,7 @@
 
         <div class="settings-grid">
           <app-dropdown
-            label="Currency for estimates"
+            label="Account currency"
             inputId="settings-currency"
             [options]="currencyOptions"
             [value]="draft().preferredCurrency"
@@ -112,11 +112,20 @@
 
         @if (differsFromAccount()) {
           <p class="form-hint" data-testid="settings-currency-note">
-            Estimates, such as what a price comes to, will be shown in {{ draft().preferredCurrency }}. Your account
-            stays in {{ accountCurrency() }}: balances, orders and holdings are always kept in it.
+            Saving will move your account from {{ accountCurrency() }} to {{ draft().preferredCurrency }}. Your cash,
+            your purchasing power and the prices on your orders and holdings are converted at today's rate. Market
+            prices stay in the currency they are quoted in, and an order converts them when you buy or sell.
           </p>
+          @if (openOrders() > 0) {
+            <p class="form-error-text" data-testid="settings-currency-blocked">
+              You have {{ openOrders() }} open {{ openOrders() === 1 ? 'order' : 'orders' }}. The currency can change once
+              {{ openOrders() === 1 ? 'it is' : 'they are' }} filled or cancelled.
+            </p>
+          }
         } @else {
-          <p class="form-hint">Your account is in {{ accountCurrency() }}; balances, orders and holdings always stay in it.</p>
+          <p class="form-hint">
+            Your account is in {{ accountCurrency() }}. Choosing another converts your account when you save.
+          </p>
         }
 
         <dl class="settings-preview" aria-label="Preview of your formats" data-testid="settings-preview">

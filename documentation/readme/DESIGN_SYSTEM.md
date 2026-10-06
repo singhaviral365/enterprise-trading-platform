@@ -723,7 +723,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
 |---|---|---|
 | Channel of communication (SMS, Email, In-application, No notifications) | `app-multiselect` | Stored; the notification path reads it through `PreferenceResolver` (Java, in-process) |
 | Notification categories | `app-multiselect` | Stored, same as above |
-| Currency for estimates | `app-dropdown` | `QuoteSummary`'s "≈" line. The account's own currency never changes |
+| Account currency | `app-dropdown` | Converts the real account on save (after a confirmation); the whole UI then follows the account |
 | Date, time, number format | `app-dropdown` | The formatting pipes, `Intl` in the charts and the chart tooltip |
 | AI assistant | `app-dropdown` | `app-chat-assistant` (the icon) in the app shell |
 | Theme, landing page, order ticket type | `app-dropdown` | `ThemeService.apply`, `AuthDialog` / `guestGuard`, `OrderTicket` |

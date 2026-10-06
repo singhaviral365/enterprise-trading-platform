@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AccountOverviewStore } from '../../core/account-overview.store';
+import { DialogService } from '../../core/dialog.service';
 import { NotificationService } from '../../core/notification.service';
 import {
   DateFormat,
@@ -24,6 +25,8 @@ describe('Settings', () => {
   let save: ReturnType<typeof vi.fn>;
   let reload: ReturnType<typeof vi.fn>;
   let notifications: { success: ReturnType<typeof vi.fn> };
+  let confirm: ReturnType<typeof vi.fn>;
+  let workingOrders: ReturnType<typeof signal<number>>;
 
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
   const button = (label: string) =>
@@ -49,6 +52,8 @@ describe('Settings', () => {
     save = vi.fn(async (values: ReturnType<typeof defaultPreferences>) => current.set(values));
     reload = vi.fn();
     notifications = { success: vi.fn() };
+    confirm = vi.fn(async () => true);
+    workingOrders = signal(0);
     await TestBed.configureTestingModule({
       imports: [Settings],
       providers: [
@@ -63,9 +68,11 @@ describe('Settings', () => {
             data: { isLoading: () => false, hasValue: () => true },
             errorMessage: () => '',
             reload: vi.fn(),
+            workingOrders,
           },
         },
         { provide: NotificationService, useValue: notifications },
+        { provide: DialogService, useValue: { confirm } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Settings);
@@ -198,14 +205,77 @@ describe('Settings', () => {
       expect(save).not.toHaveBeenCalled();
     });
 
-    it('says that estimates change but the account does not, when another currency is chosen', async () => {
+    it('says the account will be converted when another currency is chosen', async () => {
       await create();
       expect(byTestId('settings-currency-note')).toBeNull();
 
       await pick('settings-currency', 'EUR');
 
-      expect(byTestId('settings-currency-note')?.textContent).toContain('shown in EUR');
-      expect(byTestId('settings-currency-note')?.textContent).toContain('stays in USD');
+      expect(byTestId('settings-currency-note')?.textContent).toContain('from USD to EUR');
+      expect(byTestId('settings-currency-note')?.textContent).toContain("today's rate");
+      expect(byTestId('settings-currency-blocked')).toBeNull();
+    });
+
+    it('warns about open orders, which stop the change', async () => {
+      await create();
+      workingOrders.set(2);
+      await pick('settings-currency', 'EUR');
+
+      expect(byTestId('settings-currency-blocked')?.textContent).toContain('2 open orders');
+    });
+  });
+
+  describe('changing the account currency', () => {
+    it('asks first, naming both currencies and what is converted, and saves on a yes', async () => {
+      await create();
+      await pick('settings-currency', 'EUR');
+
+      await click(byTestId('settings-save')!);
+
+      expect(confirm).toHaveBeenCalledTimes(1);
+      const asked = confirm.mock.calls[0][0];
+      expect(asked.message).toContain('from USD to EUR');
+      expect(asked.message).toContain('purchasing power');
+      expect(asked.cancelText).toBe('Keep USD');
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save.mock.calls[0][0].preferredCurrency).toBe('EUR');
+      expect(notifications.success).toHaveBeenCalledWith('Settings saved. Your account is now in EUR.');
+    });
+
+    it('saves nothing on a no, and keeps the edit', async () => {
+      await create();
+      confirm.mockResolvedValueOnce(false);
+      await pick('settings-currency', 'EUR');
+
+      await click(byTestId('settings-save')!);
+
+      expect(save).not.toHaveBeenCalled();
+      expect(root.querySelector<HTMLSelectElement>('#settings-currency')!.value).toBe('EUR');
+    });
+
+    it('does not ask when nothing about the currency changed', async () => {
+      await create();
+      await pick('settings-theme', Theme.Dark);
+
+      await click(byTestId('settings-save')!);
+
+      expect(confirm).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['ACC-409', 409, 'open orders'],
+      ['FX-503', 503, 'exchange rate'],
+    ])('explains a %s refusal in plain words', async (errorCode, status, phrase) => {
+      await create();
+      save.mockRejectedValueOnce(
+        new HttpErrorResponse({ status, statusText: 'x', error: { errorCode, message: 'x' } }),
+      );
+      await pick('settings-currency', 'EUR');
+
+      await click(byTestId('settings-save')!);
+
+      expect(byTestId('settings-save-error')?.textContent).toContain(phrase);
     });
   });
 

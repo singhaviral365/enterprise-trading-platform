@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS customer_preference (
         ON DELETE CASCADE
 );
 
--- Display currency for estimates. The account's own currency (account.currency) never changes: balances, orders and
--- holdings are stored in it (see documentation/readme/CURRENCY.md).
+-- The customer's currency, kept equal to account.currency. Saving a different one converts the account (balance, purchasing
+-- power, order and holding prices) in the Trade API; see documentation/readme/CURRENCY.md. The account is the source of truth.
 ALTER TABLE customer_preference
     ADD COLUMN IF NOT EXISTS preferred_currency CHAR(3) NOT NULL DEFAULT 'USD'
         CONSTRAINT chk_customer_preference_currency CHECK (preferred_currency ~ '^[A-Z]{3}$');
@@ -46,6 +46,17 @@ ALTER TABLE customer_preference
 ALTER TABLE customer_preference
     ADD COLUMN IF NOT EXISTS time_format VARCHAR(3) NOT NULL DEFAULT 'H12'
         CONSTRAINT chk_customer_preference_time_format CHECK (time_format IN ('H12', 'H24'));
+
+-- Self-heal: an earlier draft named the codes 12H / 24H, and ADD COLUMN IF NOT EXISTS leaves an existing column (and its
+-- old check constraint and default) untouched. Convert any old values, then put the current constraint and default in place.
+ALTER TABLE customer_preference
+    DROP CONSTRAINT IF EXISTS chk_customer_preference_time_format;
+UPDATE customer_preference SET time_format = 'H12' WHERE time_format = '12H';
+UPDATE customer_preference SET time_format = 'H24' WHERE time_format = '24H';
+ALTER TABLE customer_preference
+    ALTER COLUMN time_format SET DEFAULT 'H12';
+ALTER TABLE customer_preference
+    ADD CONSTRAINT chk_customer_preference_time_format CHECK (time_format IN ('H12', 'H24'));
 ALTER TABLE customer_preference
     ADD COLUMN IF NOT EXISTS number_format VARCHAR(2) NOT NULL DEFAULT 'US'
         CONSTRAINT chk_customer_preference_number_format CHECK (number_format IN ('US', 'IN'));

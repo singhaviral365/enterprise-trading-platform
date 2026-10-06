@@ -18,7 +18,7 @@ info:
 
     | Setting | Values | Default |
     |---|---|---|
-    | `preferredCurrency` | one of the supported currencies | the account's own currency |
+    | `preferredCurrency` | one of the supported currencies; this **is the account's currency** | the account's own currency |
     | `channels` | any of `SMS`, `EMAIL`, `IN_APP`; an empty array means "No notifications" | `IN_APP` |
     | `categories` | any of `ORDER_STATUS`, `WATCHLIST_ALERTS` | both |
     | `dateFormat` | see the schema | `MON_DD_YYYY` (Oct 6, 2026) |
@@ -29,13 +29,25 @@ info:
     | `landingPage` | `DASHBOARD`, `MARKET`, `POSITIONS`, `ORDERS` | `DASHBOARD` |
     | `defaultOrderType` | `MARKET`, `LIMIT` | `MARKET` |
 
+    ## Changing the currency
+
+    `preferredCurrency` and the account's currency are the same thing. `GET` always returns the account's currency,
+    and a `PUT` with a different one **converts the account** in a single transaction: the balance, the purchasing
+    power, the price of every order and the purchase price of every holding are multiplied by one exchange factor
+    (taken once, from the live rate, to four decimal places). Market data is not touched: quotes stay in the
+    currency their instrument is quoted in, and an order converts them to the account currency when it is placed or
+    filled, as before.
+
+    * An account with an order still `NEW` cannot change currency: `ACC-409`, 409. Nothing is changed.
+    * No exchange rate available: `FX-503`, 503. Nothing is changed.
+    * Each change uses that day's rate, so going from one currency to another and back does not return exactly the
+      original amounts.
+
     ## What is deliberately not here
 
     * **Contact details.** A channel is a switch, not an address. The email address stays in the Auth service, and
       there is no phone number on the platform yet, so `SMS` records the wish but nothing can deliver it until one
       exists. Storing a second copy of either would double the places a leak can happen.
-    * **The account's currency.** `preferredCurrency` is the currency the application *shows estimates in*. The
-      account's own currency never changes: balances, orders and holdings are stored in it.
     * **A route for other modules.** Customer notifications resolve a channel through a Java interface inside the
       Trade REST API, not through these routes.
 
@@ -89,7 +101,7 @@ paths:
     put:
       operationId: replacePreferences
       tags: [Preferences]
-      summary: Replace the account's preferences
+      summary: Replace the account's preferences (a different currency converts the account)
       requestBody:
         required: true
         content:
@@ -109,8 +121,12 @@ paths:
           $ref: '#/components/responses/AccountNotReachable'
         '404':
           $ref: '#/components/responses/AccountNotFound'
+        '409':
+          $ref: '#/components/responses/CurrencyChangeBlocked'
         '422':
           $ref: '#/components/responses/InvalidInput'
+        '503':
+          $ref: '#/components/responses/ExchangeRateUnavailable'
 
 components:
 
@@ -166,6 +182,29 @@ components:
               value:
                 errorCode: ACC-404
                 message: Account not found
+    CurrencyChangeBlocked:
+      description: |
+        The currency differs from the account's, and an order is still `NEW`. Wait until it is filled or cancel it.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            blocked:
+              value:
+                errorCode: ACC-409
+                message: Account currency cannot be changed while orders are open
+    ExchangeRateUnavailable:
+      description: The currency differs from the account's and there is no exchange rate to convert it with.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unavailable:
+              value:
+                errorCode: FX-503
+                message: Exchange rate unavailable
     InvalidInput:
       description: |
         A field is missing, is not one of its allowed values, or the currency is not supported. The message never

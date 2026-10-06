@@ -526,7 +526,7 @@ CREATE TABLE IF NOT EXISTS customer_preference
 (
     account_id              INTEGER PRIMARY KEY,
 
-    -- Display currency for estimates. account.currency never changes (balances and orders are stored in it).
+    -- The customer's currency, kept equal to account.currency. Changing it converts the account (Trade API).
     preferred_currency      CHAR(3) NOT NULL DEFAULT 'USD',
 
     -- Alert channels. All three false means "No notifications".

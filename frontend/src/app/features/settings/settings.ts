@@ -3,7 +3,8 @@ import { Component, computed, inject, linkedSignal, signal } from '@angular/core
 
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { AuthDialogService } from '../../core/auth-dialog.service';
-import { describeError } from '../../core/errors/describe-error';
+import { DialogService } from '../../core/dialog.service';
+import { describeError, errorCodeOf } from '../../core/errors/describe-error';
 import { NotificationService } from '../../core/notification.service';
 import {
   CATEGORY_OPTIONS,
@@ -62,6 +63,7 @@ export class Settings {
   protected readonly accounts = inject(AccountOverviewStore);
   private readonly authDialog = inject(AuthDialogService);
   private readonly notifications = inject(NotificationService);
+  private readonly dialog = inject(DialogService);
 
   /** What the form is editing. It starts again from the stored values whenever those change (a load, a save). */
   protected readonly draft = linkedSignal<PreferenceValues>(() => this.store.current());
@@ -116,11 +118,13 @@ export class Settings {
     };
   });
 
-  /** True when estimates will be shown in a currency other than the account's own, which is worth saying. */
+  /** True when saving would move the account to another currency, which is worth saying (and confirming). */
   protected readonly differsFromAccount = computed(() => {
     const account = this.accounts.linked()?.overview.balance.currency;
     return !!account && account !== this.draft().preferredCurrency;
   });
+  /** True while an order is still open: the account cannot change currency until it is filled or cancelled. */
+  protected readonly openOrders = computed(() => this.accounts.workingOrders());
   protected readonly accountCurrency = computed(() => this.accounts.linked()?.overview.balance.currency ?? null);
 
   // ---- Edits -------------------------------------------------------------------------------------------------------
@@ -185,20 +189,53 @@ export class Settings {
     if (this.saving() || !this.dirty()) {
       return;
     }
+    const from = this.accountCurrency();
+    const to = this.draft().preferredCurrency;
+    if (from && from !== to && !(await this.confirmCurrencyChange(from, to))) {
+      return;
+    }
     this.saving.set(true);
     this.saveError.set('');
     try {
       await this.store.save(valuesOf(this.draft()));
-      this.notifications.success('Settings saved');
+      this.notifications.success(
+        from && from !== to ? `Settings saved. Your account is now in ${to}.` : 'Settings saved',
+      );
     } catch (error) {
-      this.saveError.set(describeError(error));
+      this.saveError.set(saveErrorMessage(error));
     } finally {
       this.saving.set(false);
     }
   }
 
+  /** Moving the account to another currency converts real amounts, so it is never done without a yes. */
+  private confirmCurrencyChange(from: string, to: string): Promise<boolean> {
+    return this.dialog.confirm({
+      title: 'Change your account currency?',
+      type: 'warning',
+      message:
+        `Your account will move from ${from} to ${to}. Your cash balance, your purchasing power and the prices on ` +
+        `your orders and holdings are converted at today's exchange rate. Market prices stay in the currency they ` +
+        `are quoted in. Changing back later uses that day's rate, so the amounts will not return exactly.`,
+      confirmText: 'Change currency',
+      cancelText: `Keep ${from}`,
+    });
+  }
+
   protected openAccountSetup(): void {
     this.authDialog.open('account');
+  }
+}
+
+/** The sentences for what saving can be refused for. Anything else is worded by the shared error map. */
+function saveErrorMessage(error: unknown): string {
+  switch (errorCodeOf(error)) {
+    case 'ACC-409':
+      return 'You still have open orders. Your account can change currency once they are filled or cancelled.';
+    case 'FX-503':
+      return 'We cannot get an exchange rate right now, so nothing was changed. Please try again shortly.';
+    default:
+      return describeError(error);
   }
 }
 

@@ -260,7 +260,7 @@ email address or phone number is stored here.
 |---|---|---|
 | pk (account_id) | account_id | One row per account |
 | fk_customer_preference_account | account_id | References account(account_id), ON DELETE CASCADE |
-| chk_customer_preference_currency | preferred_currency | Three capital letters. The *display* currency for estimates; `account.currency` never changes |
+| chk_customer_preference_currency | preferred_currency | Three capital letters. Kept equal to `account.currency`; saving a different one converts the account (see CURRENCY.md) |
 | chk_customer_preference_date_format | date_format | DD_MM_YYYY, MM_DD_YYYY, DD_MONTH_YYYY, DD_MON_YYYY, YYYY_MM_DD, MON_DD_YYYY |
 | chk_customer_preference_time_format | time_format | H12 or H24 |
 | chk_customer_preference_number_format | number_format | US or IN |

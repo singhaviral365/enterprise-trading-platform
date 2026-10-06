@@ -132,3 +132,7 @@ account in the token's user compared with the path on both routes (`ACC-403` / `
 details are deliberately not part of it. Arrays are not marked `uniqueItems`, so the generator types them as arrays
 rather than `Set`s that JSON would never produce. Code: `org.example.backend.preferences`.
 
+**Currency is the account's currency.** `preferredCurrency` always equals `account.currency`; a `PUT` with another one converts the
+account (balance, purchasing power, order and holding prices) in one transaction at the live rate. Added `409` (`ACC-409`, an order is
+still NEW) and `503` (`FX-503`, no exchange rate) to `PUT`. Market data keeps the currency it is quoted in.
+

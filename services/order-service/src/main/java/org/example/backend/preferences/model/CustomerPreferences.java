@@ -43,6 +43,13 @@ public record CustomerPreferences(
                 OrderTypeOption.MARKET);
     }
 
+    /** The same preferences with another currency (the account's, which is the source of truth for it). */
+    public CustomerPreferences withPreferredCurrency(String currency) {
+        return new CustomerPreferences(
+                currency, channels, categories, dateFormat, timeFormat, numberFormat, aiAssistantEnabled, theme,
+                landingPage, defaultOrderType);
+    }
+
     private static <E extends Enum<E>> Set<E> copyOf(Set<E> source, Class<E> type) {
         EnumSet<E> copy = EnumSet.noneOf(type);
         if (source != null) {

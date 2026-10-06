@@ -4,6 +4,7 @@ import org.example.backend.controller.ApiExceptionHandler;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.preferences.dto.PreferencesResponse;
 import org.example.backend.preferences.dto.UpdatePreferencesRequest;
+import org.example.backend.preferences.exceptions.CurrencyChangeBlockedException;
 import org.example.backend.preferences.exceptions.PreferencesAccessDeniedException;
 import org.example.backend.preferences.exceptions.UnsupportedCurrencyException;
 import org.example.backend.preferences.model.CustomerPreferences;
@@ -142,5 +143,17 @@ class PreferencesControllerTest {
                     .andExpect(jsonPath("$.errorCode").value("VAL-422"));
         }
         verify(service, never()).update(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void changingTheCurrencyWhileOrdersAreOpenIs409() throws Exception {
+        when(service.update(anyLong(), anyLong(), any())).thenThrow(new CurrencyChangeBlockedException(1001L, 1L));
+
+        mockMvc.perform(put(URL)
+                        .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 7L)
+                        .contentType("application/json")
+                        .content(VALID_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("ACC-409"));
     }
 }

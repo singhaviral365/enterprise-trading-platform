@@ -25,6 +25,15 @@
         </constructor>
     </resultMap>
 
+    <resultMap id="AccountMoneyResultMap" type="org.example.backend.preferences.model.AccountMoney">
+        <constructor>
+            <arg column="currency" javaType="String" name="currency"/>
+            <arg column="balance" javaType="java.math.BigDecimal" name="balance"/>
+            <arg column="purchasing_power" javaType="java.math.BigDecimal" name="purchasingPower"/>
+            <arg column="version" javaType="_long" name="version"/>
+        </constructor>
+    </resultMap>
+
     <!-- A primary-key lookup: one row, no joins, no scan. -->
     <select id="selectByAccountId" resultMap="PreferenceRowResultMap">
         SELECT
@@ -100,5 +109,45 @@
             default_order_type = EXCLUDED.default_order_type,
             updated_at = CURRENT_TIMESTAMP
     </insert>
+
+    <!-- ===== Changing the account currency (one transaction, see PreferencesService.update) ===== -->
+
+    <!-- FOR UPDATE: a fill or another currency change on this account waits until this transaction ends. -->
+    <select id="selectAccountMoneyForUpdate" resultMap="AccountMoneyResultMap">
+        SELECT currency, balance, purchasing_power, version
+        FROM account
+        WHERE account_id = #{accountId}
+        FOR UPDATE
+    </select>
+
+    <select id="countOpenOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM orders
+        WHERE account_id = #{accountId}
+          AND order_status = 'NEW'
+    </select>
+
+    <!-- The version check and bump make a concurrent fill fail its own optimistic lock and retry, never overwrite. -->
+    <update id="updateAccountCurrency">
+        UPDATE account
+        SET currency = #{currency},
+            balance = #{balance},
+            purchasing_power = #{purchasingPower},
+            version = version + 1
+        WHERE account_id = #{accountId}
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="convertOrderPrices">
+        UPDATE orders
+        SET price = GREATEST(ROUND(price * CAST(#{factor} AS NUMERIC), 4), 0.0001)
+        WHERE account_id = #{accountId}
+    </update>
+
+    <update id="convertHoldingPrices">
+        UPDATE holdings
+        SET purchase_price = ROUND(purchase_price * CAST(#{factor} AS NUMERIC), 4)
+        WHERE account_id = #{accountId}
+    </update>
 
 </mapper>
