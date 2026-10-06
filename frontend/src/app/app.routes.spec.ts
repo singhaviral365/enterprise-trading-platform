@@ -26,7 +26,7 @@ describe('app routes', () => {
     expect(document.title).toBe('Trading Platform');
   });
 
-  it.each(['/dashboard', '/market', '/orders', '/positions', '/showcase'])(
+  it.each(['/dashboard', '/market', '/orders', '/positions', '/settings', '/showcase'])(
     'keeps a guest out of %s and opens sign-in',
     async (path) => {
       await RouterTestingHarness.create(path);

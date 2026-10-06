@@ -37,6 +37,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/positions/positions').then((m) => m.Positions),
       },
       {
+        path: 'settings',
+        title: 'Settings | Trading Platform',
+        loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),
+      },
+      {
         // Preview page for the shared UI components. Safe to delete along with ./showcase.
         path: 'showcase',
         title: 'Component showcase',
