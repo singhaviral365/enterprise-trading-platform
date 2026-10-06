@@ -1,0 +1,51 @@
+/* Fixed to the bottom-right corner, above the page but below dialogs and notifications. */
+:host {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: var(--footer-z);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.assistant-trigger {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+.assistant-panel {
+  width: min(340px, calc(100vw - 48px));
+  padding: 16px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+}
+
+.assistant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.assistant-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+}
+
+.assistant-message {
+  margin: 0 0 8px;
+}
+
+.assistant-panel .form-hint {
+  margin: 0;
+}
