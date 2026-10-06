@@ -1,5 +1,6 @@
 import { Component, computed, inject, input, linkedSignal, output, resource, signal } from '@angular/core';
 import { OrderSide } from '../../../api/generated/trade';
+import { FormatPreferences } from '../../../core/format-preferences';
 import { MarketError, MarketService } from '../../../core/market.service';
 import type { MarketRow } from '../../../core/market-row';
 import { LineChart, LinePoint } from '../../../shared/ui/line-chart/line-chart';
@@ -19,6 +20,7 @@ import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
 })
 export class QuoteDetail {
   private readonly market = inject(MarketService);
+  private readonly formats = inject(FormatPreferences);
 
   readonly row = input.required<MarketRow>();
   /** The pane's close button (or a finished order) asks for the detail to be dismissed. */
@@ -84,13 +86,13 @@ export class QuoteDetail {
     if (!currency) {
       return (value: number) => value.toFixed(2);
     }
-    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency });
+    const formatter = new Intl.NumberFormat(this.formats.locale(), { style: 'currency', currency });
     return (value: number) => formatter.format(value);
   });
 
   protected readonly formatAxis = computed(() => {
     const currency = this.chartCurrency();
-    const formatter = new Intl.NumberFormat('en-US', {
+    const formatter = new Intl.NumberFormat(this.formats.locale(), {
       ...(currency ? { style: 'currency' as const, currency } : {}),
       maximumFractionDigits: 0,
     });

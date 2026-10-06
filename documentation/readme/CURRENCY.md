@@ -93,3 +93,27 @@ icon paths.
 4. **ETL / analytics** (`etl/`) read `orders.price` and `holdings.purchase_price`, which are account-currency, mixed
    across accounts. Aggregating across accounts needs a conversion (or a currency column in `fact_trades`).
 5. **Dashboard totals** are fine: they sum account-currency numbers of one account.
+
+## Changing the account currency (Settings)
+
+A customer can move their account to another currency in Settings (`PUT /api/v1/accounts/{id}/preferences`). The rule above
+still holds afterwards, because the Trade API converts everything that is stored in the account currency in one
+transaction, with **one exchange factor taken once** (`CurrencyConversionService`), to four decimal places:
+
+| What | Column |
+|---|---|
+| Cash balance | `account.balance` |
+| Purchasing power | `account.purchasing_power` |
+| Every order's price | `orders.price` (kept at the 0.0001 minimum if it would round to zero) |
+| Every holding's purchase price | `holdings.purchase_price` |
+
+`account.currency` is set to the new code and `account.version` is incremented, so a fill running at the same moment
+fails its optimistic-lock check and retries against the converted account.
+
+- **Refused while an order is NEW** (`ACC-409`, 409): it is waiting to be filled in the old currency.
+- **Refused without an exchange rate** (`FX-503`, 503): nothing is changed.
+- **Market data is not converted.** Quotes stay in the currency their instrument is quoted in (the market board still shows
+  INR for INFY.NS). Only buying or selling converts to the account currency, exactly as in the table above.
+- **It is not an exact round trip.** EUR to USD and back uses each day's rate, so the amounts differ slightly.
+- The UI asks for confirmation first, naming both currencies, and reads the account again afterwards.
+

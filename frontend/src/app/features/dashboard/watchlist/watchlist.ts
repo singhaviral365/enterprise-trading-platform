@@ -1,4 +1,3 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, linkedSignal, resource, signal } from '@angular/core';
 import { AccountOverviewStore, accountIdFromNumber } from '../../../core/account-overview.store';
 import { DialogService } from '../../../core/dialog.service';
@@ -18,6 +17,7 @@ import {
 import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
+import { PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 /** The backend refreshes prices about once a minute; polling twice as often keeps the screen close behind it. */
 const REFRESH_MS = 30_000;
@@ -27,7 +27,7 @@ type NameForm = 'create' | 'rename';
 /** Customer watchlists with the latest price beside each stock. Prices come from the Trade API, never computed here. */
 @Component({
   selector: 'app-watchlist',
-  imports: [DatePipe, DecimalPipe, InstrumentIcon, Spinner, Tooltip],
+  imports: [PreferenceDatePipe, PreferenceDecimalPipe, InstrumentIcon, Spinner, Tooltip],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.css',
 })

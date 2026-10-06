@@ -607,4 +607,73 @@ VALUES
 );
 
 
+-- ============================================================
+-- 6. CUSTOMER PREFERENCE - 10 rows (one per sample account)
+-- ============================================================
+-- Each account's preferred currency is its own currency. The formats and switches vary a little so every option
+-- has an example. Accounts with no row would simply use the defaults.
+
+INSERT INTO customer_preference
+(
+    account_id,
+    preferred_currency,
+    channel_sms,
+    channel_email,
+    channel_in_app,
+    notify_order_status,
+    notify_watchlist_alerts,
+    date_format,
+    time_format,
+    number_format,
+    ai_assistant_enabled,
+    theme,
+    landing_page,
+    default_order_type
+)
+SELECT
+    a.account_id,
+    a.currency,
+    p.channel_sms,
+    p.channel_email,
+    p.channel_in_app,
+    p.notify_order_status,
+    p.notify_watchlist_alerts,
+    p.date_format,
+    p.time_format,
+    p.number_format,
+    p.ai_assistant_enabled,
+    p.theme,
+    p.landing_page,
+    p.default_order_type
+FROM (VALUES
+    (1001, FALSE, TRUE,  TRUE,  TRUE,  TRUE,  'DD_MM_YYYY',    'H24', 'US', TRUE,  'SYSTEM', 'DASHBOARD', 'MARKET'),
+    (1002, FALSE, FALSE, TRUE,  TRUE,  FALSE, 'MM_DD_YYYY',    'H12', 'US', FALSE, 'LIGHT',  'MARKET',    'LIMIT'),
+    (1003, TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  'DD_MONTH_YYYY', 'H24', 'IN', TRUE,  'DARK',   'POSITIONS', 'MARKET'),
+    (1004, FALSE, TRUE,  FALSE, TRUE,  TRUE,  'YYYY_MM_DD',    'H24', 'US', FALSE, 'SYSTEM', 'ORDERS',    'LIMIT'),
+    (1005, FALSE, FALSE, FALSE, FALSE, FALSE, 'DD_MON_YYYY',   'H12', 'IN', FALSE, 'SYSTEM', 'DASHBOARD', 'MARKET'),
+    (1006, TRUE,  FALSE, TRUE,  TRUE,  TRUE,  'MON_DD_YYYY',   'H12', 'US', TRUE,  'DARK',   'DASHBOARD', 'MARKET'),
+    (1007, FALSE, TRUE,  TRUE,  FALSE, TRUE,  'DD_MM_YYYY',    'H24', 'US', FALSE, 'LIGHT',  'MARKET',    'MARKET'),
+    (1008, FALSE, FALSE, TRUE,  TRUE,  TRUE,  'MM_DD_YYYY',    'H12', 'US', FALSE, 'SYSTEM', 'DASHBOARD', 'LIMIT'),
+    (1009, TRUE,  TRUE,  FALSE, TRUE,  FALSE, 'DD_MONTH_YYYY', 'H24', 'IN', TRUE,  'SYSTEM', 'POSITIONS', 'MARKET'),
+    (1010, FALSE, FALSE, TRUE,  TRUE,  TRUE,  'MON_DD_YYYY',   'H12', 'US', FALSE, 'DARK',   'ORDERS',    'MARKET')
+) AS p
+(
+    account_id,
+    channel_sms,
+    channel_email,
+    channel_in_app,
+    notify_order_status,
+    notify_watchlist_alerts,
+    date_format,
+    time_format,
+    number_format,
+    ai_assistant_enabled,
+    theme,
+    landing_page,
+    default_order_type
+)
+JOIN account a ON a.account_id = p.account_id
+ON CONFLICT (account_id) DO NOTHING;
+
+
 COMMIT;

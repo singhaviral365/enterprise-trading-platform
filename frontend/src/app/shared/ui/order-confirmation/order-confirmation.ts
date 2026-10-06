@@ -1,12 +1,12 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
 import { OrderPricingType, OrderResponse, OrderSide, OrderStatus } from '../../../api/generated/trade';
 import { OrderStatusBadge } from '../order-status/order-status';
+import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/preference-pipes';
 
 /** Shown after an order is accepted by the Trade API: order number, status and what was sent. */
 @Component({
   selector: 'app-order-confirmation',
-  imports: [CurrencyPipe, DecimalPipe, OrderStatusBadge],
+  imports: [PreferenceCurrencyPipe, PreferenceDecimalPipe, OrderStatusBadge],
   templateUrl: './order-confirmation.html',
   styleUrl: './order-confirmation.css',
 })

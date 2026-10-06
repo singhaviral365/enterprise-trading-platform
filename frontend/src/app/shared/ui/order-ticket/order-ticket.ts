@@ -1,4 +1,3 @@
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, model, output, signal } from '@angular/core';
 import { FormField, form, required, submit, validate } from '@angular/forms/signals';
 import { firstValueFrom } from 'rxjs';
@@ -10,9 +9,12 @@ import { describeError } from '../../../core/errors/describe-error';
 import { newIdempotencyKey } from '../../../core/idempotency-key';
 import { MarketService, convertCurrency } from '../../../core/market.service';
 import type { MarketRow } from '../../../core/market-row';
+import { OrderType } from '../../../core/preferences';
+import { PreferencesStore } from '../../../core/preferences.store';
 import { OrderConfirmation } from '../order-confirmation/order-confirmation';
 import { SideToggle } from '../side-toggle/side-toggle';
 import { Spinner } from '../spinner/spinner';
+import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/preference-pipes';
 
 interface TicketModel {
   quantity: string;
@@ -28,7 +30,7 @@ const MAX_QUANTITY = 1_000_000;
  */
 @Component({
   selector: 'app-order-ticket',
-  imports: [CurrencyPipe, DecimalPipe, FormField, OrderConfirmation, SideToggle, Spinner],
+  imports: [PreferenceCurrencyPipe, PreferenceDecimalPipe, FormField, OrderConfirmation, SideToggle, Spinner],
   templateUrl: './order-ticket.html',
   styleUrl: './order-ticket.css',
 })
@@ -37,6 +39,7 @@ export class OrderTicket {
   private readonly authDialog = inject(AuthDialogService);
   private readonly market = inject(MarketService);
   protected readonly store = inject(AccountOverviewStore);
+  private readonly preferences = inject(PreferencesStore);
 
   /** Exposed so the template compares against the generated enums, never string literals. */
   protected readonly OrderSide = OrderSide;
@@ -51,7 +54,10 @@ export class OrderTicket {
   /** The user dismissed the confirmation of a placed order. */
   readonly done = output<OrderResponse>();
 
-  protected readonly orderType = signal<OrderPricingType>(OrderPricingType.Market);
+  /** Starts on the type the customer chose in Settings (market unless they said otherwise). */
+  protected readonly orderType = signal<OrderPricingType>(
+    this.preferences.defaultOrderType() === OrderType.Limit ? OrderPricingType.Limit : OrderPricingType.Market,
+  );
   protected readonly placed = signal<OrderResponse | null>(null);
   protected readonly serverError = signal('');
   /** One key per order attempt, so a retry after a network error cannot create a second order. */

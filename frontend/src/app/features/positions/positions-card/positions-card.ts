@@ -1,7 +1,7 @@
-import { CurrencyPipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
 import { InstrumentLabel } from '../../../shared/ui/instrument-label/instrument-label';
 import { PositionRow } from '../position-row';
+import { PreferenceCurrencyPipe } from '../../../shared/formatting/preference-pipes';
 
 /**
  * Card view of the positions: one clickable card per holding showing its logo, symbol, name and cost basis,
@@ -10,7 +10,7 @@ import { PositionRow } from '../position-row';
  */
 @Component({
   selector: 'app-positions-card',
-  imports: [CurrencyPipe, InstrumentLabel],
+  imports: [PreferenceCurrencyPipe, InstrumentLabel],
   templateUrl: './positions-card.html',
   styleUrl: './positions-card.css',
 })

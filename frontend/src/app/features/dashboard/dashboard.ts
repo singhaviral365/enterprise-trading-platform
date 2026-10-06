@@ -1,9 +1,9 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AccountStatus, OrderSide, OrderStatus } from '../../api/generated/trade';
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { AuthDialogService } from '../../core/auth-dialog.service';
+import { FormatPreferences } from '../../core/format-preferences';
 import { investedOverTime } from '../../core/invested-history';
 import { newestFirst } from '../../core/order-history';
 import { SessionService } from '../../core/session.service';
@@ -13,6 +13,7 @@ import { InstrumentLabel } from '../../shared/ui/instrument-label/instrument-lab
 import { OrderStatusBadge } from '../../shared/ui/order-status/order-status';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 import { WatchlistPanel } from './watchlist/watchlist';
+import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../shared/formatting/preference-pipes';
 
 /** How many orders the Recent orders panel shows; the full list lives on the Order history page. */
 const RECENT_ORDER_LIMIT = 5;
@@ -37,9 +38,9 @@ export const OTHER_SLICE = 'Other';
 @Component({
   selector: 'app-dashboard',
   imports: [
-    CurrencyPipe,
-    DatePipe,
-    DecimalPipe,
+    PreferenceCurrencyPipe,
+    PreferenceDatePipe,
+    PreferenceDecimalPipe,
     DonutChart,
     InstrumentLabel,
     LineChart,
@@ -59,6 +60,7 @@ export class Dashboard {
   protected readonly session = inject(SessionService);
   private readonly store = inject(AccountOverviewStore);
   private readonly authDialog = inject(AuthDialogService);
+  private readonly formats = inject(FormatPreferences);
 
   protected readonly data = this.store.data;
   protected readonly linked = this.store.linked;
@@ -110,13 +112,13 @@ export class Dashboard {
 
   /** Money for the chart's legend, tooltip and centre, in the account currency. */
   protected readonly formatMoney = computed(() => {
-    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: this.currency() });
+    const formatter = new Intl.NumberFormat(this.formats.locale(), { style: 'currency', currency: this.currency() });
     return (value: number) => formatter.format(value);
   });
 
   /** Short axis labels ("$3K") so the value axis takes little room. */
   protected readonly formatAxis = computed(() => {
-    const formatter = new Intl.NumberFormat('en-US', {
+    const formatter = new Intl.NumberFormat(this.formats.locale(), {
       style: 'currency',
       currency: this.currency(),
       notation: 'compact',

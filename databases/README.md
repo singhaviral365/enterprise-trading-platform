@@ -11,6 +11,7 @@ Main tables:
 4. instrument
 5. orders
 6. holdings
+7. customer_preference
 
 ---
 
@@ -245,6 +246,39 @@ CHECK (quantity > 0)
 ```sql
 CHECK (purchase_price >= 0)
 ```
+
+---
+
+
+## 9. Table: customer_preference
+
+One row per account, created the first time the customer saves their settings. **No row means "all defaults"**: the Trade
+API answers with them, so nothing has to be seeded for the module to work. It holds switches and display choices only; no
+email address or phone number is stored here.
+
+| Constraint | Column | Rule |
+|---|---|---|
+| pk (account_id) | account_id | One row per account |
+| fk_customer_preference_account | account_id | References account(account_id), ON DELETE CASCADE |
+| chk_customer_preference_currency | preferred_currency | Three capital letters. Kept equal to `account.currency`; saving a different one converts the account (see CURRENCY.md) |
+| chk_customer_preference_date_format | date_format | DD_MM_YYYY, MM_DD_YYYY, DD_MONTH_YYYY, DD_MON_YYYY, YYYY_MM_DD, MON_DD_YYYY |
+| chk_customer_preference_time_format | time_format | H12 or H24 |
+| chk_customer_preference_number_format | number_format | US or IN |
+| chk_customer_preference_theme | theme | LIGHT, DARK or SYSTEM |
+| chk_customer_preference_landing_page | landing_page | DASHBOARD, MARKET, POSITIONS or ORDERS |
+| chk_customer_preference_order_type | default_order_type | MARKET or LIMIT |
+
+Channels (`channel_sms`, `channel_email`, `channel_in_app`) and categories (`notify_order_status`,
+`notify_watchlist_alerts`) are one boolean column each. All three channels false means "No notifications".
+
+**Upgrading an existing database** (nothing is dropped; safe to run twice):
+
+```bash
+psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/add_customer_preferences.sql
+```
+
+A new database gets the table from `create_schema.sql` and sample rows from `sample_data.sql`. The order-service also runs
+`preferences-schema.sql` (the same idempotent statements, without the back-fill) every time it starts.
 
 ---
 

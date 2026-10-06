@@ -2,9 +2,11 @@ import { Component, ElementRef, computed, effect, inject, viewChild } from '@ang
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { TradeApi } from '../../../api/trade-api.service';
+import { accountIdFromNumber } from '../../../core/account-overview.store';
 import { AuthDialogService, AuthMode } from '../../../core/auth-dialog.service';
 import { NotificationService } from '../../../core/notification.service';
 import { safeReturnUrl } from '../../../core/guards/return-url';
+import { PreferencesStore } from '../../../core/preferences.store';
 import { SessionService } from '../../../core/session.service';
 import { AccountSetupForm } from '../account-setup-form/account-setup-form';
 import { LoginForm } from '../login-form/login-form';
@@ -39,6 +41,9 @@ export class AuthDialog {
   private readonly session = inject(SessionService);
   private readonly notifications = inject(NotificationService);
   private readonly router = inject(Router);
+  private readonly preferences = inject(PreferencesStore);
+  /** The account the sign-in check found, so the page to open on can be read before the dialog closes. */
+  private linkedAccountNumber: string | null = null;
   private readonly element = viewChild<ElementRef<HTMLDialogElement>>('dialogElement');
 
   protected readonly modes: readonly { id: AuthMode; label: string }[] = [
@@ -65,8 +70,11 @@ export class AuthDialog {
 
   protected async onSignedIn({ username, email }: SignedInEvent): Promise<void> {
     let linked = true;
+    this.linkedAccountNumber = null;
     try {
-      linked = (await firstValueFrom(this.trade.accountLink())).linked;
+      const link = await firstValueFrom(this.trade.accountLink());
+      linked = link.linked;
+      this.linkedAccountNumber = link.linked ? (link.accountNumber ?? null) : null;
     } catch {
       // Trade API unavailable: carry on to the dashboard, which reports the problem and can retry.
     }
@@ -94,9 +102,21 @@ export class AuthDialog {
   }
 
   private async finish(): Promise<void> {
-    const target = safeReturnUrl(this.authDialog.returnUrl()) ?? '/dashboard';
+    const target = safeReturnUrl(this.authDialog.returnUrl()) ?? (await this.landingPage());
     this.authDialog.close();
     await this.router.navigateByUrl(target);
+  }
+
+  /**
+   * The page the customer chose to open on, when they came here without a page in mind. The preferences are read now
+   * rather than waited for, so the very first page is the right one; a slow or failed read just means the dashboard.
+   */
+  private async landingPage(): Promise<string> {
+    const accountId = accountIdFromNumber(this.linkedAccountNumber);
+    if (accountId === null) {
+      return '/dashboard';
+    }
+    return this.preferences.landingRouteFor(accountId);
   }
 
   /** Arrow keys move between the two tabs, as in the WAI-ARIA tabs pattern. */

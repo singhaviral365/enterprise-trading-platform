@@ -1,4 +1,3 @@
-import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -15,6 +14,7 @@ import { Pagination } from '../../../shared/ui/pagination/pagination';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { SplitView } from '../../../shared/ui/split-view/split-view';
 import { QuoteDetail } from '../quote-detail/quote-detail';
+import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 /** Matches the trade-executor's cache, so each refresh can bring new prices. */
 const REFRESH_MS = 30_000;
@@ -28,9 +28,9 @@ export const PAGE_SIZES = [5, 10, 25] as const;
 @Component({
   selector: 'app-market-board',
   imports: [
-    CurrencyPipe,
-    DatePipe,
-    DecimalPipe,
+    PreferenceCurrencyPipe,
+    PreferenceDatePipe,
+    PreferenceDecimalPipe,
     InstrumentIcon,
     Pagination,
     Spinner,

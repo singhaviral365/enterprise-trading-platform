@@ -1,4 +1,3 @@
-import { DecimalPipe } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -12,6 +11,7 @@ import {
 } from '@angular/core';
 import type { Chart, Options } from 'highcharts';
 import { HIGHCHARTS_LOADER } from './highcharts-loader';
+import { PreferenceDecimalPipe } from '../../formatting/preference-pipes';
 
 /** One slice of the donut: a name, an optional detail line for the tooltip, and its size. */
 export interface DonutSlice {
@@ -34,7 +34,7 @@ export const DONUT_COLOR_COUNT = 10;
  */
 @Component({
   selector: 'app-donut-chart',
-  imports: [DecimalPipe],
+  imports: [PreferenceDecimalPipe],
   templateUrl: './donut-chart.html',
   styleUrl: './donut-chart.css',
   // Highcharts creates its SVG at runtime, outside Angular's templates, so emulated encapsulation cannot reach it.
