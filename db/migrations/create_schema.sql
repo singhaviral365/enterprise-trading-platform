@@ -39,6 +39,9 @@ CREATE TABLE account
     -- It is NOT a foreign key.
     user_id             INTEGER NOT NULL,
 
+    -- 10-digit phone number
+    phone_number        VARCHAR(10) NOT NULL,
+
     opening_date        DATE NOT NULL,
 
     balance             NUMERIC(19,4) NOT NULL DEFAULT 0.0000,
@@ -67,6 +70,10 @@ CREATE TABLE account
     -- Explicit check that user_id cannot be NULL.
     CONSTRAINT chk_account_user_id
         CHECK (user_id IS NOT NULL),
+
+    -- Phone number must contain exactly 10 digits.
+    CONSTRAINT chk_account_phone_number
+        CHECK (phone_number ~ '^[0-9]{10}$'),
 
     CONSTRAINT chk_account_status
         CHECK (
@@ -458,9 +465,13 @@ EXECUTE FUNCTION enforce_account_state_transition();
 CREATE TABLE IF NOT EXISTS watchlist
 (
     watchlist_id    BIGSERIAL PRIMARY KEY,
+
     account_id      BIGINT NOT NULL,
+
     name            VARCHAR(100) NOT NULL,
+
     created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_watchlist_account
@@ -475,6 +486,7 @@ CREATE TABLE IF NOT EXISTS watchlist
         CHECK (LENGTH(TRIM(name)) > 0)
 );
 
+
 CREATE INDEX IF NOT EXISTS idx_watchlist_account
     ON watchlist(account_id);
 
@@ -486,7 +498,9 @@ CREATE INDEX IF NOT EXISTS idx_watchlist_account
 CREATE TABLE IF NOT EXISTS watchlist_item
 (
     watchlist_id    BIGINT NOT NULL,
+
     ticker_symbol   VARCHAR(20) NOT NULL,
+
     added_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (watchlist_id, ticker_symbol),
@@ -501,8 +515,10 @@ CREATE TABLE IF NOT EXISTS watchlist_item
         REFERENCES instrument(instrument_ticker)
 );
 
+
 -- executor-service's market poller reads DISTINCT ticker_symbol from this table.
 CREATE INDEX IF NOT EXISTS idx_watchlist_item_ticker
     ON watchlist_item(ticker_symbol);
+
 
 COMMIT;
