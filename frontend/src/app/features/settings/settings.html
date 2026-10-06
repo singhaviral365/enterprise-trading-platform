@@ -1,0 +1,195 @@
+<header class="settings-header">
+  <div>
+    <h1 class="page-title" data-testid="settings-title">Settings</h1>
+    <p class="form-hint">How you are alerted, and how the platform shows you things. Changes apply everywhere once you save.</p>
+  </div>
+</header>
+
+@if (store.accountId() === null) {
+  @if (accounts.data.isLoading() && !accounts.data.hasValue()) {
+    <div class="card settings-state" aria-live="polite">
+      <app-spinner [inline]="true" label="Loading your account" />
+      <span>Loading your account…</span>
+    </div>
+  } @else if (accounts.errorMessage()) {
+    <div class="card settings-state" role="alert" data-testid="settings-error">
+      <p>{{ accounts.errorMessage() }}</p>
+      <button type="button" class="btn is-secondary" (click)="accounts.reload()">Try again</button>
+    </div>
+  } @else {
+    <div class="card empty-state" data-testid="settings-no-account">
+      <i class="fas fa-building-columns" aria-hidden="true"></i>
+      <p class="empty-state-text">Settings belong to your trading account, and you don't have one yet.</p>
+      <button type="button" class="btn is-primary mt-16" (click)="openAccountSetup()">Open my account</button>
+    </div>
+  }
+} @else {
+  @if (store.state() === 'loading' && !store.customised()) {
+    <div class="card settings-state" aria-live="polite">
+      <app-spinner [inline]="true" label="Loading your settings" />
+      <span>Loading your settings…</span>
+    </div>
+  } @else {
+    @if (store.state() === 'error') {
+      <div class="card settings-state" role="alert" data-testid="settings-load-error">
+        <p>
+          We could not load your saved settings, so the defaults are showing. Saving now will replace whatever you had.
+        </p>
+        <button type="button" class="btn is-secondary" (click)="store.reload()">Try again</button>
+      </div>
+    }
+
+    <form class="settings-form" novalidate (submit)="$event.preventDefault(); save()" data-testid="settings-form">
+      <section class="card rise-in" aria-labelledby="notifications-title">
+        <h2 id="notifications-title" class="card-title">Notifications</h2>
+
+        <div class="form-group">
+          <span class="form-label" id="channels-label">Channel of communication</span>
+          <app-multiselect
+            label="Channel of communication"
+            [options]="channelOptions"
+            [selected]="selectedChannels()"
+            (selectedChange)="setChannels($event)"
+          />
+          <p class="form-hint" data-testid="settings-channels-hint">
+            @if (noNotifications()) {
+              You won't be sent any alerts.
+            } @else {
+              We keep your email address with your login, and no phone number is stored here, so these are only
+              switches. SMS cannot be delivered until a phone number is on file.
+            }
+          </p>
+        </div>
+
+        <div class="form-group">
+          <span class="form-label" id="categories-label">Tell me about</span>
+          <app-multiselect
+            label="Notification categories"
+            [options]="categoryOptions"
+            [selected]="draft().categories"
+            [readOnly]="noNotifications()"
+            (selectedChange)="setCategories($event)"
+          />
+          @if (noNotifications()) {
+            <p class="form-hint">Switch a channel on to choose what you hear about.</p>
+          }
+        </div>
+      </section>
+
+      <section class="card rise-in" aria-labelledby="display-title">
+        <h2 id="display-title" class="card-title">Display</h2>
+
+        <div class="settings-grid">
+          <app-dropdown
+            label="Currency for estimates"
+            inputId="settings-currency"
+            [options]="currencyOptions"
+            [value]="draft().preferredCurrency"
+            (valueChange)="setCurrency($event)"
+          />
+          <app-dropdown
+            label="Date format"
+            inputId="settings-date-format"
+            [options]="dateFormatOptions"
+            [value]="draft().dateFormat"
+            (valueChange)="setDateFormat($event)"
+          />
+          <app-dropdown
+            label="Time format"
+            inputId="settings-time-format"
+            [options]="timeFormatOptions"
+            [value]="draft().timeFormat"
+            (valueChange)="setTimeFormat($event)"
+          />
+          <app-dropdown
+            label="Number format"
+            inputId="settings-number-format"
+            [options]="numberFormatOptions"
+            [value]="draft().numberFormat"
+            (valueChange)="setNumberFormat($event)"
+          />
+        </div>
+
+        @if (differsFromAccount()) {
+          <p class="form-hint" data-testid="settings-currency-note">
+            Estimates, such as what a price comes to, will be shown in {{ draft().preferredCurrency }}. Your account
+            stays in {{ accountCurrency() }}: balances, orders and holdings are always kept in it.
+          </p>
+        } @else {
+          <p class="form-hint">Your account is in {{ accountCurrency() }}; balances, orders and holdings always stay in it.</p>
+        }
+
+        <dl class="settings-preview" aria-label="Preview of your formats" data-testid="settings-preview">
+          <div>
+            <dt>Date and time</dt>
+            <dd data-testid="settings-preview-date">{{ preview().date }}</dd>
+          </div>
+          <div>
+            <dt>Number</dt>
+            <dd data-testid="settings-preview-number">{{ preview().number }}</dd>
+          </div>
+          <div>
+            <dt>Amount</dt>
+            <dd data-testid="settings-preview-money">{{ preview().money }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card rise-in" aria-labelledby="behaviour-title">
+        <h2 id="behaviour-title" class="card-title">Appearance and behaviour</h2>
+
+        <div class="settings-grid">
+          <app-dropdown
+            label="Theme"
+            inputId="settings-theme"
+            [options]="themeOptions"
+            [value]="draft().theme"
+            (valueChange)="setTheme($event)"
+          />
+          <app-dropdown
+            label="Open on after sign-in"
+            inputId="settings-landing-page"
+            [options]="landingPageOptions"
+            [value]="draft().landingPage"
+            (valueChange)="setLandingPage($event)"
+          />
+          <app-dropdown
+            label="Order ticket starts on"
+            inputId="settings-order-type"
+            [options]="orderTypeOptions"
+            [value]="draft().defaultOrderType"
+            (valueChange)="setOrderType($event)"
+          />
+          <app-dropdown
+            label="AI assistant"
+            inputId="settings-assistant"
+            [options]="assistantOptions"
+            [value]="draft().aiAssistantEnabled ? 'yes' : 'no'"
+            (valueChange)="setAssistant($event)"
+          />
+        </div>
+      </section>
+
+      <div class="settings-actions">
+        @if (saveError()) {
+          <p class="form-error-text" role="alert" data-testid="settings-save-error">{{ saveError() }}</p>
+        }
+        <button
+          type="button"
+          class="btn is-secondary"
+          data-testid="settings-discard"
+          [disabled]="!dirty() || saving()"
+          (click)="discard()"
+        >
+          Discard changes
+        </button>
+        <button type="submit" class="btn is-primary" data-testid="settings-save" [disabled]="!dirty() || saving()">
+          @if (saving()) {
+            <app-spinner [inline]="true" label="Saving" />
+          }
+          Save settings
+        </button>
+      </div>
+    </form>
+  }
+}
