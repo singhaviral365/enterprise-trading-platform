@@ -65,6 +65,7 @@ Everything lives in `frontend/src`:
   - [4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)](#414-order-ticket-confirmation-and-side-toggle-shareduiorder-ticket-order-confirmation-side-toggle)
   - [4.15 Split view (`shared/ui/split-view`)](#415-split-view-shareduisplit-view)
   - [4.16 Quote summary and trade panel (`shared/ui/quote-summary`, `shared/ui/trade-panel`)](#416-quote-summary-and-trade-panel-shareduiquote-summary-shareduitrade-panel)
+  - [4.17 Settings, preferences and the formatting pipes (`features/settings`, `core/preferences*`, `shared/formatting`)](#417-settings-preferences-and-the-formatting-pipes)
   - [4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)](#410-noclipboard-directive-shareddirectivesno-clipboard)
 - [5. Services the UI relies on](#5-services-the-ui-relies-on)
 - [6. Recipes](#6-recipes)
@@ -712,6 +713,30 @@ wherever it starts.
 
 `<input type="password" appNoClipboard (clipboardBlocked)="explain()">` blocks copy / cut / paste /
 drag on password fields (autofill still works) and emits so the form can say why.
+
+### 4.17 Settings, preferences and the formatting pipes
+
+`/settings` (`features/settings`) is one form with one Save. It edits a **draft**: nothing changes elsewhere until Save,
+and the preview under "Display" is drawn from the draft. The whole document goes to the Trade API in a single `PUT`.
+
+| Setting | Control | Applied by |
+|---|---|---|
+| Channel of communication (SMS, Email, In-application, No notifications) | `app-multiselect` | Stored; the notification path reads it through `PreferenceResolver` (Java, in-process) |
+| Notification categories | `app-multiselect` | Stored, same as above |
+| Currency for estimates | `app-dropdown` | `QuoteSummary`'s "≈" line. The account's own currency never changes |
+| Date, time, number format | `app-dropdown` | The formatting pipes, `Intl` in the charts and the chart tooltip |
+| AI assistant | `app-dropdown` | `app-chat-assistant` (the icon) in the app shell |
+| Theme, landing page, order ticket type | `app-dropdown` | `ThemeService.apply`, `AuthDialog` / `guestGuard`, `OrderTicket` |
+
+- **`PreferencesStore`** (`core/preferences.store.ts`) loads once per sign-in (one `GET`), saves with one `PUT`, never polls and
+  never fails a page: until something loads, or if loading fails, every reader gets the defaults.
+- **`FormatPreferences`** holds only the three format signals, with no HTTP, so the pipes can depend on it anywhere.
+- **Pipes.** In a component, import `PreferenceDatePipe`, `PreferenceDecimalPipe` and `PreferenceCurrencyPipe` from
+  `shared/formatting/preference-pipes` instead of Angular's `DatePipe`, `DecimalPipe` and `CurrencyPipe`. They keep the same
+  names (`date`, `number`, `currency`), so templates do not change. `mediumDate`, `mediumTime` and `medium` follow the
+  customer's formats; any other pattern passes through untouched. They are impure on purpose (see the file comment).
+  Do not import Angular's own three pipes in new UI, or that screen ignores the customer's formats.
+- **`app-chat-assistant`** is shown only when the customer switched it on. There is no assistant service yet, so its panel says so.
 
 ## 5. Services the UI relies on
 
