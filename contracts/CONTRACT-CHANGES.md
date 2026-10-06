@@ -123,3 +123,12 @@ The market endpoint (`GET /api/v1/market/quotes`, executor-service) is still not
 cd frontend && npm run api:generate && npx ng build
 ```
 Commit the regenerated `src/app/api/generated` in the same change.
+
+## preferences-api.yaml (new: customer preferences module of the Trade REST API, `services/order-service`)
+
+New contract, written before the controller. `GET` and `PUT /api/v1/accounts/{accountId}/preferences`, bearer token, the
+account in the token's user compared with the path on both routes (`ACC-403` / `ACC-404`, `VAL-422` for a bad body).
+`GET` always answers (defaults when nothing was saved, `updatedAt` null); `PUT` replaces the whole document. Contact
+details are deliberately not part of it. Arrays are not marked `uniqueItems`, so the generator types them as arrays
+rather than `Set`s that JSON would never produce. Code: `org.example.backend.preferences`.
+
