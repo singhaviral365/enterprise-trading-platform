@@ -19,15 +19,31 @@ describe('AuthApi', () => {
 
   afterEach(() => http.verify());
 
-  it('posts credentials to /auth/login and returns the tokens', () => {
+  it('posts credentials to /auth/login and returns the answer (a challenge, or the tokens)', () => {
     let result: unknown;
     api.login({ username: 'alice', password: 'pw' }).subscribe((r) => (result = r));
 
     const req = http.expectOne(`${AUTH_API_BASE_URL}/auth/login`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ username: 'alice', password: 'pw' });
-    req.flush({ accessToken: 'a' });
-    expect(result).toEqual({ accessToken: 'a' });
+    req.flush({ twoFactorRequired: true, challenge: { challengeId: 'c-1' } });
+    expect(result).toEqual({ twoFactorRequired: true, challenge: { challengeId: 'c-1' } });
+  });
+
+  it.each([
+    ['verifyLogin', '/auth/login/verify', { challengeId: 'c-1', code: '123456' }],
+    ['resendLoginCode', '/auth/login/resend', { challengeId: 'c-1' }],
+    ['forgotPassword', '/auth/password/forgot', { username: 'alice', email: 'a@b.co' }],
+    ['resendResetCode', '/auth/password/resend', { challengeId: 'c-1' }],
+    ['verifyResetCode', '/auth/password/verify', { challengeId: 'c-1', code: '123456' }],
+    ['resetPassword', '/auth/password/reset', { resetToken: 'token', newPassword: 'N3w!Password#1' }],
+  ] as const)('%s posts its body to %s', (method, path, body) => {
+    (api[method] as (request: typeof body) => { subscribe: () => void })(body).subscribe();
+
+    const req = http.expectOne(`${AUTH_API_BASE_URL}${path}`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(body);
+    req.flush({});
   });
 
   it('posts a registration to /auth/register', () => {
