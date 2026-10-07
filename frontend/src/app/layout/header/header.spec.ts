@@ -49,4 +49,33 @@ describe('Header', () => {
     expect(navigate).toHaveBeenCalledWith('/');
     expect(root.querySelector('[data-testid="open-auth-dialog"]')).toBeTruthy();
   });
+
+  it('shows the profile button beside the theme toggle only when signed in, and opens the profile dialog', async () => {
+    const signedOut = TestBed.createComponent(Header);
+    await signedOut.whenStable();
+    expect((signedOut.nativeElement as HTMLElement).querySelector('[data-testid="open-profile"]')).toBeNull();
+
+    TestBed.inject(SessionService).start('alice.trader', { expiresIn: 900 });
+    const fixture = TestBed.createComponent(Header);
+    const root = fixture.nativeElement as HTMLElement;
+    const http = TestBed.inject(HttpTestingController);
+    (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({ linked: false, message: 'No linked account yet' });
+    await fixture.whenStable();
+
+    root.querySelector<HTMLButtonElement>('[data-testid="open-profile"]')!.click();
+    (await vi.waitFor(() => http.expectOne({ method: 'GET', url: 'http://localhost:3000/auth/me' }))).flush({
+      id: 1,
+      username: 'alice.trader',
+      email: 'alice@example.com',
+      roles: [],
+      twoFactorEnabled: false,
+    });
+    await fixture.whenStable();
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(root.querySelector('[data-testid="profile-username"]')?.textContent).toContain('alice.trader');
+    });
+    expect(root.querySelector('[data-testid="profile-email"]')?.textContent).toContain('alice@example.com');
+  });
 });
