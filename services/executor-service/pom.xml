@@ -72,6 +72,26 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Signs the short-lived token the strategy worker places a strategy's order with (the same library and version
+             the order-service verifies it with). -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.3</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.3</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.enterprise.trading</groupId>
             <artifactId>sprint-05-domain-engine</artifactId>
