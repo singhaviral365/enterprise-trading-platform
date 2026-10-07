@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     roles TEXT[] NOT NULL DEFAULT ARRAY['CUSTOMER'],
+    two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     created_on TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT chk_users_roles CHECK (array_length(roles, 1) > 0)
@@ -77,6 +78,33 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_active ON refresh_tokens(revoked_at) 
   WHERE revoked_at IS NULL;
+
+-- Create otp_challenges table: one-time codes for two-step sign-in, forgot password and registration (email check). Only an HMAC
+-- of the code is stored. A registration has no user yet, so user_id may be null and what was typed waits in pending_*.
+-- (Existing databases: databases/PostgreSQL/migrations/add_auth_otp_challenges.sql.)
+CREATE TABLE IF NOT EXISTS otp_challenges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+  purpose VARCHAR(14) NOT NULL,
+  code_hash VARCHAR(64) NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  sends INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_sent_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  pending_username VARCHAR(64),
+  pending_email VARCHAR(255),
+  pending_password_hash VARCHAR(255),
+  reset_token_hash VARCHAR(64) UNIQUE,
+  reset_expires_at TIMESTAMPTZ,
+  reset_used_at TIMESTAMPTZ,
+  CONSTRAINT chk_otp_challenges_purpose CHECK (purpose IN ('LOGIN', 'PASSWORD_RESET', 'REGISTRATION')),
+  CONSTRAINT chk_otp_challenges_attempts CHECK (attempts >= 0),
+  CONSTRAINT chk_otp_challenges_sends CHECK (sends >= 1)
+);
+CREATE INDEX IF NOT EXISTS idx_otp_challenges_user_id ON otp_challenges(user_id);
+CREATE INDEX IF NOT EXISTS idx_otp_challenges_expires_at ON otp_challenges(expires_at);
 
 -- ============================================================
 -- SEED TEST DATA

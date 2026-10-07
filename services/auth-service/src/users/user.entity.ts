@@ -26,6 +26,10 @@ export class User {
   @Column('text', { array: true, default: () => `'{CUSTOMER}'` })
   roles!: string[];
 
+  /** The user asked for a code by email at every sign-in. Off unless they switch it on (Settings). */
+  @Column('boolean', { default: false })
+  two_factor_enabled!: boolean;
+
   @CreateDateColumn()
   created_on!: Date;
 

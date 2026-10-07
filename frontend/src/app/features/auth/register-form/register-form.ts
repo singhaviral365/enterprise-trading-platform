@@ -1,4 +1,4 @@
-import { Component, computed, inject, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import {
   FormField,
   email,
@@ -9,6 +9,7 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
+import { OtpChallenge } from '../../../api/generated/auth';
 import { AuthService } from '../../../core/auth.service';
 import { describeError } from '../../../core/errors/describe-error';
 import { REGISTER_ERRORS } from '../../../core/errors/error-messages';
@@ -33,8 +34,12 @@ interface RegisterModel {
 }
 
 /**
- * Creates a login via `POST /auth/register`, then signs straight in; the dialog then asks for the
- * trading-account details. The rules (credential-rules.ts) mirror RegisterDto in the Auth service.
+ * Registers in two steps. First the details (`POST /auth/register`): nothing is created, and a 6-digit code is emailed to
+ * the address typed. This form then swaps to a code field (`POST /auth/register/verify`), and only a right code creates the
+ * login. So an address nobody can read never becomes a login. Then it reports it with `registered`; the dialog sends the new user to the
+ * sign-in form (which asks for the emailed code), and the trading-account details follow that sign-in. Registering does
+ * not sign anyone in: with two-step sign-in a session needs a code, and one sent the moment a login is created would
+ * only be a second email. The rules (credential-rules.ts) mirror RegisterDto in the Auth service.
  */
 @Component({
   selector: 'app-register-form',
@@ -45,7 +50,7 @@ interface RegisterModel {
 export class RegisterForm {
   private readonly auth = inject(AuthService);
 
-  readonly signedIn = output<SignedInEvent>();
+  readonly registered = output<SignedInEvent>();
   readonly switchToLogin = output<void>();
 
   protected readonly model = signal<RegisterModel>({ username: '', email: '', password: '', confirmPassword: '' });
@@ -84,6 +89,23 @@ export class RegisterForm {
         : undefined,
     );
   });
+  protected readonly codeModel = signal<{ code: string }>({ code: '' });
+  protected readonly codeForm = form(this.codeModel, (path) => {
+    required(path.code, { message: 'Enter the 6-digit code from your email.' });
+    validate(path.code, ({ value }) =>
+      value().trim() && !/^\d{6}$/.test(value().trim())
+        ? { kind: 'format', message: 'The code is 6 digits.' }
+        : undefined,
+    );
+  });
+  /** Where the form is: asking for the details, or for the code that was emailed. */
+  protected readonly step = signal<'details' | 'code'>('details');
+  protected readonly challenge = signal<OtpChallenge | null>(null);
+  protected readonly codeInfo = signal('');
+  protected readonly resending = signal(false);
+  protected readonly secondsUntilResend = signal(0);
+  private countdown: ReturnType<typeof setInterval> | null = null;
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly serverError = signal('');
   protected readonly showPassword = signal(false);
   protected readonly clipboardNotice = signal('');
@@ -105,13 +127,88 @@ export class RegisterForm {
       const password = this.model().password;
       const emailAddress = this.model().email.trim();
       try {
-        await this.auth.register({ username, password, email: emailAddress });
-        await this.auth.login(username, password);
-        this.signedIn.emit({ username, email: emailAddress });
+        const outcome = await this.auth.register({ username, password, email: emailAddress });
+        if (outcome.kind === 'registered') {
+          this.registered.emit({ username, email: emailAddress });
+        } else {
+          this.showCodeStep(outcome.challenge);
+        }
       } catch (error) {
         this.serverError.set(describeError(error, { byStatus: REGISTER_ERRORS }));
       }
       return undefined;
     });
+  }
+
+  protected async onVerify(event: Event): Promise<void> {
+    event.preventDefault();
+    this.serverError.set('');
+    this.codeInfo.set('');
+    const challenge = this.challenge();
+    if (!challenge) {
+      return;
+    }
+    await submit(this.codeForm, async () => {
+      try {
+        await this.auth.verifyRegistration(challenge.challengeId, this.codeModel().code.trim());
+        this.stopCountdown();
+        this.registered.emit({ username: this.model().username.trim(), email: this.model().email.trim() });
+      } catch (error) {
+        this.serverError.set(describeError(error, { byStatus: REGISTER_ERRORS }));
+        this.codeModel.set({ code: '' });
+      }
+      return undefined;
+    });
+  }
+
+  protected async onResend(): Promise<void> {
+    const challenge = this.challenge();
+    if (!challenge || this.resending() || this.secondsUntilResend() > 0) {
+      return;
+    }
+    this.serverError.set('');
+    this.resending.set(true);
+    try {
+      this.showCodeStep(await this.auth.resendRegistrationCode(challenge.challengeId), 'We sent you a new code.');
+    } catch (error) {
+      this.serverError.set(describeError(error));
+    } finally {
+      this.resending.set(false);
+    }
+  }
+
+  /** Back to the details, e.g. a mistyped address: nothing was created, so nothing needs undoing. */
+  protected onBack(): void {
+    this.stopCountdown();
+    this.challenge.set(null);
+    this.codeModel.set({ code: '' });
+    this.serverError.set('');
+    this.codeInfo.set('');
+    this.step.set('details');
+  }
+
+  private showCodeStep(challenge: OtpChallenge, info = ''): void {
+    this.challenge.set(challenge);
+    this.codeModel.set({ code: '' });
+    this.codeInfo.set(info);
+    this.step.set('code');
+    this.stopCountdown();
+    this.secondsUntilResend.set(challenge.resendAfter);
+    if (challenge.resendAfter > 0) {
+      this.countdown = setInterval(() => {
+        this.secondsUntilResend.update((left) => Math.max(0, left - 1));
+        if (this.secondsUntilResend() === 0) {
+          this.stopCountdown();
+        }
+      }, 1000);
+    }
+    this.destroyRef.onDestroy(() => this.stopCountdown());
+  }
+
+  private stopCountdown(): void {
+    if (this.countdown !== null) {
+      clearInterval(this.countdown);
+      this.countdown = null;
+    }
   }
 }

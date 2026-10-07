@@ -84,7 +84,8 @@ services:
     profiles: [platform]
     container_name: auth-service
     environment:
-      NODE_ENV: production
+      # Set AUTH_NODE_ENV=development to use MailHog for the sign-in code (see below); production refuses to send mail.
+      NODE_ENV: ${AUTH_NODE_ENV:-production}
       PORT: 3000
       DATABASE_HOST: auth-db
       DATABASE_PORT: 5432
@@ -96,6 +97,15 @@ services:
       # Session cookies. NODE_ENV=production makes them Secure by default, which a plain-http compose setup cannot
       # use (browsers only exempt http://localhost); set AUTH_COOKIE_SECURE=true once you serve over https.
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      # Registration, two-step sign-in and forgot password email a code. Email is DEVELOPMENT ONLY and the service refuses to
+      # start with it on under NODE_ENV=production or with a non-local SMTP host. So this stack, which is production-like by
+      # default, runs with the registration email check and two-step sign-in OFF unless you opt in for development:
+      #   AUTH_NODE_ENV=development  AUTH_EMAIL_ENABLED=true  AUTH_EMAIL_VERIFICATION_ENABLED=true  AUTH_TWO_FACTOR_ENABLED=true
+      #   (and --profile dev-mail)
+      AUTH_EMAIL_VERIFICATION_ENABLED: ${AUTH_EMAIL_VERIFICATION_ENABLED:-false}
+      AUTH_TWO_FACTOR_ENABLED: ${AUTH_TWO_FACTOR_ENABLED:-false}
+      AUTH_EMAIL_ENABLED: ${AUTH_EMAIL_ENABLED:-false}
+      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-mailhog}
       AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
       JWT_ACCESS_TOKEN_EXPIRES_IN: 900
       JWT_REFRESH_TOKEN_EXPIRES_IN: 604800

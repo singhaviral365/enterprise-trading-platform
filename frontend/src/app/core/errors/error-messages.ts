@@ -15,6 +15,14 @@ export const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
     'Your session has expired or your sign-in details were not accepted. Please sign in again.',
   'AUTH-409':
     'We could not complete your registration. Try a different username, or sign in if you already have an account.',
+  // One-time codes (two-step sign-in, forgot password)
+  'OTP-401':
+    'That code is not right, or it has expired. Check the latest email we sent you, or ask for a new code.',
+  'OTP-429': 'Too many attempts. Please wait a few minutes and try again.',
+  'OTP-503': 'We could not send the code right now. Please try again in a moment.',
+  'PWD-422': 'Your new password must be different from your current password.',
+  'PWD-403': 'That is not your current password.',
+  'PWD-423': 'Too many wrong passwords. You have been signed out.',
   // Shared by both services
   'VAL-422':
     'Some of the details you entered are not valid. Check the highlighted fields and try again.',

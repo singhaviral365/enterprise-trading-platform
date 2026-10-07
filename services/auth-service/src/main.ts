@@ -6,10 +6,17 @@ import { AppModule } from './app.module';
 import { AuthModule } from './auth/auth.module';
 import { configuration } from './config/configuration';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { assertMailIsDevOnly, mailSettings } from './mail/mail.config';
+import { assertEmailCanBeSent, otpSettings } from './otp/otp.config';
 
 async function bootstrap() {
   // Load and validate configuration at startup
   const config = configuration();
+
+  // Email is for development only, and the registration check needs it: refuse to start with either set up wrongly,
+  // rather than let the first person to sign in find out.
+  assertMailIsDevOnly(mailSettings());
+  assertEmailCanBeSent(otpSettings(), mailSettings());
 
   const app = await NestFactory.create(AppModule);
 

@@ -5,6 +5,25 @@
   </div>
 </header>
 
+<section class="card rise-in" aria-labelledby="security-title" data-testid="settings-security">
+  <h2 id="security-title" class="card-title">Sign-in security</h2>
+  <app-dropdown
+    label="Two-step sign-in"
+    inputId="settings-two-factor"
+    [options]="twoFactorOptions"
+    [value]="twoFactorShown()"
+    [disabled]="twoFactorEnabled() === null || twoFactorBusy()"
+    (valueChange)="setTwoFactor($event)"
+  />
+  <p class="form-hint" data-testid="settings-two-factor-hint">
+    When it is on, signing in also asks for a 6-digit code we email to the address on your login. It is off unless you
+    turn it on. This applies at once; there is nothing to save.
+  </p>
+  @if (twoFactorError()) {
+    <p class="form-error-text" role="alert" data-testid="settings-two-factor-error">{{ twoFactorError() }}</p>
+  }
+</section>
+
 @if (store.accountId() === null) {
   @if (accounts.data.isLoading() && !accounts.data.hasValue()) {
     <div class="card settings-state" aria-live="polite">

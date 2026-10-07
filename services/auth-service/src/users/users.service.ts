@@ -38,6 +38,16 @@ export class UsersRepository {
 
 
 
+  /** Switches the user's two-step sign-in on or off. */
+  async updateTwoFactor(id: number, enabled: boolean): Promise<void> {
+    await this.userRepository.update({ id }, { two_factor_enabled: enabled });
+  }
+
+  /** Replaces the stored password hash. */
+  async updatePasswordHash(id: number, passwordHash: string): Promise<void> {
+    await this.userRepository.update({ id }, { password_hash: passwordHash });
+  }
+
   /**
    * Check if username already exists.
    */
@@ -79,6 +89,11 @@ export class UsersService {
       password_hash: passwordHash,
       roles,
     });
+  }
+
+  /** Switches a user's two-step sign-in on or off. */
+  async setTwoFactorEnabled(id: number, enabled: boolean): Promise<void> {
+    await this.usersRepository.updateTwoFactor(id, enabled);
   }
 
   /**

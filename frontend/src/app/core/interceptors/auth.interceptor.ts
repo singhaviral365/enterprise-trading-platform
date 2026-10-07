@@ -31,7 +31,14 @@ export function protectedApis(): readonly ProtectedApi[] {
  * browser only stores or sends the cookies when the request opts in. They are public (no session is needed to
  * make them, a rejected login must not trigger a refresh), so they get the cookie and CSRF settings but no renewal.
  */
-const SESSION_ROUTES: readonly string[] = ['/auth/login', '/auth/refresh', '/auth/logout'];
+const SESSION_ROUTES: readonly string[] = [
+  '/auth/login',
+  // Step two of two-step sign-in. This is the call that actually sets the session cookies, so without credentials the
+  // browser would silently discard them: the app would think it was signed in while every API call went out unauthenticated.
+  '/auth/login/verify',
+  '/auth/refresh',
+  '/auth/logout',
+];
 
 /** Sent on every credentialed call: a header a cross-site form cannot add, which the services require for cookie-authenticated writes. */
 const CSRF_HEADER = 'X-Requested-With';

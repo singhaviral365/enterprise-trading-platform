@@ -3,6 +3,7 @@ import { Component, computed, inject, linkedSignal, signal } from '@angular/core
 
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { AuthDialogService } from '../../core/auth-dialog.service';
+import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { describeError, errorCodeOf } from '../../core/errors/describe-error';
 import { NotificationService } from '../../core/notification.service';
@@ -62,6 +63,7 @@ export class Settings {
   protected readonly store = inject(PreferencesStore);
   protected readonly accounts = inject(AccountOverviewStore);
   private readonly authDialog = inject(AuthDialogService);
+  private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
   private readonly dialog = inject(DialogService);
 
@@ -69,6 +71,54 @@ export class Settings {
   protected readonly draft = linkedSignal<PreferenceValues>(() => this.store.current());
   protected readonly saving = signal(false);
   protected readonly saveError = signal('');
+
+  /** Two-step sign-in belongs to the login, not to the trading account, so it saves on its own and at once. */
+  protected readonly twoFactorOptions: readonly DropdownOption[] = [
+    { value: 'off', label: 'Off' },
+    { value: 'on', label: 'On: ask for an emailed code' },
+  ];
+  protected readonly twoFactorEnabled = signal<boolean | null>(null);
+  /** What the control shows: the choice at once, put back if the server refuses it. */
+  protected readonly twoFactorShown = signal<'on' | 'off'>('off');
+  protected readonly twoFactorBusy = signal(false);
+  protected readonly twoFactorError = signal('');
+
+  constructor() {
+    void this.loadTwoFactor();
+  }
+
+  protected async setTwoFactor(value: string): Promise<void> {
+    const enabled = value === 'on';
+    if (this.twoFactorBusy() || enabled === this.twoFactorEnabled()) {
+      return;
+    }
+    this.twoFactorBusy.set(true);
+    this.twoFactorError.set('');
+    this.twoFactorShown.set(enabled ? 'on' : 'off');
+    try {
+      const user = await this.auth.setTwoFactor(enabled);
+      this.twoFactorEnabled.set(user.twoFactorEnabled);
+      this.twoFactorShown.set(user.twoFactorEnabled ? 'on' : 'off');
+      this.notifications.success(
+        user.twoFactorEnabled ? 'Two-step sign-in is on.' : 'Two-step sign-in is off.',
+      );
+    } catch (error) {
+      this.twoFactorShown.set(this.twoFactorEnabled() ? 'on' : 'off');
+      this.twoFactorError.set(describeError(error));
+    } finally {
+      this.twoFactorBusy.set(false);
+    }
+  }
+
+  private async loadTwoFactor(): Promise<void> {
+    try {
+      const enabled = (await this.auth.me()).twoFactorEnabled;
+      this.twoFactorEnabled.set(enabled);
+      this.twoFactorShown.set(enabled ? 'on' : 'off');
+    } catch (error) {
+      this.twoFactorError.set(describeError(error));
+    }
+  }
 
   protected readonly dirty = computed(() => !samePreferences(this.draft(), this.store.current()));
 

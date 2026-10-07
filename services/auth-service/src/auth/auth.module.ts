@@ -13,10 +13,22 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { RefreshTokensService, RefreshTokensRepository } from '../refresh-tokens/refresh-tokens.service';
 import { RedactingLogger } from '../common/logging/redacting.logger';
 import { LoginThrottleService } from './login-throttle.service';
+import { LoginFlowService } from './login-flow.service';
+import { PasswordResetService } from './password-reset.service';
+import { RegistrationFlowService } from './registration-flow.service';
+import { AccountSecurityService } from './account-security.service';
+import { PasswordAttemptsService } from './password-attempts.service';
+import { MailModule } from '../mail/mail.module';
+import { OtpChallenge } from '../otp/otp-challenge.entity';
+import { OtpChallengesRepository } from '../otp/otp-challenges.repository';
+import { OtpService } from '../otp/otp.service';
+import { OtpSchemaService } from '../otp/otp-schema.service';
+import { OTP_SETTINGS, otpSettings } from '../otp/otp.config';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, RefreshToken]),
+    TypeOrmModule.forFeature([User, RefreshToken, OtpChallenge]),
+    MailModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: {
@@ -39,6 +51,15 @@ import { LoginThrottleService } from './login-throttle.service';
     RefreshTokensRepository,
     RedactingLogger,
     LoginThrottleService,
+    LoginFlowService,
+    PasswordResetService,
+    RegistrationFlowService,
+    AccountSecurityService,
+    PasswordAttemptsService,
+    OtpService,
+    OtpChallengesRepository,
+    OtpSchemaService,
+    { provide: OTP_SETTINGS, useFactory: () => otpSettings() },
   ],
   exports: [AuthService, UsersService, CredentialsService],
 })

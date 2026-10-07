@@ -1,3 +1,4 @@
+@if (step() === 'details') {
 <form class="auth-form" novalidate (submit)="onSubmit($event)" data-testid="register-form">
   @if (serverError()) {
     <div class="auth-alert" role="alert" data-testid="register-error">
@@ -162,3 +163,86 @@
     <button type="button" class="link-button" (click)="switchToLogin.emit()">Sign in</button>
   </p>
 </form>
+} @else {
+  <form class="auth-form" novalidate (submit)="onVerify($event)" data-testid="register-code-form">
+    <p class="auth-step-text" data-testid="register-code-info">
+      We sent a 6-digit code to <strong>{{ challenge()?.email }}</strong
+      >. Enter it to verify your email and create your login.
+    </p>
+
+    @if (codeInfo()) {
+      <div class="auth-notice" role="status" data-testid="register-code-notice">
+        <i class="fas fa-circle-check" aria-hidden="true"></i>
+        <span>{{ codeInfo() }}</span>
+      </div>
+    }
+    @if (serverError()) {
+      <div class="auth-alert" role="alert" data-testid="register-code-error">
+        <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+        <span>{{ serverError() }}</span>
+      </div>
+    }
+
+    <div class="form-group">
+      <label class="form-label" for="register-code">Verification code</label>
+      <div class="input-with-icon">
+        <i class="fas fa-envelope-circle-check" aria-hidden="true"></i>
+        <input
+          id="register-code"
+          class="form-input code-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          spellcheck="false"
+          placeholder="123456"
+          data-testid="register-code"
+          [formField]="codeForm.code"
+          [class.is-error]="codeForm.code().touched() && codeForm.code().invalid()"
+          [attr.aria-invalid]="codeForm.code().touched() && codeForm.code().invalid()"
+          [attr.aria-describedby]="codeForm.code().touched() && codeForm.code().invalid() ? 'register-code-field-error' : null"
+        />
+      </div>
+      @if (codeForm.code().touched() && codeForm.code().invalid()) {
+        <p id="register-code-field-error" class="form-error-text" data-testid="register-code-field-error">
+          {{ codeForm.code().errors()[0].message }}
+        </p>
+      }
+    </div>
+
+    <button
+      type="submit"
+      class="btn is-primary is-large full-width-btn"
+      data-testid="register-code-submit"
+      [disabled]="codeForm().invalid() || codeForm().submitting()"
+    >
+      @if (codeForm().submitting()) {
+        <app-spinner [inline]="true" label="Checking the code" />
+        Checking…
+      } @else {
+        Verify and create account
+      }
+    </button>
+
+    <p class="auth-switch">
+      Did not get it?
+      <button
+        type="button"
+        class="link-button"
+        data-testid="register-resend"
+        [disabled]="resending() || secondsUntilResend() > 0"
+        (click)="onResend()"
+      >
+        @if (secondsUntilResend() > 0) {
+          Send again in {{ secondsUntilResend() }}s
+        } @else {
+          Send a new code
+        }
+      </button>
+    </p>
+    <p class="auth-switch">
+      <button type="button" class="link-button" data-testid="register-code-back" (click)="onBack()">
+        Change my email address
+      </button>
+    </p>
+  </form>
+}
