@@ -226,10 +226,13 @@ components:
 
     NotificationCategory:
       type: string
-      enum: [ORDER_STATUS, WATCHLIST_ALERTS]
+      enum: [ORDER_STATUS, WATCHLIST_ALERTS, STRATEGY_EXECUTION]
       description: |
-        `ORDER_STATUS`: an order was filled, rejected or cancelled. `WATCHLIST_ALERTS`: a price alert fired.
-        The same two categories the customer chooses between in Settings.
+        `ORDER_STATUS`: an order the customer placed was filled, rejected or cancelled. `WATCHLIST_ALERTS`: a price alert fired.
+        `STRATEGY_EXECUTION`: an order one of the customer's automated strategies placed was filled, rejected or cancelled,
+        or a strategy was stopped after repeated failures or expired. Worded differently from `ORDER_STATUS` ("Strategy #12
+        bought 50 AAPL ..."), so the customer can tell the platform acted for them. The same three categories the customer
+        chooses between in Settings.
 
     NotificationChannel:
       type: string

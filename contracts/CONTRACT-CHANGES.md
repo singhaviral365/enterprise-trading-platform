@@ -152,3 +152,42 @@ and ones read within the last hour. New code: `NTF-404`. Code: `org.example.back
 `triggerPrice`, `delivery` PENDING/HANDED_OVER/FAILED). Both routes answer with the whole watchlist, like the others. One
 alert per entry, fires once, capped per account. New codes: `ALR-404`, `ALR-409`, `ALR-422`. The contract text records what
 "crossed" means and why it fires once. Existing clients are unaffected (a new nullable field and new routes).
+
+## strategies-api.yaml (new: automated strategy execution, a module of the Trade REST API, `services/order-service`)
+
+New contract, written before the controller. `POST /api/v1/strategies`, `GET /api/v1/accounts/{accountId}/strategies`,
+`GET`, `PATCH` (switch off and on, `{enabled}`) and `DELETE` (cancel) `/api/v1/strategies/{strategyId}`, and `GET
+/api/v1/strategies/{strategyId}/runs` (the audit trail). Bearer token, the account's owner checked on every route
+(`ACC-403` / `ACC-404`); a strategy of another account answers `STR-404`, like one that does not exist. **There is
+deliberately no route that places an order**: the executor-service does, through `POST /api/v1/orders`. New codes:
+`STR-404`, `STR-409` (trigger already reached, or the status does not allow the change), `STR-422` (too many open
+strategies). The customer's limits (`maxOrderValue`, `maxPositionQty`, `maxExecutions`, `maxFailures`) are part of the
+request, and the first two are required: a strategy that trades unattended must have had its damage bounded by a
+decision. Code: `org.example.backend.strategy` (the API) and `org.example.trade_executor.strategy` (the worker).
+
+## trade-api.yaml: orders placed by a strategy
+
+No new route and no new field. `POST /api/v1/orders` now accepts, besides the customer's own token, a signed token of about a
+minute that the executor-service mints for one strategy (subject = the strategy's owner, claims `act=strategy-executor` and
+`strategy_id`). It is refused everywhere except this route, and here it is refused with the new code `STR-403` (403) unless
+the order is exactly the one that strategy may place while it holds its claim. A customer's own token is not affected, so
+existing clients need no change. Code: `ApiAuthenticationFilter`, `StrategyOrderGuard`, `StrategyOrderService`.
+
+## signals-api.yaml (new: trade advice and signals, a module of the Trade REST API, `services/order-service`)
+
+New contract, written before the controller. `GET /api/v1/accounts/{accountId}/signals/{symbol}` (`lookbackPeriods` 90, 180
+or 365; `format` numeric or narrative) and `POST /api/v1/signals/chat`. Bearer token, the account's owner checked on both
+(`ACC-403` / `ACC-404`). The method (20/50-day averages and the 14-day RSI), the strength formula, the caching and the rate
+limits are in the contract text. The language model is used only for a customer who switched the AI assistant on: the chat
+is refused (`AST-403`) otherwise, and the narrative is then the platform's own wording (`explanationSource: FALLBACK`). New
+codes: `SIG-422` (fewer than 50 trading days of history), `SIG-503` (history unavailable), `AST-403`, `AST-429` (with a
+`Retry-After` header). It writes nothing and places no order. Code: `org.example.backend.signals`.
+
+## notifications-api.yaml and preferences-api.yaml: strategy notifications
+
+`NotificationCategory` gained `STRATEGY_EXECUTION`, in both contracts. An order an automated strategy placed (filled,
+rejected or cancelled), and a strategy that was stopped after repeated failures or expired, is notified under it, in wording
+that names the strategy; an ordinary order keeps `ORDER_STATUS`. In `preferences-api.yaml`, `categories` may now hold the new
+value (default: all three) and the text of `aiAssistantEnabled` now says what it turns on (the signal assistant on the quote
+screen) instead of "the chatbot icon". Existing clients keep working: a customer's stored choice for the two old categories is
+unchanged, and the new one defaults to on.
