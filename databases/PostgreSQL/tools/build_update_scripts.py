@@ -51,13 +51,15 @@ header = """-- =================================================================
 --      account.email and dropped.
 --   5. Portfolio: the realised profit and loss ledger (realised_pnl_entry).
 --   6. Portfolio performance: closed-day candles and statements (price_candle_daily, portfolio_nav_daily).
---   7. Sample data: rows that are missing are inserted, rows that exist are left alone, and the email/phone of sample
+--   7. Automated strategies (strategy, strategy_run), plus the STRATEGY_EXECUTION notification category and its switch on the
+--      customer preferences. A database that predates them has the notification category constraint replaced in place.
+--   8. Sample data: rows that are missing are inserted, rows that exist are left alone, and the email/phone of sample
 --      accounts that predate those columns are filled in (a value that is already there is never overwritten).
 --
 -- The Auth database is separate: run update_auth_db.sql on auth_db for the matching side (same emails per user_id).
 --
--- Sections 1-7 are the application's own start-up scripts (schema.sql, watchlist-schema.sql, preferences-schema.sql,
--- notifications-schema.sql, portfolio-schema.sql, portfolio-performance-schema.sql) and sample_data.sql, copied in unchanged; UpdateScriptSyncTest fails if they drift.
+-- Sections 1-8 are the application's own start-up scripts (schema.sql, watchlist-schema.sql, preferences-schema.sql,
+-- notifications-schema.sql, portfolio-schema.sql, portfolio-performance-schema.sql, strategy-schema.sql) and sample_data.sql, copied in unchanged; UpdateScriptSyncTest fails if they drift.
 -- ============================================================================
 
 BEGIN;
@@ -90,7 +92,8 @@ out += section('3. Customer preferences (preferences-schema.sql)', body(os.path.
 out += section('4. Notifications (notifications-schema.sql)', body(os.path.join(res, 'notifications-schema.sql')) + '\n' + carry_over)
 out += section('5. Portfolio realised P&L (portfolio-schema.sql)', body(os.path.join(res, 'portfolio-schema.sql')))
 out += section('6. Portfolio performance (portfolio-performance-schema.sql)', body(os.path.join(res, 'portfolio-performance-schema.sql')))
-out += section('7. Sample data (sample_data.sql)', body(os.path.join(mig, 'sample_data.sql')))
+out += section('7. Automated strategies (strategy-schema.sql)', body(os.path.join(res, 'strategy-schema.sql')))
+out += section('8. Sample data (sample_data.sql)', body(os.path.join(mig, 'sample_data.sql')))
 out += '\nCOMMIT;\n'
 open(os.path.join(mig, 'update_trading_db.sql'), 'w', encoding='utf-8', newline='').write(out.replace('\n', '\r\n'))
 
@@ -126,6 +129,8 @@ HEAD = """-- ===================================================================
 --       - if the fixed username or email is already taken by a DIFFERENT user_id, that id is skipped with a notice
 --         (it would break a unique rule), and you decide what to do with the clash.
 --   * The id sequence is moved past the highest id in use, so new registrations never collide with the sample users.
+--   * otp_challenges and users.two_factor_enabled (two-step sign-in, forgot password, email-checked registration) are created
+--     or brought up to date, the same statements as add_auth_otp_challenges.sql.
 --
 -- A users table in the old layout (a UUID id column and no user_id) is not migrated: the script stops and says so.
 -- Users with other ids are never touched. It does not create the database or the auth_user role (auth_setup.sql does,
@@ -204,6 +209,18 @@ $$;
 --   SELECT user_id, email, phone_no FROM account WHERE user_id BETWEEN 1000 AND 1009 ORDER BY user_id;
 SELECT user_id, username, email FROM users WHERE user_id BETWEEN 1000 AND 1009 ORDER BY user_id;
 """
-out = HEAD + rows + TAIL
+split = TAIL.index('-- The sample users as they are now.')
+
+def otp_body():
+    """add_auth_otp_challenges.sql without its own BEGIN/COMMIT: the table the sign-in codes live in, and users.two_factor_enabled."""
+    text = rd(os.path.join(mig, 'add_auth_otp_challenges.sql'))
+    text = text[text.index('BEGIN;') + len('BEGIN;'):text.rindex('COMMIT;')].strip('\n')
+    return text + '\n'
+
+OTP_INTRO = """
+-- Two-step sign-in, forgot password and email-checked registration (from add_auth_otp_challenges.sql, which the auth service also
+-- applies itself on start-up): the otp_challenges table and users.two_factor_enabled. Needs the users table above.
+"""
+out = HEAD + rows + TAIL[:split] + OTP_INTRO + otp_body() + '\n' + TAIL[split:]
 open(os.path.join(mig, 'update_auth_db.sql'), 'w', encoding='utf-8', newline='').write(out.replace('\n', '\r\n'))
 print('auth built')

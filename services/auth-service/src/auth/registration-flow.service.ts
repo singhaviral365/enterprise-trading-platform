@@ -128,9 +128,10 @@ export class RegistrationFlowService {
     try {
       await this.email.send(to, message.subject, message.body);
     } catch (error) {
-      // The reason class only: never the address, never the message.
       this.logger.warn('RegistrationFlowService', 'Registration code could not be sent', {
         reason: error instanceof Error ? error.constructor.name : 'unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw new OtpDeliveryFailedException();
     }

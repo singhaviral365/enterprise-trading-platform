@@ -29,6 +29,7 @@ export class Notifications {
   protected readonly categoryOptions: readonly DropdownOption[] = [
     { value: NotificationCategory.OrderStatus, label: 'Order updates' },
     { value: NotificationCategory.WatchlistAlerts, label: 'Watchlist alerts' },
+    { value: NotificationCategory.StrategyExecution, label: 'Strategy executions' },
   ];
 
   /** What is in the search box right now; the store only hears about it after the debounce. */
@@ -62,7 +63,14 @@ export class Notifications {
   }
 
   protected iconOf(notification: Notification): string {
-    return notification.category === NotificationCategory.OrderStatus ? 'fas fa-receipt' : 'fas fa-bell';
+    switch (notification.category) {
+      case NotificationCategory.OrderStatus:
+        return 'fas fa-receipt';
+      case NotificationCategory.StrategyExecution:
+        return 'fas fa-robot';
+      default:
+        return 'fas fa-bell';
+    }
   }
 
   protected filtering(): boolean {

@@ -38,7 +38,11 @@ export function defaultPreferences(accountCurrency: string | null = null): Prefe
   return {
     preferredCurrency: asCurrency(accountCurrency) ?? Currency.Usd,
     channels: [NotificationChannel.InApp],
-    categories: [NotificationCategory.OrderStatus, NotificationCategory.WatchlistAlerts],
+    categories: [
+      NotificationCategory.OrderStatus,
+      NotificationCategory.WatchlistAlerts,
+      NotificationCategory.StrategyExecution,
+    ],
     dateFormat: DateFormat.MonDdYyyy,
     timeFormat: TimeFormat.H12,
     numberFormat: NumberFormat.Us,
@@ -174,6 +178,7 @@ export const CHANNEL_OPTIONS: readonly PreferenceOption<NotificationChannel>[] =
 export const CATEGORY_OPTIONS: readonly PreferenceOption<NotificationCategory>[] = [
   { value: NotificationCategory.OrderStatus, label: 'Order status (filled or rejected)' },
   { value: NotificationCategory.WatchlistAlerts, label: 'Watchlist alerts' },
+  { value: NotificationCategory.StrategyExecution, label: 'Strategy executions (orders placed by your strategies)' },
 ];
 
 export const DATE_FORMAT_VALUES: readonly DateFormat[] = [

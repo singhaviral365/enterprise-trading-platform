@@ -94,6 +94,13 @@ paths:
 
         Retrying with the same `idempotencyKey` is not a way to poll for status. It returns
         `ORD-409`. Poll `GET /api/v1/accounts/{id}/orders` instead.
+
+        **Orders placed by an automated strategy.** The executor-service places the orders of a customer's automated
+        strategies (see the strategies contract) through this same route, with a signed token of about a minute whose
+        subject is the strategy's owner, so every rule above and the ownership check apply unchanged. Such a token is
+        bound to one strategy: it is accepted on this route only, and only for the one order that strategy may place at that
+        moment (its account, instrument, side, quantity and idempotency key, `strat-{strategyId}-{run}`), while it holds
+        its claim. Anything else is `STR-403`, 403, whatever the cause. A customer's own token is not affected.
       requestBody:
         required: true
         content:
@@ -874,7 +881,7 @@ components:
       properties:
         errorCode:
           type: string
-          enum: [ACC-404, ACC-403, ACC-409, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401, RES-404, SRV-500, FX-503]
+          enum: [ACC-404, ACC-403, ACC-409, INS-404, ORD-400, ORD-409, VAL-422, AUTH-401, RES-404, SRV-500, FX-503, STR-403]
           description: |
             | Code | HTTP | Meaning |
             |---|---|---|

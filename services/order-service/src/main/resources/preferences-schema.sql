@@ -37,6 +37,9 @@ ALTER TABLE customer_preference
     ADD COLUMN IF NOT EXISTS notify_order_status BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE customer_preference
     ADD COLUMN IF NOT EXISTS notify_watchlist_alerts BOOLEAN NOT NULL DEFAULT TRUE;
+-- Orders and notices that come from an automated strategy (see documentation/readme/STRATEGIES.md).
+ALTER TABLE customer_preference
+    ADD COLUMN IF NOT EXISTS notify_strategy_execution BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Display formats.
 ALTER TABLE customer_preference

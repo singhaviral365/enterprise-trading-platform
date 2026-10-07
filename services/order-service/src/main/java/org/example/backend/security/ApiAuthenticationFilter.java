@@ -102,11 +102,24 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        Long userId = extractUserId(token);
+        JwtVerifier.VerifiedToken verified = authenticate(token);
+        Long userId = verified == null ? null : verified.userId();
         if (userId == null || userId < 1) {
             logger.warn("Failed to extract valid user ID from token");
             reject(response);
             return;
+        }
+
+        if (verified.isStrategyExecutor()) {
+            // The executor's token is minted for one strategy's order and nothing else. Refusing it everywhere else means a
+            // stolen one cannot read an account or cancel an order, only try the one order the strategy is allowed to place.
+            if (!isOrderPlacement(request)) {
+                logger.warn("A strategy executor token was used outside order placement: {} {}",
+                        request.getMethod(), request.getRequestURI());
+                reject(response);
+                return;
+            }
+            request.setAttribute(AuthContext.STRATEGY_ID_ATTRIBUTE, verified.strategyId());
         }
 
         request.setAttribute(AuthContext.USER_ID_ATTRIBUTE, userId);
@@ -139,34 +152,36 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
         return value != null && !value.isBlank();
     }
 
+    private static boolean isOrderPlacement(HttpServletRequest request) {
+        return "POST".equalsIgnoreCase(request.getMethod()) && "/api/v1/orders".equals(request.getRequestURI());
+    }
+
     /**
-     * Extract user ID from token.
-     * Only a signed JWT is accepted, unless dev tokens are explicitly enabled (tests only).
+     * Resolves the token to who it is for. Only a signed JWT is accepted, unless dev tokens are explicitly enabled (tests
+     * only), and even then the strategy executor's actor claim is only ever read from a signed JWT: a dev token never carries
+     * one.
+     *
+     * @return null when the token is not acceptable
      */
-    private Long extractUserId(String token) {
+    private JwtVerifier.VerifiedToken authenticate(String token) {
         if (!devTokensEnabled) {
-            try {
-                return jwtVerifier.verifyAndExtractUserId(token);
-            } catch (JwtVerifier.JwtVerificationException e) {
-                // All JWT failures logged by verifier; return null to trigger AUTH-401
-                return null;
-            }
+            return verifySigned(token);
         }
 
         if (token.startsWith(DEV_USER_TOKEN_PREFIX)) {
-            return parseDevToken(token, DEV_USER_TOKEN_PREFIX);
+            return plain(parseDevToken(token, DEV_USER_TOKEN_PREFIX));
         }
 
         // Support legacy dev-account-* tokens for compatibility.
         if (token.startsWith(DEV_TOKEN_PREFIX)) {
-            return parseDevToken(token, DEV_TOKEN_PREFIX);
+            return plain(parseDevToken(token, DEV_TOKEN_PREFIX));
         }
 
         // Support plain numeric bearer tokens in local stub mode.
         // This keeps test clients simple while still rejecting non-numeric strings.
         if (!token.contains(".")) {
             try {
-                return Long.parseLong(token);
+                return plain(Long.parseLong(token));
             } catch (NumberFormatException e) {
                 logger.warn("Unsupported non-JWT token format for local auth stub");
                 return null;
@@ -174,12 +189,20 @@ public class ApiAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // Verify JWT token (signature → expiry → algorithm)
+        return verifySigned(token);
+    }
+
+    private JwtVerifier.VerifiedToken verifySigned(String token) {
         try {
-            return jwtVerifier.verifyAndExtractUserId(token);
+            return jwtVerifier.verify(token);
         } catch (JwtVerifier.JwtVerificationException e) {
             // All JWT failures logged by verifier; return null to trigger AUTH-401
             return null;
         }
+    }
+
+    private static JwtVerifier.VerifiedToken plain(Long userId) {
+        return userId == null ? null : new JwtVerifier.VerifiedToken(userId, null, null);
     }
 
     private Long parseDevToken(String token, String prefix) {

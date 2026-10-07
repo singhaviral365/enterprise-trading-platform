@@ -102,7 +102,7 @@ class ApiAuthenticationFilterTest {
         ApiAuthenticationFilter productionFilter = new ApiAuthenticationFilter(mockVerifier, false);
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/accounts/link");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer dev-user-1000");
-        when(mockVerifier.verifyAndExtractUserId("dev-user-1000"))
+        when(mockVerifier.verify("dev-user-1000"))
                 .thenThrow(new JwtVerifier.JwtVerificationException("Malformed token"));
 
         productionFilter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
@@ -116,7 +116,7 @@ class ApiAuthenticationFilterTest {
         ApiAuthenticationFilter productionFilter = new ApiAuthenticationFilter(mockVerifier, false);
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/accounts/link");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer 1000");
-        when(mockVerifier.verifyAndExtractUserId("1000"))
+        when(mockVerifier.verify("1000"))
                 .thenThrow(new JwtVerifier.JwtVerificationException("Malformed token"));
 
         productionFilter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
@@ -151,7 +151,7 @@ class ApiAuthenticationFilterTest {
     void testValidJwtTokenExtractsUserId() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer valid.jwt.token");
-        when(mockVerifier.verifyAndExtractUserId("valid.jwt.token")).thenReturn(123L);
+        when(mockVerifier.verify("valid.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(123L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
@@ -174,7 +174,7 @@ class ApiAuthenticationFilterTest {
     @Test
     void testCookieTokenAuthenticatesASafeRequestWithoutTheCsrfHeader() throws Exception {
         cookieRequest("GET", "cookie.jwt.token", null);
-        when(mockVerifier.verifyAndExtractUserId("cookie.jwt.token")).thenReturn(77L);
+        when(mockVerifier.verify("cookie.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(77L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
@@ -185,7 +185,7 @@ class ApiAuthenticationFilterTest {
     @Test
     void testCookieTokenAuthenticatesAStateChangingRequestThatCarriesTheCsrfHeader() throws Exception {
         cookieRequest("POST", "cookie.jwt.token", "XMLHttpRequest");
-        when(mockVerifier.verifyAndExtractUserId("cookie.jwt.token")).thenReturn(77L);
+        when(mockVerifier.verify("cookie.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(77L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
@@ -196,13 +196,13 @@ class ApiAuthenticationFilterTest {
     @Test
     void testCookieTokenIsRefusedForAStateChangingRequestWithoutTheCsrfHeader() throws Exception {
         cookieRequest("DELETE", "cookie.jwt.token", null);
-        when(mockVerifier.verifyAndExtractUserId("cookie.jwt.token")).thenReturn(77L);
+        when(mockVerifier.verify("cookie.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(77L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
         verify(mockResponse).setStatus(401);
         verify(mockFilterChain, never()).doFilter(mockRequest, mockResponse);
-        verify(mockVerifier, never()).verifyAndExtractUserId("cookie.jwt.token");
+        verify(mockVerifier, never()).verify("cookie.jwt.token");
     }
 
     @Test
@@ -210,7 +210,7 @@ class ApiAuthenticationFilterTest {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getMethod()).thenReturn("POST");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer valid.jwt.token");
-        when(mockVerifier.verifyAndExtractUserId("valid.jwt.token")).thenReturn(123L);
+        when(mockVerifier.verify("valid.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(123L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
@@ -221,7 +221,7 @@ class ApiAuthenticationFilterTest {
     void testAMalformedAuthorizationHeaderIsNotRescuedByACookie() throws Exception {
         cookieRequest("GET", "cookie.jwt.token", "XMLHttpRequest");
         when(mockRequest.getHeader("Authorization")).thenReturn("Basic abc");
-        when(mockVerifier.verifyAndExtractUserId("cookie.jwt.token")).thenReturn(77L);
+        when(mockVerifier.verify("cookie.jwt.token")).thenReturn(new JwtVerifier.VerifiedToken(77L, null, null));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
 
@@ -232,7 +232,7 @@ class ApiAuthenticationFilterTest {
     @Test
     void testAnInvalidCookieTokenReturnsUnauthorizedResponse() throws Exception {
         cookieRequest("GET", "forged.jwt.token", null);
-        when(mockVerifier.verifyAndExtractUserId("forged.jwt.token"))
+        when(mockVerifier.verify("forged.jwt.token"))
                 .thenThrow(new JwtVerifier.JwtVerificationException("Bad signature"));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
@@ -257,7 +257,7 @@ class ApiAuthenticationFilterTest {
     void testJwtVerificationFailureReturnsUnauthorizedResponse() throws Exception {
         when(mockRequest.getRequestURI()).thenReturn("/api/v1/orders");
         when(mockRequest.getHeader("Authorization")).thenReturn("Bearer expired.jwt.token");
-        when(mockVerifier.verifyAndExtractUserId("expired.jwt.token"))
+        when(mockVerifier.verify("expired.jwt.token"))
             .thenThrow(new JwtVerifier.JwtVerificationException("Token expired"));
 
         filter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);

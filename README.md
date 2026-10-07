@@ -26,6 +26,8 @@ A web trading platform: sign up, open an account, watch live prices, place buy a
 | **Market data** | Live quotes with company logos; click a row for the quote and the order ticket |
 | **Positions** | Cards (default) or table; click one to see the buys behind it, then buy more or sell |
 | **Order history** | Every order with status, filters, sorting and cancellation of working orders |
+| **Strategies** | Rules such as "buy 50 AAPL if it falls to 150" that the platform trades for you, inside limits you set ([how it works](documentation/readme/STRATEGIES.md)) |
+| **Trade signals** | A BUY / SELL / HOLD reading with its numbers on every quote, and an optional AI assistant to ask about it ([how it works](documentation/readme/SIGNALS.md)) |
 | **Currencies** | Instruments quoted in another currency (e.g. INFY.NS in INR) are converted to your account currency using ExchangeRate-API |
 | **Sessions** | JWTs live in HttpOnly cookies; nothing secret is kept in browser storage |
 
@@ -44,7 +46,7 @@ Angular app (4200) ──► auth-service (3000)        sign-in, sessions       
 
 Orders are asynchronous: the order-service stores a `NEW` order and publishes it; the executor prices it against a live quote, settles cash and holdings, and the order becomes `FILLED` or `REJECTED`.
 
-More detail lives in [`documentation/readme`](documentation/readme): [design system](documentation/readme/DESIGN_SYSTEM.md), [currency](documentation/readme/CURRENCY.md), [auth cookies](documentation/readme/AUTH-COOKIES.md), [Kafka flow](documentation/readme/KAFKA-FLOW.md), [portfolio history plan](documentation/readme/PORTFOLIO-HISTORY-PLAN.md).
+More detail lives in [`documentation/readme`](documentation/readme): [design system](documentation/readme/DESIGN_SYSTEM.md), [currency](documentation/readme/CURRENCY.md), [auth cookies](documentation/readme/AUTH-COOKIES.md), [Kafka flow](documentation/readme/KAFKA-FLOW.md), [automated strategies](documentation/readme/STRATEGIES.md), [trade signals](documentation/readme/SIGNALS.md), [portfolio history plan](documentation/readme/PORTFOLIO-HISTORY-PLAN.md).
 
 ---
 
@@ -148,9 +150,13 @@ The two Spring services read the same names as **environment variables**. Set th
 | Variable | order-service | executor-service |
 |---|:-:|:-:|
 | `DB_PASSWORD` | yes | yes |
-| `JWT_SECRET`, `JWT_ISSUER` | yes | |
+| `JWT_SECRET`, `JWT_ISSUER` | yes | yes (signs the one-minute token a strategy's order is placed with) |
+| `ORDER_SERVICE_BASE_URL` (default `http://localhost:8081`) | | yes (where strategies place their orders) |
+| `STRATEGY_EXECUTION_ENABLED` (optional, default `true`; `false` is the kill switch) | | yes |
+| `GEMINI_API_KEY` (optional; without it explanations are the platform's own wording) | yes | |
+| `GEMINI_MODEL`, `GEMINI_RATE_LIMIT_RPM`, `CANDLE_CACHE_TTL_MINUTES`, `SIGNAL_CACHE_TTL_MINUTES` (optional) | yes | |
 | `KAFKA_BOOTSTRAP_SERVERS` | yes | yes |
-| `FAUXNANCE_BASE_URL`, `FAUXNANCE_API_KEY` | | yes |
+| `FAUXNANCE_BASE_URL`, `FAUXNANCE_API_KEY` | yes (portfolio, trade signals) | yes |
 | `EXCHANGE_RATE_API_URL`, `EXCHANGE_RATE_API_KEY` | yes | yes |
 | `POLL_INTERVAL_SECONDS` (optional, default 60) | | yes |
 

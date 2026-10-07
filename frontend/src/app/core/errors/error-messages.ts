@@ -1,4 +1,6 @@
 import { ErrorResponseErrorCodeEnum as AuthErrorCode } from '../../api/generated/auth';
+import { ErrorResponseErrorCodeEnum as SignalsErrorCode } from '../../api/generated/signals';
+import { ErrorResponseErrorCodeEnum as StrategiesErrorCode } from '../../api/generated/strategies';
 import { ErrorResponseErrorCodeEnum as TradeErrorCode } from '../../api/generated/trade';
 
 /**
@@ -6,7 +8,7 @@ import { ErrorResponseErrorCodeEnum as TradeErrorCode } from '../../api/generate
  * contracts: when a contract gains a code and the clients are regenerated, `ERROR_MESSAGES` below
  * stops compiling until that code has a sentence.
  */
-export type ErrorCode = `${AuthErrorCode}` | `${TradeErrorCode}`;
+export type ErrorCode = `${AuthErrorCode}` | `${TradeErrorCode}` | `${StrategiesErrorCode}` | `${SignalsErrorCode}`;
 
 /** Sentences a trader can act on. Keyed by code, never by the developer-facing `message`. */
 export const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
@@ -41,6 +43,17 @@ export const ERROR_MESSAGES: Readonly<Record<ErrorCode, string>> = {
   'SRV-500': 'The trading service hit an unexpected problem. Please try again in a moment.',
   'FX-503':
     'We could not get a currency exchange rate for this order right now. Please try again in a moment, or place a market order.',
+  // Automated strategies
+  'STR-403': 'That order is not one this strategy is allowed to place right now.',
+  'STR-404': 'We could not find that strategy. It may have been removed, so refresh the list and try again.',
+  'STR-409':
+    'That change is not possible for this strategy. If you are creating one, the price has already reached your trigger, so choose a level the price has not reached yet. Otherwise it may have finished, expired or been cancelled.',
+  'STR-422': 'You already have the most open strategies this account can hold. Cancel one you no longer need, then try again.',
+  // Trade signals and the assistant
+  'SIG-422': 'There is not enough price history for this instrument to work out a signal yet.',
+  'SIG-503': 'We could not get the price history for this instrument right now. Please try again in a moment.',
+  'AST-403': 'The assistant is switched off. Turn it on in Settings to ask questions about a signal.',
+  'AST-429': 'The assistant is busy right now. Please wait a few seconds and ask again.',
 };
 
 export const NETWORK_ERROR_MESSAGE =

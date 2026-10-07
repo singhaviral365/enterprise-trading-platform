@@ -105,6 +105,32 @@ class MarketDataPollerTest {
     }
 
     @Test
+    void symbolsWithAnActiveStrategyArePricedEvenWhenNobodyHoldsOrWatchesThem() {
+        when(instrumentMapper.selectSymbolsForMarketPolling()).thenReturn(List.of("MSFT"));
+        when(instrumentMapper.selectStrategySymbolsForMarketPolling()).thenReturn(List.of("AAPL", " ", "MSFT"));
+        when(quoteClient.getQuotes(anyCollection())).thenReturn(Map.of());
+
+        new MarketDataPoller(instrumentMapper, quoteClient, marketDataEventProducer, 60, "", clock).poll();
+
+        ArgumentCaptor<Collection<String>> batch = ArgumentCaptor.forClass(Collection.class);
+        verify(quoteClient).getQuotes(batch.capture());
+        assertEquals(List.of("AAPL", "MSFT"), List.copyOf(batch.getValue()));
+    }
+
+    @Test
+    void aFailureReadingStrategySymbolsCostsOnlyThoseSymbols() {
+        when(instrumentMapper.selectSymbolsForMarketPolling()).thenReturn(List.of("MSFT"));
+        when(instrumentMapper.selectStrategySymbolsForMarketPolling()).thenThrow(new IllegalStateException("no strategy table"));
+        when(quoteClient.getQuotes(anyCollection())).thenReturn(Map.of());
+
+        new MarketDataPoller(instrumentMapper, quoteClient, marketDataEventProducer, 60, "", clock).poll();
+
+        ArgumentCaptor<Collection<String>> batch = ArgumentCaptor.forClass(Collection.class);
+        verify(quoteClient).getQuotes(batch.capture());
+        assertEquals(List.of("MSFT"), List.copyOf(batch.getValue()));
+    }
+
+    @Test
     void configuredIntervalIsRaisedToStayInsideDailyQuota() {
         long effectiveIntervalSeconds = MarketDataPoller.calculateEffectiveIntervalSeconds(8, 30);
         long requestsPerDay = MarketDataPoller.requestsPerDay(8, effectiveIntervalSeconds);

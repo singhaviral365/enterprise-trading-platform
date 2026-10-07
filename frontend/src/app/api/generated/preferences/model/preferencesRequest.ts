@@ -29,7 +29,7 @@ export interface PreferencesRequest {
     timeFormat: TimeFormat;
     numberFormat: NumberFormat;
     /**
-     * true shows the chatbot icon.
+     * true turns on the trade-signal assistant on each instrument\'s quote screen (see the signals contract).
      */
     aiAssistantEnabled: boolean;
     theme: Theme;

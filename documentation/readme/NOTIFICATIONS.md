@@ -48,7 +48,7 @@ server having a bad afternoon cannot stall a partition and back up every other a
 scrollable card with:
 
 - a **search** box (case-insensitive substring over title and message; `%` and `_` are literal; debounced 300 ms)
-- a **category** filter (Order updates, Watchlist alerts)
+- a **category** filter (Order updates, Watchlist alerts, Strategy executions)
 - **pagination** with a page-size selector (5, 10, 25), newest first
 - **only unread** notifications, plus ones **read within the last hour** (shown dimmed, with the word "Read"). Clicking an
   unread one marks it read. An hour later it drops out of the list.

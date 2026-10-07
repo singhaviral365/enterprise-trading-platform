@@ -138,6 +138,7 @@ public class MarketDataPoller {
                     .collect(Collectors.toCollection(LinkedHashSet::new)));
         }
         symbols.addAll(loadWatchlistSymbols());
+        symbols.addAll(loadStrategySymbols());
         symbols.addAll(watchSymbols);
 
         List<String> result = new ArrayList<>(symbols);
@@ -163,6 +164,27 @@ public class MarketDataPoller {
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         } catch (RuntimeException ex) {
             LOGGER.warn("Could not load watchlist symbols for market polling; continuing without them", ex);
+            return Set.of();
+        }
+    }
+
+    /**
+     * Symbols a customer's automated strategy is waiting on. Treated like the watchlist symbols: a failure here (for example
+     * the strategy table not existing yet) is logged and costs only this lookup.
+     */
+    private Set<String> loadStrategySymbols() {
+        try {
+            List<String> symbols = instrumentMapper.selectStrategySymbolsForMarketPolling();
+            if (symbols == null) {
+                return Set.of();
+            }
+            return symbols.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        } catch (RuntimeException ex) {
+            LOGGER.warn("Could not load strategy symbols for market polling; continuing without them", ex);
             return Set.of();
         }
     }

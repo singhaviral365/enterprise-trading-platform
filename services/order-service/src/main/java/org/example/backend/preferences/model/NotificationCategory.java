@@ -4,5 +4,7 @@ package org.example.backend.preferences.model;
 public enum NotificationCategory {
     /** An order they placed was FILLED or REJECTED. */
     ORDER_STATUS,
-    WATCHLIST_ALERTS
+    WATCHLIST_ALERTS,
+    /** An order placed by one of their automated strategies, or a strategy that stopped or expired. */
+    STRATEGY_EXECUTION
 }

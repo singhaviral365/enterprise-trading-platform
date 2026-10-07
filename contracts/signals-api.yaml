@@ -1,0 +1,445 @@
+openapi: 3.1.0
+
+info:
+  title: Trade Signals API (Trade REST API module, served by order-service)
+  version: 1.0.0
+  summary: A BUY, SELL or HOLD reading of an instrument from two moving averages and the RSI, explained in words.
+  description: |
+    The "Trade advice and signals" extension. For any instrument it computes a **signal** from the daily closing prices, and
+    can explain it in plain language, in a short chat on the instrument's quote screen. It reads prices and the customer's own
+    holding of the instrument, writes nothing and **places no order**; what is done about a signal goes through the ordinary
+    order route.
+
+    ## The method
+
+    One method, written out, so every number can be reproduced by hand from the closes.
+
+    * **Direction.** `BUY` when the 20-day simple moving average is above the 50-day and the latest close is above the 20-day.
+      `SELL` when the 20-day is below the 50-day and the latest close is below the 20-day. `HOLD` otherwise.
+    * **Strength**, 0 to 100, from two equal halves. *Trend:* how far apart the averages are as a share of the 50-day, a gap of
+      3% or more counting in full. *Momentum:* the 14-day RSI (Wilder), counting in full from 40 to 65 for a `BUY` (rising, not
+      stretched), less below 40 and less again above 65; for a `SELL` the same on 100 minus the RSI. For `HOLD` the strength is
+      how balanced the indicators are, `100 - 2 * |RSI - 50|`.
+    * **Data.** Daily closes for the last 90, 180 or 365 calendar days (default 90) from Fauxnance, trading days only (a candle Fauxnance generated to bridge a closed day is dropped). At least 50 trading
+      days are needed (`SIG-422` otherwise).
+
+    This is a description of a chart. It is not investment advice, and the API says so in every answer (`disclaimer`).
+
+    ## Authorisation
+
+    Every route requires a valid signed JWT (`AUTH-401` otherwise) and checks the token's user owns the account
+    (`ACC-404` unknown, `ACC-403` someone else's).
+
+    ## The assistant and the customer's data
+
+    The numbers are available to any account owner. The **language model** (Gemini) is used only for a customer who switched the
+    AI assistant on in Settings (`aiAssistantEnabled` in the preferences contract). For anyone else the narrative is the
+    platform's own wording (`explanationSource: FALLBACK`) and the chat is refused (`AST-403`), so nothing about them leaves the
+    platform without their say-so. When it is used, the model is told the instrument's symbol, the signal's numbers, and how
+    many units the customer holds and their average cost, and nothing else about them (no account id, name, balance or
+    contact detail). Their own words go to it as a question, never as instructions, and it has no tools: all it can produce is
+    text.
+
+    ## Caching
+
+    Fetched candles are held for 10 minutes and a computed signal for 5, per instrument and window, so everyone looking at the
+    same instrument shares one fetch. If Fauxnance cannot be reached, the candles already held are served up to a day old with
+    `stale: true`; with none held the answer is `SIG-503`. `cacheAge` says how old the candles are, in seconds.
+
+    ## Rate limits
+
+    The model allows 60 requests a minute on the free tier. The platform keeps inside it, and keeps one customer from using it
+    all (10 a minute each). Over the limit, the narrative on the signal route falls back to the platform's own wording and the
+    chat answers `AST-429` with a `Retry-After` header. The chat is refused rather than queued: a queue would hold a request
+    open for up to a minute.
+  contact:
+    name: Team 3
+
+servers:
+  - url: http://localhost:8081
+    description: Local development (order-service)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Signals
+    description: The computed signal for an instrument, with or without an explanation.
+  - name: Assistant
+    description: A short conversation about an instrument's signal.
+
+paths:
+
+  /api/v1/accounts/{accountId}/signals/{symbol}:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+      - $ref: '#/components/parameters/Symbol'
+
+    get:
+      operationId: getSignal
+      tags: [Signals]
+      summary: The signal for an instrument
+      description: |
+        Computes (or returns the cached) signal. With `format=narrative` the answer also carries an explanation in words.
+      parameters:
+        - name: lookbackPeriods
+          in: query
+          required: false
+          description: Calendar days of price history to use.
+          schema:
+            type: integer
+            enum: [90, 180, 365]
+            default: 90
+        - name: format
+          in: query
+          required: false
+          description: "`numeric` for the numbers only; `narrative` to include an explanation."
+          schema:
+            type: string
+            enum: [numeric, narrative]
+            default: numeric
+      responses:
+        '200':
+          description: The signal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeSignal'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '503':
+          $ref: '#/components/responses/DataUnavailable'
+
+  /api/v1/signals/chat:
+    post:
+      operationId: chatAboutSignal
+      tags: [Assistant]
+      summary: Ask the assistant about an instrument's signal
+      description: |
+        Answers one question. The signal is computed afresh for each question (from the cache within its window), so the answer
+        is never about a signal the screen is no longer showing. The server keeps no conversation: send the earlier turns in
+        `conversationHistory`, oldest first; only the last ten are used.
+
+        Refused with `AST-403` unless the customer switched the AI assistant on in Settings. If the model is not set up, or
+        fails, the answer is the platform's own explanation with `source: FALLBACK`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: The assistant's answer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AssistantOffOrNotReachable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/DataUnavailable'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric account key. Must be the account the token belongs to.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 1001
+    Symbol:
+      name: symbol
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 20
+      example: AAPL
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or wrongly signed token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorised:
+              value:
+                errorCode: AUTH-401
+                message: Unauthorised
+    AccountNotReachable:
+      description: The token is valid but its user does not own the account.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notReachable:
+              value:
+                errorCode: ACC-403
+                message: Account not reachable with this token
+    AssistantOffOrNotReachable:
+      description: |
+        The account is not the token's (`ACC-403`), or the customer has not switched the AI assistant on in Settings
+        (`AST-403`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            off:
+              value:
+                errorCode: AST-403
+                message: The AI assistant is switched off in Settings
+    NotFound:
+      description: The account or the instrument does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            instrument:
+              value:
+                errorCode: INS-404
+                message: Instrument not found
+    Unprocessable:
+      description: Invalid input, or the instrument has too few trading days of history (`SIG-422`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            history:
+              value:
+                errorCode: SIG-422
+                message: Not enough price history to compute a signal
+    RateLimited:
+      description: Too many assistant requests, from this customer or from everyone at once. See the `Retry-After` header.
+      headers:
+        Retry-After:
+          description: Seconds to wait before asking again.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            busy:
+              value:
+                errorCode: AST-429
+                message: "The assistant is busy: try again shortly"
+    DataUnavailable:
+      description: Price history could not be fetched and none is held to fall back on.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unavailable:
+              value:
+                errorCode: SIG-503
+                message: Price history is temporarily unavailable
+
+  schemas:
+
+    SignalDirection:
+      type: string
+      enum: [BUY, SELL, HOLD]
+      description: What the indicators say. A description of the chart, not an instruction to trade.
+
+    SmaStatus:
+      type: string
+      enum: [BULLISH, BEARISH, FLAT]
+      description: |
+        How the 20-day average stands against the 50-day: `BULLISH` above, `BEARISH` below, `FLAT` equal.
+
+    ExplanationSource:
+      type: string
+      enum: [GEMINI, FALLBACK]
+      description: |
+        `GEMINI` when the language model wrote it. `FALLBACK` when the platform's own wording was used: the customer has the
+        assistant off, the model is not set up, was busy, or failed.
+
+    TradeSignal:
+      type: object
+      additionalProperties: false
+      required:
+        - symbol
+        - direction
+        - strength
+        - smaStatus
+        - sma20
+        - sma50
+        - price
+        - rsiValue
+        - asOf
+        - sessions
+        - timestamp
+        - cacheAge
+        - stale
+        - methodology
+        - disclaimer
+      properties:
+        symbol:
+          type: string
+        direction:
+          $ref: '#/components/schemas/SignalDirection'
+        strength:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: See "The method" above. For `HOLD`, how balanced the indicators are.
+        smaStatus:
+          $ref: '#/components/schemas/SmaStatus'
+        sma20:
+          type: number
+          description: The 20-day simple moving average of the close.
+        sma50:
+          type: number
+          description: The 50-day simple moving average of the close.
+        price:
+          type: number
+          description: The latest close, in the instrument's currency.
+        rsiValue:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: The 14-day RSI.
+        asOf:
+          type: string
+          format: date
+          description: The date of the latest close.
+        sessions:
+          type: integer
+          description: How many trading days of closes the averages were taken from.
+        timestamp:
+          type: string
+          format: date-time
+          description: When this answer was produced.
+        cacheAge:
+          type: integer
+          format: int64
+          description: Seconds since the price history was fetched.
+        stale:
+          type: boolean
+          description: The history could not be refreshed and is older than it should be.
+        explanation:
+          type: [string, 'null']
+          description: Present only with `format=narrative`.
+        explanationSource:
+          type: [string, 'null']
+          enum: [GEMINI, FALLBACK, null]
+          description: Present with `explanation`.
+        methodology:
+          type: string
+          description: The method in one paragraph, to be shown beside the signal.
+        disclaimer:
+          type: string
+          description: To be shown beside the signal. Not investment advice.
+
+    ChatTurn:
+      type: object
+      additionalProperties: false
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+          maxLength: 2000
+
+    ChatRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId, symbol, message]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          minimum: 1
+        symbol:
+          type: string
+          maxLength: 20
+          example: AAPL
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: The customer's question.
+        conversationHistory:
+          type: array
+          maxItems: 40
+          description: What was said before, oldest first. Only the last ten turns are used.
+          items:
+            $ref: '#/components/schemas/ChatTurn'
+
+    ChatResponse:
+      type: object
+      additionalProperties: false
+      required: [response, source, signal, timestamp]
+      properties:
+        response:
+          type: string
+          description: The assistant's answer, plain text.
+        source:
+          $ref: '#/components/schemas/ExplanationSource'
+        signal:
+          $ref: '#/components/schemas/TradeSignal'
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      description: |
+        The platform's single error envelope. Clients branch on `errorCode`, never on `message`.
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, ACC-404, INS-404, VAL-422, SIG-422, SIG-503, AST-403, AST-429]
+          description: |
+            | Code | HTTP | Meaning |
+            |---|---|---|
+            | `AUTH-401` | 401 | Unauthorised or invalid token |
+            | `ACC-403` | 403 | Account not reachable with this token |
+            | `ACC-404` | 404 | Account not found |
+            | `INS-404` | 404 | Instrument not found |
+            | `VAL-422` | 422 | Invalid input |
+            | `SIG-422` | 422 | Fewer than 50 trading days of history |
+            | `SIG-503` | 503 | Price history unavailable and none held |
+            | `AST-403` | 403 | The AI assistant is switched off in Settings |
+            | `AST-429` | 429 | The assistant is busy; see `Retry-After` |
+        message:
+          type: string
