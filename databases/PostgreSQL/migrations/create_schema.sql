@@ -737,6 +737,92 @@ CREATE INDEX IF NOT EXISTS idx_notification_delivery_queued
 
 
 -- ============================================================
+-- 13. REALISED PROFIT AND LOSS (Portfolio module)
+-- ============================================================
+-- One row per filled sale, booked once and never recomputed from a price; order_id makes booking idempotent.
+-- Live figures (market value, unrealised and day P&L) are not stored.
+
+CREATE TABLE IF NOT EXISTS realised_pnl_entry (
+    -- The sale. The idempotency key.
+    order_id BIGINT PRIMARY KEY,
+    account_id INTEGER NOT NULL,
+    ticker_symbol VARCHAR(20) NOT NULL,
+    quantity BIGINT NOT NULL,
+    fill_price NUMERIC(19, 4) NOT NULL,
+    -- The weighted average cost just before this sale: a fact of that moment, not a live figure.
+    average_cost_at_sale NUMERIC(19, 4) NOT NULL,
+    realised_pnl NUMERIC(19, 4) NOT NULL,
+    -- The account currency at booking (every stored price is in it).
+    currency CHAR(3) NOT NULL,
+    -- The order's transaction_date.
+    booked_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_realised_pnl_account
+        FOREIGN KEY (account_id)
+        REFERENCES account(account_id)
+        ON DELETE CASCADE,
+    CONSTRAINT chk_realised_pnl_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_realised_pnl_currency CHECK (currency ~ '^[A-Z]{3}$')
+);
+
+CREATE INDEX IF NOT EXISTS idx_realised_pnl_account_booked
+    ON realised_pnl_entry(account_id, booked_at);
+
+
+-- ============================================================
+-- 14. PORTFOLIO PERFORMANCE (end-of-day statements and the NAV curve)
+-- ============================================================
+-- Closed days only: a daily close per symbol (a cache of Fauxnance candles) and one statement per account per closed day.
+-- Live figures are never stored.
+
+-- Fauxnance daily candles, shared by every account: one row per symbol per trading day. close is the price as traded (what holdings
+-- are valued with: share counts are never restated); adjclose is restated for splits and dividends (what benchmark returns use).
+-- Symbols are Fauxnance symbols, upper case: AAPL, INFY.NS, SPY, and FX pairs such as FX:EURUSD.
+CREATE TABLE IF NOT EXISTS price_candle_daily (
+    symbol VARCHAR(32) NOT NULL,
+    candle_date DATE NOT NULL,
+    close NUMERIC(19, 6) NOT NULL,
+    adjclose NUMERIC(19, 6) NOT NULL,
+    currency CHAR(3),
+    -- Fauxnance generated this row to bridge an upstream gap: the day is shown as estimated.
+    synthetic BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (symbol, candle_date),
+    CONSTRAINT chk_price_candle_close CHECK (close > 0),
+    CONSTRAINT chk_price_candle_adjclose CHECK (adjclose > 0)
+);
+
+-- The statement of one CLOSED day for one account, in the account currency.
+CREATE TABLE IF NOT EXISTS portfolio_nav_daily (
+    account_id INTEGER NOT NULL,
+    nav_date DATE NOT NULL,
+    cash NUMERIC(19, 4) NOT NULL,
+    holdings_value NUMERIC(19, 4) NOT NULL,
+    -- V(d) = cash + holdings_value
+    total_value NUMERIC(19, 4) NOT NULL,
+    -- What the holdings cost (quantity * average cost), so unrealised_pnl = holdings_value - cost_basis.
+    cost_basis NUMERIC(19, 4) NOT NULL,
+    unrealised_pnl NUMERIC(19, 4) NOT NULL,
+    -- Realised profit and loss booked on or before this day (from the ledger).
+    realised_pnl_cumulative NUMERIC(19, 4) NOT NULL,
+    -- External money (or securities) put in or taken out that day. On the first day it is the whole starting value.
+    net_flow NUMERIC(19, 4) NOT NULL,
+    -- V(d) - V(d-1) - F(d): trades swap cash for shares and cancel, so only prices move it.
+    day_pnl NUMERIC(19, 4) NOT NULL,
+    units NUMERIC(24, 8) NOT NULL,
+    nav NUMERIC(19, 6) NOT NULL,
+    -- Any price used that day was synthetic, missing, forward-filled over a gap, or an exchange rate was today's.
+    estimated BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (account_id, nav_date),
+    CONSTRAINT fk_portfolio_nav_account
+        FOREIGN KEY (account_id)
+        REFERENCES account(account_id)
+        ON DELETE CASCADE,
+    CONSTRAINT chk_portfolio_nav_positive CHECK (nav > 0 AND units >= 0)
+);
+
+
+-- ============================================================
 -- UPGRADING AN EXISTING DATABASE
 -- ============================================================
 -- Everything above creates the whole schema from an empty database. These statements bring a database created by an

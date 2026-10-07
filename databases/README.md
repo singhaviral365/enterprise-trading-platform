@@ -325,6 +325,47 @@ ORDER BY user_id;                               ORDER BY user_id;
 
 ---
 
+## 9a. Portfolio tables: realised_pnl_entry, price_candle_daily, portfolio_nav_daily
+
+Written only by the Portfolio module of the order-service (`PortfolioIsReadOnlyTest` fails the build on any other write). They hold **facts
+of the past** and nothing live: market value, unrealised and day profit and loss as at now are computed from the current quote on every
+request and are never stored. Created by the startup schema (`portfolio-schema.sql`, `portfolio-performance-schema.sql`), by
+`create_schema.sql` (a new database) and by `update_trading_db.sql` (an existing one). `update_auth_db.sql` is not affected.
+
+**realised_pnl_entry**: one row per filled sale, written once, never changed.
+
+| Constraint | Column | Rule |
+|---|---|---|
+| pk | order_id | The sale; booking the same sale twice is a no-op (idempotency key) |
+| fk_realised_pnl_account | account_id | References account(account_id), ON DELETE CASCADE |
+| chk_realised_pnl_quantity | quantity | Greater than 0 |
+| chk_realised_pnl_currency | currency | Three upper-case letters (the account currency when booked) |
+| idx_realised_pnl_account_booked | account_id, booked_at | Serves the date-bounded realised figure |
+
+`average_cost_at_sale` is the weighted average just before that sale (a fact of that moment); `realised_pnl = (fill_price - average_cost_at_sale) x quantity`.
+
+**price_candle_daily**: a cache of the daily closes Fauxnance published, shared by every account (one row per symbol per trading day,
+FX pairs as `FX:EURUSD`).
+
+| Constraint | Column | Rule |
+|---|---|---|
+| pk | symbol, candle_date | One close per symbol per day |
+| chk_price_candle_close, chk_price_candle_adjclose | close, adjclose | Greater than 0 |
+
+`close` is the price as traded (holdings are valued with it, so share counts are never restated); `adjclose` is restated for splits and
+dividends (benchmark returns use it); `synthetic` marks a row Fauxnance generated to bridge a gap, which makes the day it is used on estimated.
+
+**portfolio_nav_daily**: the statement of one **closed** day of one account, in the account currency.
+
+| Constraint | Column | Rule |
+|---|---|---|
+| pk | account_id, nav_date | One statement per account per day |
+| fk_portfolio_nav_account | account_id | References account(account_id), ON DELETE CASCADE |
+| chk_portfolio_nav_positive | nav, units | nav greater than 0, units 0 or more |
+
+`total_value = cash + holdings_value`; `day_pnl = V(d) - V(d-1) - net_flow(d)`; `nav = total_value / units`, 1000 on the first day. Written once,
+except the last few days (`portfolio.performance.heal-days`), which are rewritten so a synthetic candle later replaced by a real one heals.
+
 ## 9. Primary Key Summary
 
 | Table | Primary Key | Purpose |
