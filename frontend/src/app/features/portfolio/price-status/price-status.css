@@ -1,0 +1,45 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.is-live {
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+}
+
+.badge.is-delayed {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
+
+.badge.is-unavailable {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.as-of {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}

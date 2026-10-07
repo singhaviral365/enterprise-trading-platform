@@ -1,0 +1,72 @@
+<div class="row-table-scroll" data-testid="positions-table-view">
+  <table class="row-table">
+    <caption class="visually-hidden">
+      Holdings in this account with their prices, market value and profit and loss. Select a row to see its buys and to trade it.
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Instrument</th>
+        <th scope="col" class="num">Quantity</th>
+        <th scope="col" class="num col-extra">Average cost</th>
+        <th scope="col" class="num col-extra">Cost basis</th>
+        <th scope="col" class="num">Price</th>
+        <th scope="col" class="num">Market value</th>
+        <th scope="col" class="num">Unrealised P&amp;L</th>
+        <th scope="col" class="num col-extra">Today</th>
+        <th scope="col">Price status</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.symbol) {
+        <tr
+          [class.is-selected]="row.symbol === selectedSymbol()"
+          [class.is-unpriced]="row.pricing?.status === 'unavailable'"
+          [attr.aria-current]="row.symbol === selectedSymbol() ? 'true' : null"
+          data-testid="position-row"
+          tabindex="0"
+          [attr.aria-label]="'View ' + row.symbol + ', ' + row.name + ', position details'"
+          (click)="selected.emit(row)"
+          (keydown.enter)="selected.emit(row)"
+          (keydown.space)="onSpace($event, row)"
+        >
+          <th scope="row">
+            <app-instrument-label [symbol]="row.symbol" [name]="row.name" [iconUrl]="row.iconUrl" [size]="32" />
+          </th>
+          <td class="num">{{ row.quantity | number }}</td>
+          <td class="num col-extra">{{ row.averageCost | currency: currency() ?? 'USD' }}</td>
+          <td class="num col-extra">{{ row.costBasis | currency: currency() ?? 'USD' }}</td>
+          <td class="num" [attr.data-testid]="'holding-price-' + row.symbol">
+            @if (row.pricing?.lastPrice != null) {
+              {{ row.pricing!.lastPrice | currency: currency() ?? 'USD' }}
+            } @else {
+              <span class="muted">No price</span>
+            }
+          </td>
+          <td class="num" [attr.data-testid]="'holding-value-' + row.symbol">
+            @if (row.pricing?.marketValue != null) {
+              {{ row.pricing!.marketValue | currency: currency() ?? 'USD' }}
+            } @else {
+              <span class="muted" aria-hidden="true">—</span>
+              <span class="visually-hidden">Not available</span>
+            }
+          </td>
+          <td class="num">
+            <app-pnl-value [amount]="row.pricing?.unrealisedPnl" [percent]="row.pricing?.unrealisedPercent" [currency]="currency() ?? 'USD'" />
+          </td>
+          <td class="num col-extra">
+            <app-pnl-value [amount]="row.pricing?.dayPnl" [percent]="row.pricing?.dayPnlPercent" [currency]="currency() ?? 'USD'" />
+          </td>
+          <td class="col-last">
+            @if (row.pricing; as pricing) {
+              <app-price-status
+                [status]="pricing.status"
+                [asOf]="pricing.priceAsOf"
+                [attr.data-testid]="'holding-status-' + row.symbol"
+              />
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

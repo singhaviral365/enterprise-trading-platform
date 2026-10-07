@@ -1,0 +1,147 @@
+:host {
+  display: block;
+}
+
+.performance {
+  margin-bottom: 20px;
+}
+
+.performance-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.performance-head .card-title {
+  margin-bottom: 0;
+  margin-right: auto;
+}
+
+.performance-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.range-group {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.benchmark-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0 0 12px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat dt {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.stat dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat dd.is-gain {
+  color: var(--status-success-container-fg);
+}
+
+.stat dd.is-loss {
+  color: var(--status-error-container-fg);
+}
+
+.stat dd > i {
+  font-size: 0.8em;
+}
+
+.chart-box {
+  display: flex;
+  min-height: 260px;
+}
+
+.performance-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 120px;
+  color: var(--surface-foreground-subtle);
+}
+
+.performance-state.is-empty {
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  border: 1px dashed var(--surface-line-subtle);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.performance-state.is-empty > i {
+  font-size: 26px;
+}
+
+.performance-state.is-error {
+  color: var(--status-error-container-fg);
+}
+
+.performance-state.is-error p {
+  flex: 1;
+}
+
+.performance-note {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.performance-note.is-warning {
+  color: var(--status-warning-container-fg);
+}
+
+.statements {
+  margin-top: 14px;
+}
+
+.statements summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 0;
+}
+
+.estimated-flag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
