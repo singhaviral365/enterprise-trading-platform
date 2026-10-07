@@ -631,6 +631,8 @@ public class TradeService {
                 userIdInt);
 
         accountMapper.insertAccount(account);
+        // Same transaction. A copy of the login's email lives here because the Trade API cannot reach the Auth database.
+        accountMapper.updateAccountContact(accountId, request.email().trim(), request.phoneNo().trim());
 
         return new CreateAccountResult(
                 accountId,

@@ -18,6 +18,12 @@ public interface AccountMapper {
 
     int insertAccount(@Param("account") Account account);
 
+    /** Records how to reach the customer: the email and phone number given when the account was set up. */
+    int updateAccountContact(
+            @Param("accountId") int accountId,
+            @Param("email") String email,
+            @Param("phoneNo") String phoneNo);
+
     long nextAccountId();
 
     Integer selectAnyAdvisorId();
