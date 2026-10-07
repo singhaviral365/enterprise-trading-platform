@@ -1,0 +1,206 @@
+<header class="strategies-header">
+  <div>
+    <h1 class="page-title" data-testid="strategies-title">Automated strategies</h1>
+    <p class="lede">
+      Set a rule once, such as "buy 50 AAPL if it falls to 150", and the platform trades it for you, even while you are signed
+      out. Each order goes through the same order route as one you place yourself, and stays inside the limits you set.
+    </p>
+  </div>
+  @if (store.accountId() !== null) {
+    <div class="header-actions">
+      @if (store.data.isLoading() && store.data.hasValue()) {
+        <app-spinner [inline]="true" label="Refreshing strategies" />
+      }
+      <button type="button" class="btn is-secondary" data-testid="strategies-refresh" [disabled]="store.data.isLoading()" (click)="store.reload()">
+        <i class="fas fa-rotate" aria-hidden="true"></i>
+        Refresh
+      </button>
+      @if (!formOpen()) {
+        <button type="button" class="btn is-primary" data-testid="strategies-new" (click)="formOpen.set(true)">
+          <i class="fas fa-plus" aria-hidden="true"></i>
+          New strategy
+        </button>
+      }
+    </div>
+  }
+</header>
+
+@if (store.accountId() === null) {
+  <div class="card empty-state" data-testid="strategies-no-account">
+    <i class="fas fa-building-columns" aria-hidden="true"></i>
+    <p class="empty-state-text">You need a trading account before you can set up strategies.</p>
+    <a class="btn is-primary mt-16" routerLink="/dashboard">Go to the dashboard</a>
+  </div>
+} @else {
+  <details class="safety card" [open]="safetyOpen" data-testid="strategies-safety">
+    <summary class="card-title">
+      <i class="fas fa-shield-halved" aria-hidden="true"></i>
+      How your money is protected
+      <i class="fas fa-chevron-down chevron" aria-hidden="true"></i>
+    </summary>
+    <ul class="safety-list">
+      <li>You choose the most one order may cost, the largest holding it may build, and how many failures stop it.</li>
+      <li>Switching a strategy off or cancelling it stops any order that has not been placed yet. It takes effect immediately.</li>
+      <li>A strategy only trades when the price moves <em>through</em> its level, never the moment you create it.</li>
+      <li>You are notified of every order it places, and when one is stopped or expires. You can turn these notices off in Settings.</li>
+    </ul>
+  </details>
+
+  @if (formOpen()) {
+    <app-strategy-form (created)="onCreated($event)" (cancelled)="formOpen.set(false)" />
+  }
+
+  @if (store.data.isLoading() && !store.data.hasValue()) {
+    <div class="card list-card" aria-live="polite">
+      <app-spinner [inline]="true" label="Loading your strategies" />
+      <span>Loading your strategies…</span>
+    </div>
+  } @else if (store.errorMessage() && !store.data.hasValue()) {
+    <div class="card list-card" role="alert" data-testid="strategies-error">
+      <p>{{ store.errorMessage() }}</p>
+      <button type="button" class="btn is-secondary" (click)="store.reload()">Try again</button>
+    </div>
+  } @else if (rows().length === 0) {
+    <div class="card empty-state" data-testid="strategies-empty">
+      <i class="fas fa-robot" aria-hidden="true"></i>
+      <p class="empty-state-text">You have no strategies yet.</p>
+      @if (!formOpen()) {
+        <button type="button" class="btn is-primary mt-16" (click)="formOpen.set(true)">Create your first strategy</button>
+      }
+    </div>
+  } @else {
+    <section class="card list-card" aria-labelledby="strategies-list-title">
+      <header class="list-header">
+        <h2 id="strategies-list-title" class="card-title">Your strategies</h2>
+        <p class="form-hint" aria-live="polite" data-testid="strategies-summary">
+          {{ watching() }} watching, {{ store.openCount() }} open of {{ rows().length }}. This list updates automatically.
+        </p>
+      </header>
+
+      @if (store.errorMessage()) {
+        <p class="form-error-text" role="alert">{{ store.errorMessage() }}</p>
+      }
+
+      <div class="table-container" tabindex="0" role="region" aria-label="Your strategies. On a small screen this scrolls sideways.">
+        <table class="data-table" data-testid="strategies-table">
+          <caption class="visually-hidden">Your automated strategies</caption>
+          <thead>
+            <tr>
+              <th scope="col">Rule</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="is-numeric">Orders</th>
+              <th scope="col">Limits</th>
+              <th scope="col">Ends</th>
+              <th scope="col" class="actions-cell">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of rows(); track s.strategyId) {
+              <tr [attr.data-testid]="'strategy-row-' + s.strategyId">
+                <th scope="row">
+                  <div class="rule-cell">
+                    <app-instrument-label [symbol]="s.symbol" [name]="s.instrumentName" [size]="28" />
+                    <span class="rule-text">
+                      <strong>{{ s.side === OrderSide.Buy ? 'Buy' : 'Sell' }} {{ s.quantity | number }}</strong>
+                      when the price is at or {{ s.direction === TriggerDirection.Below ? 'below' : 'above' }}
+                      <strong>{{ s.triggerPrice | currency: s.currency }}</strong>
+                    </span>
+                  </div>
+                </th>
+                <td>
+                  <span class="chip is-{{ statusLook(s.status).tone }}" [attr.title]="statusLook(s.status).hint" [attr.data-testid]="'strategy-status-' + s.strategyId">
+                    <i [class]="statusLook(s.status).icon" aria-hidden="true"></i>
+                    {{ statusLook(s.status).label }}
+                  </span>
+                  @if (s.status === StrategyStatus.Active && !s.armed) {
+                    <span class="note">Waiting to see a price on the other side first</span>
+                  }
+                  @if (s.statusReason) {
+                    <span class="note">{{ s.statusReason }}</span>
+                  }
+                </td>
+                <td class="is-numeric">{{ s.executions }} of {{ s.maxExecutions }}</td>
+                <td>
+                  <div class="limits-cell">
+                    <span>Order up to {{ s.maxOrderValue | number: '1.0-2' }}</span>
+                    <span>Holding up to {{ s.maxPositionQty | number }}</span>
+                    <span>Stops after {{ s.maxFailures }} failures</span>
+                  </div>
+                </td>
+                <td>
+                  @if (s.validUntil) {
+                    {{ s.validUntil | date: 'mediumDate' }}
+                  } @else {
+                    No end
+                  }
+                </td>
+                <td class="actions-cell">
+                  <div class="row-actions">
+                    @if (canSwitchOff(s.status)) {
+                      <button
+                        type="button"
+                        class="btn is-secondary is-small"
+                        [attr.data-testid]="'strategy-off-' + s.strategyId"
+                        [attr.aria-label]="'Switch off strategy ' + s.strategyId + ' on ' + s.symbol"
+                        [disabled]="busy() === s.strategyId"
+                        (click)="switchOff(s)"
+                      >
+                        <i class="fas fa-power-off" aria-hidden="true"></i>
+                        Switch off
+                      </button>
+                    }
+                    @if (canSwitchOn(s.status)) {
+                      <button
+                        type="button"
+                        class="btn is-secondary is-small"
+                        [attr.data-testid]="'strategy-on-' + s.strategyId"
+                        [attr.aria-label]="'Switch on strategy ' + s.strategyId + ' on ' + s.symbol"
+                        [disabled]="busy() === s.strategyId"
+                        (click)="switchOn(s)"
+                      >
+                        <i class="fas fa-play" aria-hidden="true"></i>
+                        Switch on
+                      </button>
+                    }
+                    @if (canCancel(s.status)) {
+                      <button
+                        type="button"
+                        class="btn is-error is-small"
+                        [attr.data-testid]="'strategy-cancel-' + s.strategyId"
+                        [attr.aria-label]="'Cancel strategy ' + s.strategyId + ' on ' + s.symbol"
+                        [disabled]="busy() === s.strategyId"
+                        (click)="cancel(s)"
+                      >
+                        <i class="fas fa-ban" aria-hidden="true"></i>
+                        Cancel
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="btn is-tertiary is-small"
+                      [attr.data-testid]="'strategy-activity-' + s.strategyId"
+                      [attr.aria-expanded]="expanded() === s.strategyId"
+                      [attr.aria-controls]="'activity-' + s.strategyId"
+                      [attr.aria-label]="'Activity of strategy ' + s.strategyId + ' on ' + s.symbol"
+                      (click)="toggleActivity(s)"
+                    >
+                      <i class="fas" [class.fa-chevron-down]="expanded() !== s.strategyId" [class.fa-chevron-up]="expanded() === s.strategyId" aria-hidden="true"></i>
+                      Activity
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              @if (expanded() === s.strategyId) {
+                <tr class="detail-row">
+                  <td colspan="6" [id]="'activity-' + s.strategyId">
+                    <app-strategy-activity [strategy]="s" />
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+}
