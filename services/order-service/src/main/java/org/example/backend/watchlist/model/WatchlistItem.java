@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 
@@ -20,7 +21,25 @@ public class WatchlistItem {
     @NotNull
     private final OffsetDateTime addedAt;
 
+    /** Null when the entry has no price alert. */
+    private final PriceAlert alert;
+
     public WatchlistItem(long watchlistId, String tickerSymbol, OffsetDateTime addedAt) {
+        this(watchlistId, tickerSymbol, addedAt, null, null, null, null, null, null, null);
+    }
+
+    /** The full row, as read from the database; the alert columns are all null when the entry has no alert. */
+    public WatchlistItem(
+            long watchlistId,
+            String tickerSymbol,
+            OffsetDateTime addedAt,
+            AlertDirection alertDirection,
+            BigDecimal alertTargetPrice,
+            AlertStatus alertStatus,
+            OffsetDateTime alertSetAt,
+            OffsetDateTime alertTriggeredAt,
+            BigDecimal alertTriggerPrice,
+            AlertDelivery alertDelivery) {
 
         if (watchlistId < 1) {
             throw new IllegalArgumentException("Watchlist ID must be at least 1");
@@ -38,6 +57,11 @@ public class WatchlistItem {
         this.watchlistId = watchlistId;
         this.tickerSymbol = normalizedTicker;
         this.addedAt = Objects.requireNonNull(addedAt, "Added time is required");
+        this.alert = alertDirection == null
+                ? null
+                : new PriceAlert(
+                        alertDirection, alertTargetPrice, alertStatus, alertSetAt,
+                        alertTriggeredAt, alertTriggerPrice, alertDelivery);
     }
 
     public long getWatchlistId() {
@@ -50,6 +74,10 @@ public class WatchlistItem {
 
     public OffsetDateTime getAddedAt() {
         return addedAt;
+    }
+
+    public PriceAlert getAlert() {
+        return alert;
     }
 }
 

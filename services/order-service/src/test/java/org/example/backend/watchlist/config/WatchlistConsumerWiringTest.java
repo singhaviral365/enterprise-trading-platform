@@ -1,5 +1,6 @@
 package org.example.backend.watchlist.config;
 
+import org.example.backend.watchlist.alert.PriceAlertEvaluator;
 import org.example.backend.watchlist.consumer.MarketDataQuoteConsumer;
 import org.example.backend.watchlist.price.LatestQuoteStore;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,8 @@ class WatchlistConsumerWiringTest {
         System.setProperty("watchlist.kafka.consumer.enabled", "false");
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {
             context.register(WatchlistKafkaConfiguration.class, LatestQuoteStore.class, MarketDataQuoteConsumer.class);
+            // The consumer also asks the alert evaluator about each quote; what it does is tested on its own.
+            context.registerBean(PriceAlertEvaluator.class, () -> org.mockito.Mockito.mock(PriceAlertEvaluator.class));
             context.refresh();
 
             Collection<MessageListenerContainer> containers =

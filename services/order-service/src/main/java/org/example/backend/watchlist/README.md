@@ -1,7 +1,9 @@
 # Watchlist module
 
-Customer watchlists with a live price beside each instrument. Price alerts are not part of this
-step.
+Customer watchlists with a live price beside each instrument, and a price alert on any entry. A fired alert is handed
+to the [customer notifications module](../notifications/README.md); this module never chooses a channel. The behaviour
+(what "crossed" means, why an alert fires once, what happens when the hand-over fails) is in
+[`documentation/readme/NOTIFICATIONS.md`](../../../../../../../../../documentation/readme/NOTIFICATIONS.md).
 
 Contract: [`contracts/watchlist-api.yaml`](../../../../../../../../../contracts/watchlist-api.yaml).
 
@@ -42,6 +44,7 @@ method is ever added.
 | `exceptions` | Module errors, each with a catalogue code |
 | `price` | `LatestQuoteStore` (in memory), `QuoteSource` (interface), `WatchlistPricing`, `Quote`, `PriceView`, `PriceStatus` |
 | `consumer` | `MarketDataQuoteConsumer` |
+| `alert` | Price alerts: `PriceAlertIndex` (in-memory, by symbol), `PriceAlertEvaluator` (the per-quote check), `PriceAlertFiring` (fire once, hand over), `PriceAlertRedelivery` (bounded retry), `PriceAlertIndexLoader` |
 | `config` | Kafka consumer wiring (`WatchlistKafkaConfiguration`) and the mapper scan |
 
 Nothing outside the package imports anything inside it. It reuses `AuthContext`, `ErrorResponse`,
@@ -53,8 +56,8 @@ its one implementation.
 ### What the consumer does per message
 
 Every quote for every symbol arrives here, so the per-message decision has to be cheap. It is a single
-hash lookup and compare in memory (`LatestQuoteStore.offer`): no database and no network on the hot
-path. A replayed or out-of-order quote cannot move a price backwards, and the store is bounded
+hash lookup and compare in memory (`LatestQuoteStore.offer`), then a second hash lookup by symbol for alerts
+(`PriceAlertIndex.candidates`): no database and no network on the hot path unless a quote actually crosses a level. A replayed or out-of-order quote cannot move a price backwards, and the store is bounded
 (`watchlist.price.max-symbols`).
 
 The consumer holds no token and touches no customer data, only the in-memory store, so there is no
@@ -98,7 +101,11 @@ Created by order-service from `src/main/resources/watchlist-schema.sql` (loaded 
 | `watchlist_item` | API | API; executor (poller symbols) |
 
 `watchlist_item` references `instrument`, not `holdings`, so a customer can watch something they have
-never traded. No table holds a price.
+never traded. **No table holds a market price.** A price alert adds columns to `watchlist_item` (`alert_direction`,
+`alert_target_price`, `alert_status`, `alert_set_at`, `alert_triggered_at`, `alert_trigger_price`, `alert_delivery`,
+`alert_delivery_attempts`), set and cleared together (`chk_watchlist_item_alert_shape`). The two price-valued ones are
+the customer's own threshold and the single quote that crossed it, written once when the alert fires; the guard test
+`WatchlistPricesAreNotStoredTest` names exactly those two and still rejects any other price or quote storage.
 
 ## Configuration (order-service, `application.properties`)
 
@@ -110,6 +117,9 @@ never traded. No table holds a price.
 | `watchlist.kafka.consumer.retry.*` | 3 attempts, 100ms to 1s | Backoff before dead-lettering |
 | `watchlist.limits.max-watchlists-per-account` | `10` | Cap per account |
 | `watchlist.limits.max-items-per-watchlist` | `50` | Cap per watchlist |
+| `watchlist.limits.max-alerts-per-account` | `20` | Cap on ACTIVE price alerts per account |
+| `watchlist.alerts.redelivery-interval-millis` | `60000` | How often fired alerts that failed to hand over are retried |
+| `watchlist.alerts.max-delivery-attempts` | `3` | Hand-over attempts per fired alert, then it stays `FAILED` and visible |
 | `watchlist.price.stale-after-seconds` | `300` | Age after which a price is `STALE` |
 | `watchlist.price.max-symbols` | `5000` | Bound on the in-memory store |
 
@@ -123,7 +133,9 @@ exist.
 ## Errors
 
 See the table in the contract. This module's own codes are `WTL-404/409/422` and `WLI-404/409/422`;
-they are mapped by `WatchlistExceptionHandler`, so the shared `ApiExceptionHandler` is untouched.
+they are mapped by `WatchlistExceptionHandler`, so the shared `ApiExceptionHandler` is untouched. Price alerts add
+`ALR-404` (no alert on the entry), `ALR-409` (the target has already been reached) and `ALR-422` (the alert cap), served by
+`PriceAlertController`.
 
 ## Tests
 

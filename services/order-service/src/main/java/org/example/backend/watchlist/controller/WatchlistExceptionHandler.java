@@ -2,6 +2,9 @@ package org.example.backend.watchlist.controller;
 
 import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.DomainException;
+import org.example.backend.watchlist.exceptions.PriceAlertAlreadyReachedException;
+import org.example.backend.watchlist.exceptions.PriceAlertLimitExceededException;
+import org.example.backend.watchlist.exceptions.PriceAlertNotFoundException;
 import org.example.backend.watchlist.exceptions.WatchlistAccessDeniedException;
 import org.example.backend.watchlist.exceptions.WatchlistItemAlreadyExistsException;
 import org.example.backend.watchlist.exceptions.WatchlistItemLimitExceededException;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * {@code {errorCode, message}} envelope. Ordered ahead of the shared handler so the
  * module owns its mapping and the shared {@code ApiExceptionHandler} is not edited.
  */
-@RestControllerAdvice(assignableTypes = WatchlistController.class)
+@RestControllerAdvice(assignableTypes = {WatchlistController.class, PriceAlertController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class WatchlistExceptionHandler {
 
@@ -32,13 +35,18 @@ public class WatchlistExceptionHandler {
             WatchlistNameConflictException.class,
             WatchlistItemAlreadyExistsException.class,
             WatchlistLimitExceededException.class,
-            WatchlistItemLimitExceededException.class
+            WatchlistItemLimitExceededException.class,
+            PriceAlertNotFoundException.class,
+            PriceAlertAlreadyReachedException.class,
+            PriceAlertLimitExceededException.class
     })
     public ResponseEntity<ErrorResponse> handle(DomainException ex) {
         HttpStatus status = switch (ex) {
             case WatchlistAccessDeniedException ignored -> HttpStatus.FORBIDDEN;
             case WatchlistNotFoundException ignored -> HttpStatus.NOT_FOUND;
             case WatchlistItemNotFoundException ignored -> HttpStatus.NOT_FOUND;
+            case PriceAlertNotFoundException ignored -> HttpStatus.NOT_FOUND;
+            case PriceAlertAlreadyReachedException ignored -> HttpStatus.CONFLICT;
             case WatchlistNameConflictException ignored -> HttpStatus.CONFLICT;
             case WatchlistItemAlreadyExistsException ignored -> HttpStatus.CONFLICT;
             default -> HttpStatus.UNPROCESSABLE_ENTITY;
