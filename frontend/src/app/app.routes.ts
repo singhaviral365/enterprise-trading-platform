@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/orders/order-history/order-history').then((m) => m.OrderHistory),
       },
       {
+        path: 'strategies',
+        title: 'Strategies | Trading Platform',
+        loadComponent: () => import('./features/strategies/strategies').then((m) => m.StrategiesPage),
+      },
+      {
         path: 'portfolio',
         title: 'Portfolio | Trading Platform',
         loadComponent: () => import('./features/portfolio/portfolio').then((m) => m.Portfolio),
