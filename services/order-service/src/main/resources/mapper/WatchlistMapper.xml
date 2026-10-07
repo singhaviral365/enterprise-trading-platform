@@ -20,8 +20,50 @@
             <idArg column="watchlist_id" javaType="_long" name="watchlistId"/>
             <arg column="ticker_symbol" javaType="String" name="tickerSymbol"/>
             <arg column="added_at" javaType="java.time.OffsetDateTime" name="addedAt"/>
+            <arg column="alert_direction" javaType="org.example.backend.watchlist.model.AlertDirection" name="alertDirection"/>
+            <arg column="alert_target_price" javaType="java.math.BigDecimal" name="alertTargetPrice"/>
+            <arg column="alert_status" javaType="org.example.backend.watchlist.model.AlertStatus" name="alertStatus"/>
+            <arg column="alert_set_at" javaType="java.time.OffsetDateTime" name="alertSetAt"/>
+            <arg column="alert_triggered_at" javaType="java.time.OffsetDateTime" name="alertTriggeredAt"/>
+            <arg column="alert_trigger_price" javaType="java.math.BigDecimal" name="alertTriggerPrice"/>
+            <arg column="alert_delivery" javaType="org.example.backend.watchlist.model.AlertDelivery" name="alertDelivery"/>
         </constructor>
     </resultMap>
+
+    <resultMap id="AlertWatchResultMap" type="org.example.backend.watchlist.model.AlertWatch">
+        <constructor>
+            <idArg column="watchlist_id" javaType="_long" name="watchlistId"/>
+            <arg column="ticker_symbol" javaType="String" name="tickerSymbol"/>
+            <arg column="alert_direction" javaType="org.example.backend.watchlist.model.AlertDirection" name="direction"/>
+            <arg column="alert_target_price" javaType="java.math.BigDecimal" name="targetPrice"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="TriggeredAlertResultMap" type="org.example.backend.watchlist.model.TriggeredAlert">
+        <constructor>
+            <idArg column="watchlist_id" javaType="_long" name="watchlistId"/>
+            <arg column="account_id" javaType="_long" name="accountId"/>
+            <arg column="ticker_symbol" javaType="String" name="tickerSymbol"/>
+            <arg column="alert_direction" javaType="org.example.backend.watchlist.model.AlertDirection" name="direction"/>
+            <arg column="alert_target_price" javaType="java.math.BigDecimal" name="targetPrice"/>
+            <arg column="alert_trigger_price" javaType="java.math.BigDecimal" name="triggerPrice"/>
+            <arg column="alert_triggered_at" javaType="java.time.OffsetDateTime" name="triggeredAt"/>
+            <arg column="alert_delivery_attempts" javaType="_int" name="attempts"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="itemColumns">
+        watchlist_id,
+        ticker_symbol,
+        added_at,
+        alert_direction,
+        alert_target_price,
+        alert_status,
+        alert_set_at,
+        alert_triggered_at,
+        alert_trigger_price,
+        alert_delivery
+    </sql>
 
     <select id="nextWatchlistId" resultType="long">
         SELECT nextval(pg_get_serial_sequence('watchlist', 'watchlist_id'))
@@ -101,10 +143,7 @@
     </delete>
 
     <select id="selectWatchlistItems" resultMap="WatchlistItemResultMap">
-        SELECT
-            watchlist_id,
-            ticker_symbol,
-            added_at
+        SELECT <include refid="itemColumns"/>
         FROM watchlist_item
         WHERE watchlist_id = #{watchlistId}
         ORDER BY ticker_symbol ASC
@@ -114,7 +153,14 @@
         SELECT
             wi.watchlist_id,
             wi.ticker_symbol,
-            wi.added_at
+            wi.added_at,
+            wi.alert_direction,
+            wi.alert_target_price,
+            wi.alert_status,
+            wi.alert_set_at,
+            wi.alert_triggered_at,
+            wi.alert_trigger_price,
+            wi.alert_delivery
         FROM watchlist_item wi
         JOIN watchlist w ON w.watchlist_id = wi.watchlist_id
         WHERE w.account_id = #{accountId}
@@ -158,6 +204,120 @@
         FROM instrument
         WHERE UPPER(instrument_ticker) = UPPER(#{tickerSymbol})
           AND instrument_status = 'TRADING'
+    </select>
+
+    <!-- ================= alerts on watchlist entries ================= -->
+
+    <select id="lockAccountForAlerts" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(#{accountId})) AS locked
+    </select>
+
+    <!--
+      One statement: the alert is written only if the entry exists and either already holds an ACTIVE alert (a
+      replacement leaves the count unchanged) or the account holds fewer than #{limit} ACTIVE alerts.
+    -->
+    <update id="setAlertIfUnderLimit">
+        UPDATE watchlist_item
+        SET alert_direction = #{direction},
+            alert_target_price = #{targetPrice},
+            alert_status = 'ACTIVE',
+            alert_set_at = #{setAt},
+            alert_triggered_at = NULL,
+            alert_trigger_price = NULL,
+            alert_delivery = NULL,
+            alert_delivery_attempts = 0
+        WHERE watchlist_id = #{watchlistId}
+          AND ticker_symbol = #{tickerSymbol}
+          AND (
+              alert_status = 'ACTIVE'
+              OR (
+                  SELECT COUNT(*)
+                  FROM watchlist_item wi
+                  JOIN watchlist w ON w.watchlist_id = wi.watchlist_id
+                  WHERE w.account_id = #{accountId}
+                    AND wi.alert_status = 'ACTIVE'
+              ) &lt; #{limit}
+          )
+    </update>
+
+    <update id="clearAlert">
+        UPDATE watchlist_item
+        SET alert_direction = NULL,
+            alert_target_price = NULL,
+            alert_status = NULL,
+            alert_set_at = NULL,
+            alert_triggered_at = NULL,
+            alert_trigger_price = NULL,
+            alert_delivery = NULL,
+            alert_delivery_attempts = 0
+        WHERE watchlist_id = #{watchlistId}
+          AND UPPER(ticker_symbol) = UPPER(#{tickerSymbol})
+          AND alert_status IS NOT NULL
+    </update>
+
+    <select id="selectActiveAlerts" resultMap="AlertWatchResultMap">
+        SELECT watchlist_id, ticker_symbol, alert_direction, alert_target_price
+        FROM watchlist_item
+        WHERE alert_status = 'ACTIVE'
+    </select>
+
+    <!-- The guard on status, direction and target is what makes an alert fire once and never for a replaced alert. -->
+    <update id="markTriggered">
+        UPDATE watchlist_item
+        SET alert_status = 'TRIGGERED',
+            alert_triggered_at = #{triggeredAt},
+            alert_trigger_price = #{triggerPrice},
+            alert_delivery = 'PENDING',
+            alert_delivery_attempts = 0
+        WHERE watchlist_id = #{watchlistId}
+          AND ticker_symbol = #{tickerSymbol}
+          AND alert_status = 'ACTIVE'
+          AND alert_direction = #{direction}
+          AND alert_target_price = #{targetPrice}
+    </update>
+
+    <select id="selectTriggeredAlert" resultMap="TriggeredAlertResultMap">
+        SELECT wi.watchlist_id,
+               w.account_id,
+               wi.ticker_symbol,
+               wi.alert_direction,
+               wi.alert_target_price,
+               wi.alert_trigger_price,
+               wi.alert_triggered_at,
+               wi.alert_delivery_attempts
+        FROM watchlist_item wi
+        JOIN watchlist w ON w.watchlist_id = wi.watchlist_id
+        WHERE wi.watchlist_id = #{watchlistId}
+          AND wi.ticker_symbol = #{tickerSymbol}
+          AND wi.alert_status = 'TRIGGERED'
+    </select>
+
+    <update id="recordAlertDelivery">
+        UPDATE watchlist_item
+        SET alert_delivery = #{delivery},
+            alert_delivery_attempts = alert_delivery_attempts + 1
+        WHERE watchlist_id = #{watchlistId}
+          AND ticker_symbol = #{tickerSymbol}
+          AND alert_status = 'TRIGGERED'
+    </update>
+
+    <select id="selectUndeliveredAlerts" resultMap="TriggeredAlertResultMap">
+        SELECT wi.watchlist_id,
+               w.account_id,
+               wi.ticker_symbol,
+               wi.alert_direction,
+               wi.alert_target_price,
+               wi.alert_trigger_price,
+               wi.alert_triggered_at,
+               wi.alert_delivery_attempts
+        FROM watchlist_item wi
+        JOIN watchlist w ON w.watchlist_id = wi.watchlist_id
+        WHERE wi.alert_status = 'TRIGGERED'
+          AND wi.alert_delivery IN ('PENDING', 'FAILED')
+          AND wi.alert_delivery_attempts &lt; #{maxAttempts}
+          AND wi.alert_triggered_at &lt; #{firedBefore}
+        ORDER BY wi.alert_triggered_at ASC
+        LIMIT #{limit}
     </select>
 
 </mapper>

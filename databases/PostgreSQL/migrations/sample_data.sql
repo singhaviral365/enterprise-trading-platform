@@ -1,3 +1,6 @@
+-- Safe to run more than once: rows that already exist are left alone (ON CONFLICT DO NOTHING), and the contact
+-- details of sample accounts that predate the email and phone_no columns are filled in at the end.
+
 BEGIN;
 
 -- ============================================================
@@ -61,7 +64,8 @@ VALUES
 (10, 'William Lewis',
  'william.lewis@broker.example',
  '$2b$12$examplehash010',
- '2023-03-20');
+ '2023-03-20')
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -69,6 +73,9 @@ VALUES
 -- ============================================================
 -- user_id is independent and has no foreign key reference.
 -- user_id values start from 1000 and increment by 1.
+-- email and phone_no are the contact details given at account set-up. The email of each sample account is the SAME,
+-- written out in full, as the email of the Auth user with that user_id (auth_setup.sql, update_auth_db.sql). The two
+-- databases cannot enforce that, so SeedDataConsistencyTest fails the build if they ever differ.
 -- ============================================================
 
 INSERT INTO account
@@ -76,6 +83,8 @@ INSERT INTO account
     account_id,
     account_number,
     user_id,
+    email,
+    phone_no,
     opening_date,
     balance,
     purchasing_power,
@@ -90,6 +99,8 @@ VALUES
     1001,
     'ACC000001001',
     1000,
+    'alice.trader@example.com',
+    '+353850000001',
     '2022-01-10',
     25000.0000,
     18000.0000,
@@ -104,6 +115,8 @@ VALUES
     1002,
     'ACC000001002',
     1001,
+    'yuvaraj.k@example.com',
+    '+353850000002',
     '2022-04-15',
     15000.0000,
     12000.0000,
@@ -118,6 +131,8 @@ VALUES
     1003,
     'ACC000001003',
     1002,
+    'aviral.singh@example.com',
+    '+353850000003',
     '2023-02-01',
     0.0000,
     0.0000,
@@ -132,6 +147,8 @@ VALUES
     1004,
     'ACC000001004',
     1003,
+    'riya.rajesh@example.com',
+    '+353850000004',
     '2023-06-12',
     42000.0000,
     35000.0000,
@@ -146,6 +163,8 @@ VALUES
     1005,
     'ACC000001005',
     1004,
+    'lalitha.prakash@example.com',
+    '+353850000005',
     '2024-02-12',
     18000.0000,
     15000.0000,
@@ -160,6 +179,8 @@ VALUES
     1006,
     'ACC000001006',
     1005,
+    'vishal.fmri@example.com',
+    '+353850000006',
     '2024-05-08',
     32500.0000,
     25000.0000,
@@ -174,6 +195,8 @@ VALUES
     1007,
     'ACC000001007',
     1006,
+    'aashifa.aalifa@example.com',
+    '+353850000007',
     '2024-07-19',
     9500.0000,
     7000.0000,
@@ -188,6 +211,8 @@ VALUES
     1008,
     'ACC000001008',
     1007,
+    'swetha.fmri@example.com',
+    '+353850000008',
     '2025-01-15',
     0.0000,
     0.0000,
@@ -202,6 +227,8 @@ VALUES
     1009,
     'ACC000001009',
     1008,
+    'agneya.fmri@example.com',
+    '+353850000009',
     '2025-04-21',
     27500.0000,
     21000.0000,
@@ -216,6 +243,8 @@ VALUES
     1010,
     'ACC000001010',
     1009,
+    'nanditha.fmri@example.com',
+    '+353850000010',
     '2025-07-10',
     61500.0000,
     50000.0000,
@@ -224,7 +253,8 @@ VALUES
     9,
     NULL,
     NULL
-);
+)
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -346,7 +376,8 @@ VALUES
  'EQUITY',
  'TRADING',
  'INR',
- '/assets/icons/TATASTEEL.BO.svg');
+ '/assets/icons/TATASTEEL.BO.svg')
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -510,7 +541,8 @@ VALUES
     '2026-08-18 15:26:00+01',
     1008,
     2010
-);
+)
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -604,7 +636,8 @@ VALUES
     50.0000,
     1010,
     2010
-);
+)
+ON CONFLICT DO NOTHING;
 
 
 -- ============================================================
@@ -674,6 +707,34 @@ FROM (VALUES
 )
 JOIN account a ON a.account_id = p.account_id
 ON CONFLICT (account_id) DO NOTHING;
+
+
+-- ============================================================
+-- 7. CONTACT DETAILS FOR SAMPLE ACCOUNTS ALREADY IN THE DATABASE
+-- ============================================================
+-- The email of each of these ten accounts is FIXED here and is the same address the Auth user with that user_id has
+-- (update_auth_db.sql / auth_setup.sql). It is set whenever it differs, so a machine that still holds an older sample
+-- address is brought in line. The phone number is only filled when missing. Accounts that are not in this list (anyone
+-- who registered through the app) are never touched.
+
+UPDATE account a
+SET email    = c.email,
+    phone_no = COALESCE(a.phone_no, c.phone_no)
+FROM (VALUES
+    (1001, 1000, 'alice.trader@example.com', '+353850000001'),
+    (1002, 1001, 'yuvaraj.k@example.com', '+353850000002'),
+    (1003, 1002, 'aviral.singh@example.com', '+353850000003'),
+    (1004, 1003, 'riya.rajesh@example.com', '+353850000004'),
+    (1005, 1004, 'lalitha.prakash@example.com', '+353850000005'),
+    (1006, 1005, 'vishal.fmri@example.com', '+353850000006'),
+    (1007, 1006, 'aashifa.aalifa@example.com', '+353850000007'),
+    (1008, 1007, 'swetha.fmri@example.com', '+353850000008'),
+    (1009, 1008, 'agneya.fmri@example.com', '+353850000009'),
+    (1010, 1009, 'nanditha.fmri@example.com', '+353850000010')
+) AS c (account_id, user_id, email, phone_no)
+WHERE a.account_id = c.account_id
+  AND a.user_id = c.user_id
+  AND (a.email IS DISTINCT FROM c.email OR a.phone_no IS NULL);
 
 
 COMMIT;

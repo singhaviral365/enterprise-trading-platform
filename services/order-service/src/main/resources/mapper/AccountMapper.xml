@@ -72,6 +72,13 @@
         )
     </insert>
 
+    <update id="updateAccountContact">
+        UPDATE account
+        SET email = #{email},
+            phone_no = #{phoneNo}
+        WHERE account_id = #{accountId}
+    </update>
+
     <select id="nextAccountId" resultType="long">
         SELECT nextval(pg_get_serial_sequence('account', 'account_id'))
     </select>
