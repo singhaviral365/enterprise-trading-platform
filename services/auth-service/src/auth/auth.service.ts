@@ -8,7 +8,9 @@ import {
   UnauthorisedException,
   RegistrationFailedException,
   ValidationFailedException,
+  PasswordReuseException,
 } from '../common/exceptions';
+import { User } from '../users/user.entity';
 import { UserResponseDto, TokenResponseDto } from './dto';
 import { LoginThrottleService } from './login-throttle.service';
 
@@ -125,15 +127,28 @@ export class AuthService {
   }
 
   /**
-   * Login: Verify credentials and issue access + refresh tokens.
-   * Same response for unknown user and wrong password (no enumeration).
-   * Uses Argon2id for timing-safe password verification.
+   * Login: Verify credentials and issue access + refresh tokens, in one step. Two-step sign-in does not use this:
+   * it calls {@link authenticate} first and {@link issueTokens} only once the emailed code is right.
    */
   async login(
     username: string,
     password: string,
     callerId: string,
   ): Promise<TokenResponseDto> {
+    const user = await this.authenticate(username, password, callerId);
+    return this.issueTokens(user);
+  }
+
+  /**
+   * Checks a username and password and returns the user. Issues nothing.
+   * Same response for unknown user and wrong password (no enumeration).
+   * Uses Argon2id for timing-safe password verification.
+   */
+  async authenticate(
+    username: string,
+    password: string,
+    callerId: string,
+  ): Promise<User> {
     this.redactingLogger.log('AuthService', 'Login attempt', { username });
 
     const isCallerThrottled = this.loginThrottleService.isBlocked(callerId);
@@ -166,6 +181,11 @@ export class AuthService {
       username,
     });
 
+    return user;
+  }
+
+  /** Issues the access and refresh tokens for a user whose identity has been established. */
+  async issueTokens(user: User): Promise<TokenResponseDto> {
     // Generate refresh token
     const refreshTokenData = await this.refreshTokensService.createRefreshToken(
       user.id,
@@ -225,6 +245,37 @@ export class AuthService {
   }
 
   /**
+   * Sets a new password for a user who proved they own their email (password reset). The new password must differ
+   * from the current one and from the username, and every session the user had is ended, so whoever knew the old
+   * password is signed out too. The format rules are the DTO's, as on registration.
+   */
+  async setNewPassword(
+    userId: number,
+    newPassword: string,
+    beforeApply?: () => Promise<void>,
+  ): Promise<User> {
+    const user = await this.usersRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorisedException('Unauthorised');
+    }
+    if (newPassword.trim().toLowerCase() === user.username.trim().toLowerCase()) {
+      throw new ValidationFailedException('Password must be different from the username');
+    }
+    if (await this.credentialsService.verifyPassword(newPassword, user.password_hash)) {
+      throw new PasswordReuseException();
+    }
+
+    // Every check has passed. The caller's hook is where a single-use token is spent: only now, and only once.
+    await beforeApply?.();
+
+    const passwordHash = await this.credentialsService.hashPassword(newPassword);
+    await this.usersRepository.updatePasswordHash(userId, passwordHash);
+    await this.refreshTokensService.revokeAllForUser(userId);
+    this.redactingLogger.log('AuthService', 'Password changed', { userId });
+    return user;
+  }
+
+  /**
    * Logout: revoke the presented refresh token so it cannot be exchanged again. The access token is a
    * stateless JWT and simply expires (15 minutes); the controller clears both cookies.
    */
@@ -254,6 +305,12 @@ export class AuthService {
       email: user.email,
       roles: user.roles,
       createdOn: user.created_on,
+      twoFactorEnabled: user.two_factor_enabled === true,
     };
+  }
+
+  /** The user as the API describes them. */
+  toUserResponse(user: User): UserResponseDto {
+    return this.userToResponseDto(user);
   }
 }

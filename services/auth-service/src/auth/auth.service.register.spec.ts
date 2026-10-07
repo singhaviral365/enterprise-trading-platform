@@ -57,6 +57,7 @@ describe('AuthService registration and profile', () => {
         email: 'alice@example.com',
         roles: ['CUSTOMER'],
         createdOn: created,
+        twoFactorEnabled: false,
       });
       expect(JSON.stringify(logger.log.mock.calls)).not.toContain('Str0ng');
     });
