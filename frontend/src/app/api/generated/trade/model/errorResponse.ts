@@ -33,7 +33,8 @@ export enum ErrorResponseErrorCodeEnum {
     Auth401 = 'AUTH-401',
     Res404 = 'RES-404',
     Srv500 = 'SRV-500',
-    Fx503 = 'FX-503'
+    Fx503 = 'FX-503',
+    Str403 = 'STR-403'
 };
 
 

@@ -10,12 +10,14 @@
 
 
 /**
- * What to alert about. `ORDER_STATUS` covers an order being FILLED or REJECTED. 
+ * What to alert about. `ORDER_STATUS` covers an order the customer placed being FILLED or REJECTED. `STRATEGY_EXECUTION` covers orders placed by the customer\'s automated strategies, and a strategy that was stopped or expired. 
  */
 export enum NotificationCategory {
 
     OrderStatus = 'ORDER_STATUS',
 
-    WatchlistAlerts = 'WATCHLIST_ALERTS'
+    WatchlistAlerts = 'WATCHLIST_ALERTS',
+
+    StrategyExecution = 'STRATEGY_EXECUTION'
 }
 

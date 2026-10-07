@@ -34,7 +34,7 @@ export interface OrdersServiceInterface {
 
     /**
      * Place an order
-     * Validates the request against business rules 1 to 8 and records the order. Returns &#x60;NEW&#x60; once the Trade Executor exists, or the terminal status when the service fills synchronously in Sprint 6.  Retrying with the same &#x60;idempotencyKey&#x60; is not a way to poll for status. It returns &#x60;ORD-409&#x60;. Poll &#x60;GET /api/v1/accounts/{id}/orders&#x60; instead. 
+     * Validates the request against business rules 1 to 8 and records the order. Returns &#x60;NEW&#x60; once the Trade Executor exists, or the terminal status when the service fills synchronously in Sprint 6.  Retrying with the same &#x60;idempotencyKey&#x60; is not a way to poll for status. It returns &#x60;ORD-409&#x60;. Poll &#x60;GET /api/v1/accounts/{id}/orders&#x60; instead.  **Orders placed by an automated strategy.** The executor-service places the orders of a customer\&#39;s automated strategies (see the strategies contract) through this same route, with a signed token of about a minute whose subject is the strategy\&#39;s owner, so every rule above and the ownership check apply unchanged. Such a token is bound to one strategy: it is accepted on this route only, and only for the one order that strategy may place at that moment (its account, instrument, side, quantity and idempotency key, &#x60;strat-{strategyId}-{run}&#x60;), while it holds its claim. Anything else is &#x60;STR-403&#x60;, 403, whatever the cause. A customer\&#39;s own token is not affected. 
      * @endpoint post /api/v1/orders
      * @param placeOrderRequest 
      */
