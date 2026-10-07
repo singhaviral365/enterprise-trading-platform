@@ -83,6 +83,17 @@ app-line-chart {
   stroke: none;
 }
 
+/* The comparison line: a different colour from the token palette and dashed, so it never relies on colour alone. */
+.line-chart .highcharts-series-1 .highcharts-graph {
+  stroke: var(--data-categorical-1);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+}
+
+.line-chart .highcharts-series-1 .highcharts-area {
+  fill: none;
+}
+
 .line-chart .highcharts-point {
   fill: var(--accent-primary-background);
   stroke: var(--surface-background-bright);
