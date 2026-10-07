@@ -23,6 +23,22 @@ public class JwtVerifier {
     private static final Logger logger = LoggerFactory.getLogger(JwtVerifier.class);
     private static final String SUBJECT_CLAIM = "sub";
     private static final String USER_ID_CLAIM = "user_id";
+    private static final String ACTOR_CLAIM = "act";
+    private static final String STRATEGY_ID_CLAIM = "strategy_id";
+
+    /** The only actor the platform signs a token for besides the customer: the executor, placing one strategy's order. */
+    public static final String STRATEGY_EXECUTOR = "strategy-executor";
+
+    /**
+     * What a verified token says. {@code actor} and {@code strategyId} are null for a customer's own token; for the
+     * strategy executor's they are {@link #STRATEGY_EXECUTOR} and the strategy the token was minted for, and
+     * {@code userId} is still the strategy's owner.
+     */
+    public record VerifiedToken(long userId, String actor, Long strategyId) {
+        public boolean isStrategyExecutor() {
+            return STRATEGY_EXECUTOR.equals(actor);
+        }
+    }
 
     private final JwtConfiguration jwtConfig;
 
@@ -39,6 +55,15 @@ public class JwtVerifier {
      * @throws JwtVerificationException if any verification fails
      */
     public Long verifyAndExtractUserId(String token) {
+        return verify(token).userId();
+    }
+
+    /**
+     * Verifies the token like {@link #verifyAndExtractUserId} and also reports who is acting. An {@code act} claim other
+     * than the strategy executor's, or a strategy executor's token with no strategy, is refused: the Auth service never
+     * issues either, so a token carrying one was not issued for a customer.
+     */
+    public VerifiedToken verify(String token) {
         try {
             return verifyTokenSignature(token);
         } catch (JwtVerificationException e) {
@@ -50,7 +75,7 @@ public class JwtVerifier {
         }
     }
 
-    private Long verifyTokenSignature(String token) {
+    private VerifiedToken verifyTokenSignature(String token) {
         SecretKey key = jwtConfig.getSigningKey();
 
         assertSupportedTokenFormat(token);
@@ -69,8 +94,8 @@ public class JwtVerifier {
                 throw new JwtVerificationException("Invalid subject in token");
             }
 
-            return userId;
-            
+            return new VerifiedToken(userId, actor(claims), strategyId(claims));
+
         } catch (SecurityException e) {
             logger.warn("Invalid JWT signature: {}", e.getMessage());
             throw new JwtVerificationException("Invalid signature");
@@ -105,6 +130,31 @@ public class JwtVerifier {
 
         logger.warn("Invalid JWT compact serialization. Expected 3 parts for JWS but got {}", parts.length);
         throw new JwtVerificationException("Malformed token");
+    }
+
+    private String actor(Claims claims) {
+        Object raw = claims.get(ACTOR_CLAIM);
+        if (raw == null) {
+            return null;
+        }
+        if (!STRATEGY_EXECUTOR.equals(raw)) {
+            logger.error("Token carries an unknown actor claim");
+            throw new JwtVerificationException("Unsupported token");
+        }
+        return STRATEGY_EXECUTOR;
+    }
+
+    private Long strategyId(Claims claims) {
+        Object raw = claims.get(STRATEGY_ID_CLAIM);
+        if (!STRATEGY_EXECUTOR.equals(claims.get(ACTOR_CLAIM))) {
+            return null;
+        }
+        Long id = raw == null ? null : parseClaimAsLong(raw, STRATEGY_ID_CLAIM);
+        if (id == null || id < 1) {
+            logger.error("A strategy executor token has no valid strategy");
+            throw new JwtVerificationException("Unsupported token");
+        }
+        return id;
     }
 
     private Long extractUserId(Claims claims) {
