@@ -1,0 +1,20 @@
+<app-tooltip [block]="true" position="right" text="Notifications" [disabled]="expanded()">
+  <a
+    class="bell"
+    routerLink="/notifications"
+    routerLinkActive="active"
+    ariaCurrentWhenActive="page"
+    data-testid="notification-bell"
+    [attr.aria-label]="label()"
+  >
+    <span class="bell-icon">
+      <i class="fas fa-bell" aria-hidden="true"></i>
+      @if (unread() > 0) {
+        <span class="bell-badge" data-testid="notification-badge" aria-hidden="true">{{ badge() }}</span>
+      }
+    </span>
+    @if (expanded()) {
+      <span class="bell-text">Notifications</span>
+    }
+  </a>
+</app-tooltip>

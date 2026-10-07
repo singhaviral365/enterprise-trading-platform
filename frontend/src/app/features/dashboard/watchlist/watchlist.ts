@@ -4,16 +4,21 @@ import { DialogService } from '../../../core/dialog.service';
 import { CHANGE_FIELDS, CHANGE_PERCENT_FIELDS, MarketService, quoteNumber } from '../../../core/market.service';
 import { NotificationService } from '../../../core/notification.service';
 import {
+  AlertDelivery,
+  AlertDirection,
+  AlertStatus,
+  MAX_ALERTS_PER_ACCOUNT,
   MAX_ITEMS_PER_WATCHLIST,
   MAX_NAME_LENGTH,
-  MAX_TICKER_LENGTH,
   MAX_WATCHLISTS,
+  PriceAlert,
   PriceStatus,
   Watchlist,
   WatchlistError,
   WatchlistItem,
   WatchlistService,
 } from '../../../core/watchlist.service';
+import { Dropdown, DropdownOption } from '../../../shared/ui/dropdown/dropdown';
 import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
@@ -24,10 +29,14 @@ const REFRESH_MS = 30_000;
 
 type NameForm = 'create' | 'rename';
 
+/** The largest target the API accepts, and how many decimals it keeps. */
+const MAX_TARGET = 1_000_000_000;
+const TARGET_PATTERN = /^\d+(\.\d{1,4})?$/;
+
 /** Customer watchlists with the latest price beside each stock. Prices come from the Trade API, never computed here. */
 @Component({
   selector: 'app-watchlist',
-  imports: [PreferenceDatePipe, PreferenceDecimalPipe, InstrumentIcon, Spinner, Tooltip],
+  imports: [Dropdown, PreferenceDatePipe, PreferenceDecimalPipe, InstrumentIcon, Spinner, Tooltip],
   templateUrl: './watchlist.html',
   styleUrl: './watchlist.css',
 })
@@ -38,13 +47,16 @@ export class WatchlistPanel {
   private readonly dialog = inject(DialogService);
   private readonly notifications = inject(NotificationService);
 
-  /** Exposed so the template compares against the generated enum, never string literals. */
+  /** Exposed so the template compares against the generated enums, never string literals. */
   protected readonly PriceStatus = PriceStatus;
+  protected readonly AlertStatus = AlertStatus;
+  protected readonly AlertDelivery = AlertDelivery;
+  protected readonly AlertDirection = AlertDirection;
 
   protected readonly maxWatchlists = MAX_WATCHLISTS;
   protected readonly maxItems = MAX_ITEMS_PER_WATCHLIST;
   protected readonly maxNameLength = MAX_NAME_LENGTH;
-  protected readonly maxTickerLength = MAX_TICKER_LENGTH;
+  protected readonly maxAlerts = MAX_ALERTS_PER_ACCOUNT;
 
   /** Numeric account key, or null while the account loads or when the login has no account yet. */
   protected readonly accountId = computed(() => accountIdFromNumber(this.accounts.linked()?.accountNumber ?? null));
@@ -67,14 +79,21 @@ export class WatchlistPanel {
 
   protected readonly activeId = computed(() => this.selected()?.watchlistId ?? null);
 
-  /** Tradable symbols, offered as suggestions in the add box. Free text is still accepted. */
+  /** The market board: the tradable instruments the add dropdown offers, and the logos and day changes shown. */
   private readonly board = resource({ loader: () => this.market.getBoard() });
-  protected readonly symbolSuggestions = computed(() => {
+
+  /**
+   * What the "Add a stock" dropdown offers: every tradable instrument on the market board that is not already on this
+   * list, as "SYMBOL, name". A native select, so the browser lays the list out and types to jump.
+   */
+  protected readonly stockOptions = computed<readonly DropdownOption[]>(() => {
     const onList = new Set(this.selected()?.items.map((item) => item.tickerSymbol.toUpperCase()));
     return (this.board.hasValue() ? this.board.value().quotes : [])
-      .map((quote) => quote.symbol)
-      .filter((symbol) => !onList.has(symbol.toUpperCase()));
+      .filter((quote) => !onList.has(quote.symbol.toUpperCase()))
+      .map((quote) => ({ value: quote.symbol, label: quote.name ? `${quote.symbol}, ${quote.name}` : quote.symbol }))
+      .sort((a, b) => a.value.localeCompare(b.value));
   });
+  protected readonly boardUnavailable = computed(() => this.board.error() !== undefined && !this.board.hasValue());
 
   /**
    * Logo per symbol. The watchlist API carries prices only, so the logos come from the market quotes, the same
@@ -119,8 +138,68 @@ export class WatchlistPanel {
   protected readonly nameForm = signal<NameForm | null>(null);
   protected readonly nameDraft = signal('');
   protected readonly nameError = signal('');
-  protected readonly tickerDraft = signal('');
+  /** The instrument picked in the add dropdown; empty until the customer chooses one. */
+  protected readonly chosenTicker = signal('');
   protected readonly tickerError = signal('');
+  protected readonly canAdd = computed(() => this.chosenTicker() !== '' && !this.busy() && !this.atItemLimit());
+
+  // ---- price alerts ----
+  protected readonly directionOptions: readonly DropdownOption[] = [
+    { value: AlertDirection.Above, label: 'Rises to or above' },
+    { value: AlertDirection.Below, label: 'Falls to or below' },
+  ];
+  /** The ticker whose alert is being edited, or null. */
+  protected readonly alertEditing = signal<string | null>(null);
+  protected readonly alertDirection = signal<string>(AlertDirection.Above);
+  protected readonly alertTarget = signal('');
+  protected readonly alertError = signal('');
+
+  /** Active alerts across all the account's lists: what the cap counts. */
+  protected readonly activeAlerts = computed(
+    () =>
+      this.lists()
+        .flatMap((list) => list.items)
+        .filter((item) => item.alert?.status === AlertStatus.Active).length,
+  );
+  protected readonly editingItem = computed(
+    () => this.selected()?.items.find((item) => item.tickerSymbol === this.alertEditing()) ?? null,
+  );
+  /** The target as a number once it is a price the API would accept, else null. */
+  protected readonly targetValue = computed(() => {
+    const raw = this.alertTarget().replace(/,/g, '').trim();
+    if (!TARGET_PATTERN.test(raw)) {
+      return null;
+    }
+    const value = Number(raw);
+    return value > 0 && value <= MAX_TARGET ? value : null;
+  });
+  /**
+   * Why the target cannot be saved, shown once the customer has typed something. The two "already reached" rules are
+   * the API's `ALR-409` seen early: an alert that would fire the moment it is set is refused.
+   */
+  protected readonly targetProblem = computed(() => {
+    if (this.alertTarget().trim() === '') {
+      return '';
+    }
+    const target = this.targetValue();
+    if (target === null) {
+      return 'Enter a price above 0 with up to 4 decimal places.';
+    }
+    const price = this.editingItem()?.price ?? null;
+    if (price !== null) {
+      if (this.alertDirection() === AlertDirection.Above && target <= price) {
+        return 'The price is already at or above this. Choose a higher target.';
+      }
+      if (this.alertDirection() === AlertDirection.Below && target >= price) {
+        return 'The price is already at or below this. Choose a lower target.';
+      }
+    }
+    return '';
+  });
+  /** Set alert is enabled only for a target that passes every rule the form can foresee. */
+  protected readonly canSaveAlert = computed(
+    () => this.targetValue() !== null && this.targetProblem() === '' && !this.busy(),
+  );
 
   constructor() {
     const timer = setInterval(() => {
@@ -152,8 +231,8 @@ export class WatchlistPanel {
     this.nameError.set('');
   }
 
-  protected onTickerInput(event: Event): void {
-    this.tickerDraft.set((event.target as HTMLInputElement).value);
+  protected onTickerChosen(value: string): void {
+    this.chosenTicker.set(value);
     this.tickerError.set('');
   }
 
@@ -234,19 +313,15 @@ export class WatchlistPanel {
     event.preventDefault();
     const list = this.selected();
     const accountId = this.accountId();
-    const ticker = this.tickerDraft().trim().toUpperCase();
-    if (!list || accountId === null || this.busy()) {
-      return;
-    }
-    if (!ticker) {
-      this.tickerError.set('Enter a ticker symbol, for example AAPL.');
+    const ticker = this.chosenTicker().trim().toUpperCase();
+    if (!list || accountId === null || this.busy() || !ticker) {
       return;
     }
 
     this.busy.set(true);
     try {
       this.replace(await this.api.addItem(accountId, list.watchlistId, ticker));
-      this.tickerDraft.set('');
+      this.chosenTicker.set('');
       this.tickerError.set('');
     } catch (error) {
       this.tickerError.set(this.messageOf(error));
@@ -271,6 +346,92 @@ export class WatchlistPanel {
       this.refreshIfGone(error);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  // ---- price alerts: the editor under a row ----
+
+  protected openAlert(item: WatchlistItem): void {
+    const existing = item.alert?.status === AlertStatus.Active ? item.alert : null;
+    this.alertDirection.set(existing?.direction ?? AlertDirection.Above);
+    this.alertTarget.set(existing ? String(existing.targetPrice) : '');
+    this.alertError.set('');
+    this.alertEditing.set(item.tickerSymbol);
+  }
+
+  protected closeAlert(): void {
+    this.alertEditing.set(null);
+    this.alertError.set('');
+  }
+
+  protected onTargetInput(event: Event): void {
+    this.alertTarget.set((event.target as HTMLInputElement).value);
+    this.alertError.set('');
+  }
+
+  protected atAlertLimit(item: WatchlistItem): boolean {
+    return this.activeAlerts() >= MAX_ALERTS_PER_ACCOUNT && item.alert?.status !== AlertStatus.Active;
+  }
+
+  protected async saveAlert(event: Event): Promise<void> {
+    event.preventDefault();
+    const list = this.selected();
+    const accountId = this.accountId();
+    const ticker = this.alertEditing();
+    const target = this.targetValue();
+    if (!list || accountId === null || ticker === null || target === null || !this.canSaveAlert()) {
+      return;
+    }
+
+    this.busy.set(true);
+    try {
+      const updated = await this.api.setAlert(accountId, list.watchlistId, ticker, this.alertDirection() as AlertDirection, target);
+      this.replace(updated);
+      this.closeAlert();
+    } catch (error) {
+      this.alertError.set(this.messageOf(error));
+      this.refreshIfGone(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async clearAlert(item: WatchlistItem): Promise<void> {
+    const list = this.selected();
+    const accountId = this.accountId();
+    if (!list || accountId === null || this.busy()) {
+      return;
+    }
+
+    this.busy.set(true);
+    try {
+      this.replace(await this.api.clearAlert(accountId, list.watchlistId, item.tickerSymbol));
+      if (this.alertEditing() === item.tickerSymbol) {
+        this.closeAlert();
+      }
+    } catch (error) {
+      this.notifications.error(this.messageOf(error));
+      this.refreshIfGone(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** What the alert chip says: the direction and target, and for a fired alert that it fired. */
+  protected alertSummary(alert: PriceAlert): string {
+    const side = alert.direction === AlertDirection.Above ? 'Above' : 'Below';
+    return `${side} ${alert.targetPrice}`;
+  }
+
+  /** How the hand-over to notifications went, in words (colour is never the only signal). */
+  protected deliveryLabel(alert: PriceAlert): string {
+    switch (alert.delivery) {
+      case AlertDelivery.HandedOver:
+        return 'Notified';
+      case AlertDelivery.Failed:
+        return 'Delivery failed';
+      default:
+        return 'Sending…';
     }
   }
 

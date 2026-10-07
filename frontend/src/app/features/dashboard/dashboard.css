@@ -110,8 +110,13 @@
   padding-top: 12px;
 }
 
-.orders-panel {
+/* Second row: the watchlist on the left, wide enough for its table and the alert form; recent orders beside it. */
+.watchlist-panel {
   grid-column: 1 / 2;
+}
+
+.orders-panel {
+  grid-column: 2 / 3;
 }
 
 .panel {
@@ -242,6 +247,7 @@
     grid-template-columns: 1fr;
   }
 
+  .watchlist-panel,
   .orders-panel {
     grid-column: auto;
   }

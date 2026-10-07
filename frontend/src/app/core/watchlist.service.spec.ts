@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideApiClients } from '../api/api.config';
 import { authInterceptor } from './interceptors/auth.interceptor';
 import { SessionService } from './session.service';
-import { Watchlist, WatchlistError, WatchlistService } from './watchlist.service';
+import { AlertDirection, Watchlist, WatchlistError, WatchlistService } from './watchlist.service';
 
 const BASE = '/api/v1/accounts/1004/watchlists';
 const LIST: Watchlist = {
@@ -65,6 +65,23 @@ describe('WatchlistService', () => {
     await expect(result).resolves.toBeUndefined();
   });
 
+  it('sets a price alert through the generated client', async () => {
+    const result = service.setAlert(1004, 9, 'AAPL', AlertDirection.Below, 150.25);
+    const request = http.expectOne(`${BASE}/9/items/AAPL/alert`);
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ direction: 'BELOW', targetPrice: 150.25 });
+    request.flush(LIST);
+    await expect(result).resolves.toEqual(LIST);
+  });
+
+  it('clears a price alert', async () => {
+    const result = service.clearAlert(1004, 9, 'AAPL');
+    const request = http.expectOne(`${BASE}/9/items/AAPL/alert`);
+    expect(request.request.method).toBe('DELETE');
+    request.flush(LIST);
+    await expect(result).resolves.toEqual(LIST);
+  });
+
   it('adds a stock', async () => {
     const result = service.addItem(1004, 9, 'AAPL');
     const request = http.expectOne(`${BASE}/9/items`);
@@ -114,6 +131,16 @@ describe('WatchlistService', () => {
       expect(error.message).not.toContain('dev text');
       expect(error.code).toBe(code);
       expect(error.status).toBe(status);
+    });
+
+    it.each([
+      ['ALR-409', 409, 'already reached that target'],
+      ['ALR-422', 422, 'at most 20 active price alerts'],
+      ['ALR-404', 404, 'no price alert to remove'],
+    ])('maps the alert code %s to a sentence', async (code, status, text) => {
+      const error = await failWith(status, { errorCode: code, message: 'dev text' });
+      expect(error.message).toContain(text);
+      expect(error.code).toBe(code);
     });
 
     it('reports an unreachable service', async () => {

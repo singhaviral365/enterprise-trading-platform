@@ -2,18 +2,20 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable, firstValueFrom } from 'rxjs';
 import { WatchlistApi } from '../api/watchlist-api.service';
-import { Watchlist } from '../api/generated/watchlist';
+import { AlertDirection, Watchlist } from '../api/generated/watchlist';
 import { errorCodeOf } from './errors/describe-error';
 
 // The wire types come from the generated client, so they follow the contract.
-export { PriceStatus } from '../api/generated/watchlist';
-export type { Watchlist, WatchlistItem } from '../api/generated/watchlist';
+export { AlertDelivery, AlertDirection, AlertStatus, PriceStatus } from '../api/generated/watchlist';
+export type { PriceAlert, Watchlist, WatchlistItem } from '../api/generated/watchlist';
 
 /** Per-account caps enforced by the Trade API (watchlist.limits.*); the UI disables controls at them. */
 export const MAX_WATCHLISTS = 10;
 export const MAX_ITEMS_PER_WATCHLIST = 50;
 export const MAX_NAME_LENGTH = 100;
 export const MAX_TICKER_LENGTH = 20;
+/** Active price alerts an account may hold (watchlist.limits.max-alerts-per-account). */
+export const MAX_ALERTS_PER_ACCOUNT = 20;
 
 /** Error thrown by `WatchlistService`; `message` is safe to show to the user as-is. */
 export class WatchlistError extends Error {
@@ -44,6 +46,9 @@ const MESSAGES_BY_CODE: Readonly<Record<string, string>> = {
   'WLI-404': 'That stock is not on this watchlist.',
   'WLI-409': 'That stock is already on this watchlist.',
   'WLI-422': `A watchlist can hold at most ${MAX_ITEMS_PER_WATCHLIST} stocks. Remove one to add another.`,
+  'ALR-404': 'That stock has no price alert to remove.',
+  'ALR-409': 'The price has already reached that target. Choose a target it has not reached yet.',
+  'ALR-422': `You can have at most ${MAX_ALERTS_PER_ACCOUNT} active price alerts. Clear one to set another.`,
 };
 
 /** The customer's watchlists, with the latest price the backend holds for each stock. */
@@ -73,6 +78,20 @@ export class WatchlistService {
 
   removeItem(accountId: number, watchlistId: number, tickerSymbol: string): Promise<Watchlist> {
     return this.call(this.api.removeItem(accountId, watchlistId, tickerSymbol));
+  }
+
+  setAlert(
+    accountId: number,
+    watchlistId: number,
+    tickerSymbol: string,
+    direction: AlertDirection,
+    targetPrice: number,
+  ): Promise<Watchlist> {
+    return this.call(this.api.setAlert(accountId, watchlistId, tickerSymbol, { direction, targetPrice }));
+  }
+
+  clearAlert(accountId: number, watchlistId: number, tickerSymbol: string): Promise<Watchlist> {
+    return this.call(this.api.clearAlert(accountId, watchlistId, tickerSymbol));
   }
 
   private async call<T>(request: Observable<T>): Promise<T> {
