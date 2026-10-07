@@ -131,6 +131,11 @@ export class RefreshTokensService {
     await this.refreshTokensRepository.revokeByHash(hash);
   }
 
+  /** Ends every session of a user (a password change): all their refresh tokens are revoked. */
+  async revokeAllForUser(userId: number): Promise<void> {
+    await this.refreshTokensRepository.revokeAllForUser(userId);
+  }
+
   /**
    * Detect token theft: if a consumed token is presented again, revoke entire chain.
    */

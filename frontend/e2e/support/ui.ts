@@ -8,6 +8,49 @@ import { Credentials } from './env';
  */
 export const SIGN_IN_TIMEOUT = 60_000;
 
+/**
+ * Where MailHog's web interface is (it catches the sign-in code the Auth service emails in development). Override with
+ * `E2E_MAILHOG_URL`. Only needed for a user who switched two-step sign-in on (it is off by default); otherwise it is never called.
+ */
+const mailhogUrl = (): string => (process.env['E2E_MAILHOG_URL']?.trim() || 'http://localhost:8025').replace(/\/$/, '');
+
+/** How many messages MailHog holds, so a test can tell which one arrived after it. Null when MailHog cannot be reached. */
+async function mailCount(page: Page): Promise<number | null> {
+  try {
+    const response = await page.request.get(`${mailhogUrl()}/api/v2/messages?limit=1`);
+    return response.ok() ? ((await response.json()) as { total: number }).total : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The six-digit code in the newest message, once one newer than `before` has arrived. */
+async function codeSentAfter(page: Page, before: number): Promise<string> {
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const response = await page.request.get(`${mailhogUrl()}/api/v2/messages?limit=1`);
+    const body = (await response.json()) as { total: number; items: { Content: { Body: string; Headers: { Subject?: string[] } } }[] };
+    if (body.total > before && body.items.length > 0) {
+      const text = `${body.items[0].Content.Headers.Subject?.join(' ') ?? ''} ${body.items[0].Content.Body}`;
+      const code = /\b(\d{6})\b/.exec(text)?.[1];
+      if (code) {
+        return code;
+      }
+    }
+    await page.waitForTimeout(500);
+  }
+  throw new Error(`No sign-in code reached MailHog at ${mailhogUrl()} within 30 s. Is it running, and is email enabled?`);
+}
+
+/** The code step of two-step sign-in: reads the emailed code from MailHog and submits it. */
+async function completeCodeStep(page: Page, before: number | null): Promise<void> {
+  if (before === null) {
+    throw new Error(`The sign-in asks for an emailed code, but MailHog is not reachable at ${mailhogUrl()} (set E2E_MAILHOG_URL), or switch two-step sign-in off for this user in Settings.`);
+  }
+  await page.getByTestId('login-code').fill(await codeSentAfter(page, before));
+  await page.getByTestId('login-code-submit').click();
+}
+
 /** Fills the sign-in dialog (which must already be open) and submits it. Does not wait for the result. */
 export async function submitLogin(page: Page, { username, password }: Credentials): Promise<void> {
   await page.getByTestId('login-username').fill(username);
@@ -20,11 +63,22 @@ export async function signInFromHome(page: Page, credentials: Credentials): Prom
   await page.goto('/');
   await page.getByTestId('open-auth-dialog').click();
   await expect(page.getByTestId('auth-dialog')).toBeVisible();
+  const emailsBefore = await mailCount(page);
   await submitLogin(page, credentials);
   // Fail with the real reason (bad credentials, account step) instead of a bare URL timeout.
   const refused = page.getByTestId('login-error');
   const accountStep = page.getByTestId('account-setup-form');
-  await expect(refused.or(accountStep).or(page.getByTestId('dashboard-title'))).toBeVisible({ timeout: SIGN_IN_TIMEOUT });
+  const codeStep = page.getByTestId('login-code-form');
+  await expect(refused.or(accountStep).or(codeStep).or(page.getByTestId('dashboard-title'))).toBeVisible({ timeout: SIGN_IN_TIMEOUT });
+  if (await codeStep.isVisible()) {
+    // Two-step sign-in: the password was right and a code was emailed.
+    await completeCodeStep(page, emailsBefore);
+    await expect(refused.or(accountStep).or(page.getByTestId('login-code-error')).or(page.getByTestId('dashboard-title'))).toBeVisible({ timeout: SIGN_IN_TIMEOUT });
+    const codeRefused = page.getByTestId('login-code-error');
+    if (await codeRefused.isVisible()) {
+      throw new Error(`The sign-in code was refused: ${await codeRefused.innerText()}`);
+    }
+  }
   if (await refused.isVisible()) {
     throw new Error(`Sign-in refused for "${credentials.username}": ${await refused.innerText()} Check the E2E_* credentials in .env.e2e.`);
   }

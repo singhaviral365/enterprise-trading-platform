@@ -54,6 +54,24 @@ describe('authInterceptor', () => {
     }
   });
 
+  it('sends the sign-in code check with credentials too: it is the call that sets the session cookies', () => {
+    http.post(`${AUTH_API_BASE_URL}/auth/login/verify`, {}).subscribe();
+
+    carriesSession(httpMock.expectOne(`${AUTH_API_BASE_URL}/auth/login/verify`));
+  });
+
+  it('does not make a refused code trigger a session renewal: it is a public call', () => {
+    let failure: unknown;
+    http.post(`${AUTH_API_BASE_URL}/auth/login/verify`, {}).subscribe({ error: (error) => (failure = error) });
+
+    httpMock
+      .expectOne(`${AUTH_API_BASE_URL}/auth/login/verify`)
+      .flush({ errorCode: 'OTP-401', message: 'x' }, { status: 401, statusText: 'Unauthorized' });
+
+    expect((failure as { status: number }).status).toBe(401);
+    httpMock.expectNone(`${AUTH_API_BASE_URL}/auth/refresh`);
+  });
+
   it('does not make register a credentialed call: it needs no session', () => {
     http.post(`${AUTH_API_BASE_URL}/auth/register`, {}).subscribe();
 

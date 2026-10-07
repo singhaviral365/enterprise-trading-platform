@@ -8,6 +8,7 @@ import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { User } from './users/user.entity';
 import { RefreshToken } from './refresh-tokens/refresh-token.entity';
+import { OtpChallenge } from './otp/otp-challenge.entity';
 import { RedactingLogger } from './common/logging/redacting.logger';
 import { DatabaseInitService } from './database/database-init.service';
 
@@ -28,7 +29,7 @@ import { DatabaseInitService } from './database/database-init.service';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User, RefreshToken],
+      entities: [User, RefreshToken, OtpChallenge],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',
       migrations: [],
