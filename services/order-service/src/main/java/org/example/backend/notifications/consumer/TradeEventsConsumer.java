@@ -9,6 +9,8 @@ import org.example.backend.notifications.gateway.NotificationRequest;
 import org.example.backend.preferences.model.NotificationCategory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -35,10 +37,23 @@ public class TradeEventsConsumer {
     private static final Logger LOGGER = LoggerFactory.getLogger(TradeEventsConsumer.class);
 
     private final NotificationGateway gateway;
+    private final StrategyOrderNotices strategyNotices;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** An order is only ever an ordinary order: nobody is asked whether a strategy placed it. */
     public TradeEventsConsumer(NotificationGateway gateway) {
+        this(gateway, (StrategyOrderNotices) null);
+    }
+
+    /** The strategy module's notices are optional: without them every order is an ordinary order. */
+    @Autowired
+    public TradeEventsConsumer(NotificationGateway gateway, ObjectProvider<StrategyOrderNotices> strategyNotices) {
+        this(gateway, strategyNotices.getIfAvailable());
+    }
+
+    public TradeEventsConsumer(NotificationGateway gateway, StrategyOrderNotices strategyNotices) {
         this.gateway = gateway;
+        this.strategyNotices = strategyNotices;
     }
 
     @KafkaListener(
@@ -80,18 +95,37 @@ public class TradeEventsConsumer {
         }
 
         BigDecimal price = optionalNumber(body, "executionPrice");
+        String reason = text(body, "reason");
+
+        NotificationCategory category = NotificationCategory.ORDER_STATUS;
+        String title = OrderOutcomeMessages.title(eventType);
+        String message = OrderOutcomeMessages.message(
+                eventType, text(body, "side"), quantity, symbol.trim(), price, reason);
+
+        // An order a strategy placed gets its own wording and its own category, so the customer can tell it from one they
+        // placed themselves and can switch the two off separately. A failure here is not swallowed: falling back to the
+        // ordinary notice would file it under the wrong category for good, since the event key makes a repeat a no-op.
+        StrategyOrderNotices.Notice notice = strategyNoticeFor(body, eventType, price, reason);
+        if (notice != null) {
+            category = NotificationCategory.STRATEGY_EXECUTION;
+            title = notice.title();
+            message = notice.message();
+        }
+
         try {
-            return gateway.deliver(new NotificationRequest(
-                    accountId,
-                    NotificationCategory.ORDER_STATUS,
-                    eventId.trim(),
-                    OrderOutcomeMessages.title(eventType),
-                    OrderOutcomeMessages.message(
-                            eventType, text(body, "side"), quantity, symbol.trim(), price, text(body, "reason"))));
+            return gateway.deliver(new NotificationRequest(accountId, category, eventId.trim(), title, message));
         } catch (IllegalArgumentException ex) {
             // The request failed its own validation (an over-long field): the message can never succeed.
             throw new PoisonTradeEventException(eventType + " event cannot be turned into a notification", ex);
         }
+    }
+
+    private StrategyOrderNotices.Notice strategyNoticeFor(JsonNode body, String eventType, BigDecimal price, String reason) {
+        JsonNode orderId = body.get("orderId");
+        if (strategyNotices == null || orderId == null || !orderId.canConvertToLong() || orderId.asLong() < 1) {
+            return null;
+        }
+        return strategyNotices.noticeFor(orderId.asLong(), eventType, price, reason).orElse(null);
     }
 
     private JsonNode parse(String payload) {

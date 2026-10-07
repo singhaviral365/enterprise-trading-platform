@@ -294,7 +294,7 @@ class PreferencesServiceTest {
         PreferenceRow row = PreferenceRow.of(ACCOUNT_ID, preferences);
         return new PreferenceRow(
                 row.accountId(), row.preferredCurrency(), row.channelSms(), row.channelEmail(), row.channelInApp(),
-                row.notifyOrderStatus(), row.notifyWatchlistAlerts(), row.dateFormat(), row.timeFormat(),
+                row.notifyOrderStatus(), row.notifyWatchlistAlerts(), row.notifyStrategyExecution(), row.dateFormat(), row.timeFormat(),
                 row.numberFormat(), row.aiAssistantEnabled(), row.theme(), row.landingPage(),
                 row.defaultOrderType(), updatedAt);
     }

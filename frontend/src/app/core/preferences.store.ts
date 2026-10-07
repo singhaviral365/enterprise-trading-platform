@@ -21,7 +21,7 @@ export const LANDING_WAIT_MS = 1500;
 
 /**
  * The signed-in customer's preferences, loaded once per sign-in and shared by everything that follows one: the
- * date, time and number formats (through `FormatPreferences`), the theme, the chatbot icon, the page the app opens
+ * date, time and number formats (through `FormatPreferences`), the theme, the signal assistant, the page the app opens
  * on, the order ticket's starting type and the currency estimates are shown in.
  *
  * One `GET` per sign-in and one `PUT` per save; the app never polls. While nothing has loaded (or nothing has ever

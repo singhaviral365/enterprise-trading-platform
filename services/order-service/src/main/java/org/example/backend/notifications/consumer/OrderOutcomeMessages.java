@@ -10,7 +10,7 @@ import java.util.Map;
  * symbol, price, and a reason from a fixed set). Nothing the event contract prohibits ever reaches it, and a reason the
  * platform does not know is replaced by a generic sentence rather than echoed.
  */
-final class OrderOutcomeMessages {
+public final class OrderOutcomeMessages {
 
     static final String FILLED = "ORDER_FILLED";
     static final String REJECTED = "ORDER_REJECTED";
@@ -52,7 +52,8 @@ final class OrderOutcomeMessages {
         };
     }
 
-    static String reasonText(String reason) {
+    /** The customer-readable reason for a rejection; a reason the platform does not know is never echoed. */
+    public static String reasonText(String reason) {
         return reason == null ? "it could not be executed" : REJECT_REASONS.getOrDefault(reason, "it could not be executed");
     }
 
