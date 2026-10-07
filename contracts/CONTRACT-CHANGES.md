@@ -152,3 +152,24 @@ and ones read within the last hour. New code: `NTF-404`. Code: `org.example.back
 `triggerPrice`, `delivery` PENDING/HANDED_OVER/FAILED). Both routes answer with the whole watchlist, like the others. One
 alert per entry, fires once, capped per account. New codes: `ALR-404`, `ALR-409`, `ALR-422`. The contract text records what
 "crossed" means and why it fires once. Existing clients are unaffected (a new nullable field and new routes).
+
+## auth-api.yaml: two-step sign-in and forgot password
+
+`POST /auth/login` is now step one of two. Its `200` body is a `LoginResponse`: with two-step sign-in on (the default) it holds a
+`challenge` and **no tokens and no cookie**; with `AUTH_TWO_FACTOR_ENABLED=false` it holds the `tokens` and sets the cookies, as before.
+New: `POST /auth/login/verify` (the emailed code, then the tokens and cookies), `POST /auth/login/resend`, and the forgot-password
+flow `POST /auth/password/forgot` (always `202`, same shape for any input), `/password/resend`, `/password/verify` (returns a one-time
+reset token) and `/password/reset` (`204`; the registration password rules, different from the username and from the current password).
+New error codes: `OTP-401` (code or reset token wrong, expired or used), `OTP-429` (too many / too soon), `OTP-503` (code could not be
+sent), `PWD-422` (same as the current password). Details: `documentation/readme/AUTH-OTP.md`.
+
+## auth-api.yaml: email verification at registration, per-user two-step sign-in, change password
+
+`POST /auth/register` is now step one of two: its `200` body is a `RegisterResponse` (`verificationRequired`, and a `challenge` or, with
+`AUTH_EMAIL_VERIFICATION_ENABLED=false`, the `user`). It no longer answers `201` with the user and creates nothing: a code is emailed to the
+address typed. New: `POST /auth/register/verify` (the code; `201` and the user, the login is created here) and `POST /auth/register/resend`.
+`UserResponse` gains a required `twoFactorEnabled`. Two-step sign-in is now each user's own choice, off by default:
+`PUT /auth/me/two-factor { enabled }` (`OTP-503` if no code could be sent). `POST /auth/me/password { currentPassword, newPassword }` changes
+the password: a wrong current one is `403 PWD-403` with `attemptsLeft`, the third in a session is `423 PWD-423` (that session is ended); success
+issues fresh cookies and ends every other session. `ErrorResponse` gains `attemptsLeft`; new codes `PWD-403`, `PWD-423`. A client that read the
+`201` user from `register` must now call `register/verify`. Details: `documentation/readme/AUTH-OTP.md`.

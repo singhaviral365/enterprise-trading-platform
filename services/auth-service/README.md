@@ -108,7 +108,10 @@ See [contracts/auth-api.yaml](../contracts/auth-api.yaml) for the complete API s
 
 ### Public Endpoints
 - `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login and receive tokens
+- `POST /auth/login` - Login, step one: checks the password and (two-step, the default) emails a code. See [AUTH-OTP.md](../../documentation/readme/AUTH-OTP.md)
+- `POST /auth/login/verify` - Login, step two: the emailed code, then tokens and cookies
+- `POST /auth/login/resend` - Email the sign-in code again
+- `POST /auth/password/forgot`, `/password/resend`, `/password/verify`, `/password/reset` - Forgot password
 - `POST /auth/refresh` - Refresh access token
 
 ### Protected Endpoints
@@ -171,6 +174,14 @@ All configuration comes from environment variables. Required variables:
 | `JWT_ACCESS_TOKEN_EXPIRES_IN` | Access token lifetime (seconds) | 900 (15 min) |
 | `JWT_REFRESH_TOKEN_EXPIRES_IN` | Refresh token lifetime (seconds) | 604800 (7 days) |
 | `LOG_LEVEL` | Logging level | debug |
+| `AUTH_EMAIL_VERIFICATION_ENABLED` | Registering emails a code to the address typed, and the login is created only once it is entered. `false` skips the check | true |
+| `AUTH_TWO_FACTOR_ENABLED` | Offers two-step sign-in as a per-user option (off for every user until they switch it on in Settings). `false` removes the option | true |
+| `AUTH_EMAIL_ENABLED` | Send email (MailHog). **Development only**; refused under `NODE_ENV=production` or a non-local SMTP host | false |
+| `AUTH_EMAIL_SMTP_HOST` / `AUTH_EMAIL_SMTP_PORT` | The SMTP server (MailHog) | localhost / 1025 |
+| `AUTH_OTP_*` | Code lifetime, guess and resend limits, hashing key: see [AUTH-OTP.md](../../documentation/readme/AUTH-OTP.md) | safe defaults |
+
+The registration email check is on by default and needs email, so the service **refuses to start** with it on and `AUTH_EMAIL_ENABLED` off.
+For development set `AUTH_EMAIL_ENABLED=true` with MailHog running, or `AUTH_EMAIL_VERIFICATION_ENABLED=false`.
 
 ## Testing
 
