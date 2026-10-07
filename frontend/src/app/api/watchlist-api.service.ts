@@ -1,7 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Watchlist, WatchlistItemsService, WatchlistsService } from './generated/watchlist';
+import {
+  PriceAlertsService,
+  SetAlertRequest,
+  Watchlist,
+  WatchlistItemsService,
+  WatchlistsService,
+} from './generated/watchlist';
 
 /**
  * App-facing wrapper over the generated Watchlist clients (the watchlist module of the Trade REST API).
@@ -11,6 +17,7 @@ import { Watchlist, WatchlistItemsService, WatchlistsService } from './generated
 export class WatchlistApi {
   private readonly watchlists = inject(WatchlistsService);
   private readonly items = inject(WatchlistItemsService);
+  private readonly alerts = inject(PriceAlertsService);
 
   list(accountId: number): Observable<Watchlist[]> {
     return this.watchlists.listWatchlists(accountId);
@@ -34,5 +41,14 @@ export class WatchlistApi {
 
   removeItem(accountId: number, watchlistId: number, tickerSymbol: string): Observable<Watchlist> {
     return this.items.removeWatchlistItem(accountId, watchlistId, tickerSymbol);
+  }
+
+  /** Arms (or replaces) the entry's price alert. */
+  setAlert(accountId: number, watchlistId: number, tickerSymbol: string, alert: SetAlertRequest): Observable<Watchlist> {
+    return this.alerts.setPriceAlert(accountId, watchlistId, tickerSymbol, alert);
+  }
+
+  clearAlert(accountId: number, watchlistId: number, tickerSymbol: string): Observable<Watchlist> {
+    return this.alerts.clearPriceAlert(accountId, watchlistId, tickerSymbol);
   }
 }

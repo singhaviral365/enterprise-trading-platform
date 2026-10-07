@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { TRADE_API_BASE_URL, provideApiClients } from './api.config';
+import { AlertDirection } from './generated/watchlist';
 import { WatchlistApi } from './watchlist-api.service';
 
 const BASE = `${TRADE_API_BASE_URL}/api/v1/accounts/7/watchlists`;
@@ -49,6 +50,19 @@ describe('WatchlistApi', () => {
     const req = http.expectOne(`${BASE}/9`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
+  });
+
+  it('sets an alert with PUT and clears it with DELETE on the entry alert route', () => {
+    api.setAlert(7, 9, 'AAPL', { direction: AlertDirection.Above, targetPrice: 200.5 }).subscribe();
+    const set = http.expectOne(`${BASE}/9/items/AAPL/alert`);
+    expect(set.request.method).toBe('PUT');
+    expect(set.request.body).toEqual({ direction: 'ABOVE', targetPrice: 200.5 });
+    set.flush({});
+
+    api.clearAlert(7, 9, 'AAPL').subscribe();
+    const clear = http.expectOne(`${BASE}/9/items/AAPL/alert`);
+    expect(clear.request.method).toBe('DELETE');
+    clear.flush({});
   });
 
   it('adds a stock with a ticker body and removes it by ticker in the path', () => {

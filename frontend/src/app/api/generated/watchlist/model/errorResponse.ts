@@ -10,11 +10,11 @@
 
 
 /**
- * The platform\'s single error envelope. Clients branch on `errorCode`, never on `message`. The watchlist module adds four codes to the platform catalogue because nothing in it fits. 
+ * The platform\'s single error envelope. Clients branch on `errorCode`, never on `message`. The watchlist module adds codes to the platform catalogue because nothing in it fits. 
  */
 export interface ErrorResponse { 
     /**
-     * | Code | HTTP | Meaning | |---|---|---| | `AUTH-401` | 401 | Unauthorised or invalid token | | `ACC-403` | 403 | Account not reachable with this token | | `ACC-404` | 404 | Account not found | | `INS-404` | 404 | Instrument not found or not tradable | | `VAL-422` | 422 | Invalid input | | `WTL-404` | 404 | Watchlist not found (or not this account\'s) | | `WTL-409` | 409 | Watchlist name already used on this account | | `WTL-422` | 422 | Account is at its watchlist limit | | `WLI-404` | 404 | Instrument not on this watchlist | | `WLI-409` | 409 | Instrument already on this watchlist | | `WLI-422` | 422 | Watchlist is at its item limit | 
+     * | Code | HTTP | Meaning | |---|---|---| | `AUTH-401` | 401 | Unauthorised or invalid token | | `ACC-403` | 403 | Account not reachable with this token | | `ACC-404` | 404 | Account not found | | `INS-404` | 404 | Instrument not found or not tradable | | `VAL-422` | 422 | Invalid input | | `WTL-404` | 404 | Watchlist not found (or not this account\'s) | | `WTL-409` | 409 | Watchlist name already used on this account | | `WTL-422` | 422 | Account is at its watchlist limit | | `WLI-404` | 404 | Instrument not on this watchlist | | `WLI-409` | 409 | Instrument already on this watchlist | | `WLI-422` | 422 | Watchlist is at its item limit | | `ALR-404` | 404 | No price alert on this instrument | | `ALR-409` | 409 | The target has already been reached at the latest price | | `ALR-422` | 422 | Account is at its active price-alert limit | 
      */
     errorCode: ErrorResponseErrorCodeEnum;
     /**
@@ -33,7 +33,10 @@ export enum ErrorResponseErrorCodeEnum {
     Wtl422 = 'WTL-422',
     Wli404 = 'WLI-404',
     Wli409 = 'WLI-409',
-    Wli422 = 'WLI-422'
+    Wli422 = 'WLI-422',
+    Alr404 = 'ALR-404',
+    Alr409 = 'ALR-409',
+    Alr422 = 'ALR-422'
 };
 
 
