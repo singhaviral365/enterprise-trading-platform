@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OrderService (dev + MailHog)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="ACTIVE_PROFILES" value="dev" />
+    <module name="order-service" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="org.example.backend.BackendApplication" />
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="MailHog (docker)" run_configuration_type="ShConfigurationType" />
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

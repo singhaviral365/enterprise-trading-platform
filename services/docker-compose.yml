@@ -130,6 +130,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Email is development-only and off unless BOTH of these are set (see documentation/readme/NOTIFICATIONS.md):
+      #   BACKEND_SPRING_PROFILES_ACTIVE=dev   NOTIFICATIONS_EMAIL_SMTP_HOST=mailhog
+      SPRING_PROFILES_ACTIVE: ${BACKEND_SPRING_PROFILES_ACTIVE:-}
+      NOTIFICATIONS_EMAIL_SMTP_HOST: ${NOTIFICATIONS_EMAIL_SMTP_HOST:-localhost}
     ports:
       - "8080:8080"
     depends_on:
@@ -147,6 +151,20 @@ services:
       timeout: 5s
       retries: 15
       start_period: 20s
+    networks:
+      - trading-net
+
+  # DEVELOPMENT ONLY. A local SMTP catcher: the order-service sends "email" here and nothing leaves the machine.
+  # Never started by the platform profile; start it on purpose with:  docker compose --profile dev-mail up -d mailhog
+  # Read the mail at http://localhost:8025. The order-service only talks to it when run with the dev profile (see
+  # documentation/readme/NOTIFICATIONS.md); DevOnlyEmailGuard refuses any other combination.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    profiles: [dev-mail]
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
     networks:
       - trading-net
 
