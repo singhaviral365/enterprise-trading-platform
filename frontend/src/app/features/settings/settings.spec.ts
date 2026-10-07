@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AccountOverviewStore } from '../../core/account-overview.store';
+import { AuthService } from '../../core/auth.service';
 import { DialogService } from '../../core/dialog.service';
 import { NotificationService } from '../../core/notification.service';
 import {
@@ -26,6 +27,8 @@ describe('Settings', () => {
   let reload: ReturnType<typeof vi.fn>;
   let notifications: { success: ReturnType<typeof vi.fn> };
   let confirm: ReturnType<typeof vi.fn>;
+  let me: ReturnType<typeof vi.fn>;
+  let setTwoFactor: ReturnType<typeof vi.fn>;
   let workingOrders: ReturnType<typeof signal<number>>;
 
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
@@ -53,6 +56,8 @@ describe('Settings', () => {
     reload = vi.fn();
     notifications = { success: vi.fn() };
     confirm = vi.fn(async () => true);
+    me = vi.fn(async () => ({ id: 1, twoFactorEnabled: false }));
+    setTwoFactor = vi.fn(async (enabled: boolean) => ({ id: 1, twoFactorEnabled: enabled }));
     workingOrders = signal(0);
     await TestBed.configureTestingModule({
       imports: [Settings],
@@ -73,6 +78,7 @@ describe('Settings', () => {
         },
         { provide: NotificationService, useValue: notifications },
         { provide: DialogService, useValue: { confirm } },
+        { provide: AuthService, useValue: { me, setTwoFactor } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Settings);
@@ -90,6 +96,42 @@ describe('Settings', () => {
     expect(root.querySelector<HTMLSelectElement>('#settings-date-format')!.value).toBe(DateFormat.MonDdYyyy);
     expect(root.querySelector<HTMLSelectElement>('#settings-assistant')!.value).toBe('no');
     expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(true);
+  });
+
+  it('shows two-step sign-in as off by default, and turns it on at once without Save', async () => {
+    await create();
+    expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('off');
+
+    await pick('settings-two-factor', 'on');
+
+    expect(setTwoFactor).toHaveBeenCalledWith(true);
+    expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('on');
+    expect(notifications.success).toHaveBeenCalledWith('Two-step sign-in is on.');
+    expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(true);
+  });
+
+  it('says why two-step sign-in could not be turned on, and leaves it off', async () => {
+    await create();
+    // like a real call, the refusal arrives after the screen has shown the choice
+    setTwoFactor.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new HttpErrorResponse({ status: 503, error: { errorCode: 'OTP-503', message: 'x' } })), 20),
+        ),
+    );
+
+    await pick('settings-two-factor', 'on');
+
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(byTestId('settings-two-factor-error')?.textContent?.trim()).toBeTruthy();
+      expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('off');
+    });
+  });
+
+  it('shows two-step sign-in even for a customer with no trading account', async () => {
+    await create({ linked: false });
+    expect(byTestId('settings-security')).not.toBeNull();
   });
 
   it('offers the date formats with an example each', async () => {
