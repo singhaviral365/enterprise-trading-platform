@@ -89,6 +89,8 @@ describe('preferences', () => {
       expect(resolveDatePattern('mediumDate', DateFormat.YyyyMmDd, TimeFormat.H12)).toBe('yyyy-MM-dd');
       expect(resolveDatePattern('mediumTime', DateFormat.YyyyMmDd, TimeFormat.H24)).toBe('HH:mm:ss');
       expect(resolveDatePattern('medium', DateFormat.DdMmYyyy, TimeFormat.H24)).toBe('dd/MM/yyyy, HH:mm:ss');
+      expect(resolveDatePattern('medium', DateFormat.MonDdYyyy, TimeFormat.H24)).toBe('MMM d, y, HH:mm:ss');
+      expect(resolveDatePattern('medium', DateFormat.DdMmYyyy, TimeFormat.H12)).toBe('dd/MM/yyyy, h:mm:ss a');
       // the application's own look stays exactly as it was
       expect(resolveDatePattern('medium', DateFormat.MonDdYyyy, TimeFormat.H12)).toBe('medium');
       // anything a template asks for specifically is left alone, and so is "no format"

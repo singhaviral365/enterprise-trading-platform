@@ -127,10 +127,20 @@ export function resolveDatePattern(requested: string | undefined, date: DateForm
     case 'medium':
       return date === DateFormat.MonDdYyyy && time === TimeFormat.H12
         ? 'medium'
-        : `${datePattern(date)}, ${timePattern(time)}`;
+        : `${datePatternForCombinedMedium(date)}, ${timePatternForCombinedMedium(time)}`;
     default:
       return requested;
   }
+}
+
+/** Named aliases only work when they are the whole format; combined formats must use concrete patterns. */
+function datePatternForCombinedMedium(format: DateFormat): string {
+  return format === DateFormat.MonDdYyyy ? 'MMM d, y' : datePattern(format);
+}
+
+/** Named aliases only work when they are the whole format; combined formats must use concrete patterns. */
+function timePatternForCombinedMedium(format: TimeFormat): string {
+  return format === TimeFormat.H12 ? 'h:mm:ss a' : timePattern(format);
 }
 
 /** The locale whose digit grouping the format names: `en-US` (100,000,000) or `en-IN` (10,00,00,000). */

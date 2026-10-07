@@ -189,6 +189,18 @@ describe('Settings', () => {
   });
 
   describe('preview', () => {
+    it('keeps date-time preview readable when only one of date or time format changes', async () => {
+      await create();
+
+      await pick('settings-date-format', DateFormat.DdMmYyyy);
+      expect(byTestId('settings-preview-date')?.textContent).toContain('06/10/2026,');
+      expect(byTestId('settings-preview-date')?.textContent).toContain(':07:09');
+
+      await pick('settings-date-format', DateFormat.MonDdYyyy);
+      await pick('settings-time-format', TimeFormat.H24);
+      expect(byTestId('settings-preview-date')?.textContent).toContain('Oct 6, 2026, 15:07:09');
+    });
+
     it('shows the formats being chosen, not the saved ones, before anything is saved', async () => {
       await create();
       expect(byTestId('settings-preview-date')?.textContent?.replace(/\s/g, ' ')).toContain('Oct 6, 2026');
