@@ -1,0 +1,286 @@
+:host {
+  display: block;
+}
+
+/* Sits under the price chart in the quote pane; borders and tokens only, no shadows. */
+.advisor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 16px;
+  background: var(--surface-container-background);
+}
+
+.advisor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.advisor-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--surface-foreground-subtle);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.badge.is-buy {
+  color: var(--status-success-foreground);
+  background: var(--status-success-background);
+}
+
+.badge.is-sell {
+  color: var(--status-error-foreground);
+  background: var(--status-error-background);
+}
+
+.badge.is-hold {
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line);
+}
+
+.advisor-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.advisor-note.is-error {
+  flex-direction: column;
+  align-items: flex-start;
+  color: var(--status-error-container-fg);
+}
+
+.strength {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strength-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.strength-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--surface-foreground);
+}
+
+.meter {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-line-subtle);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease-out;
+}
+
+.meter-fill.is-buy {
+  background: var(--status-success-background);
+}
+
+.meter-fill.is-sell {
+  background: var(--status-error-background);
+}
+
+.meter-fill.is-hold {
+  background: var(--surface-line);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.facts dt {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.facts dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.fact-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--surface-foreground-subtle);
+}
+
+.explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  background: var(--surface-background-bright);
+}
+
+.explanation-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.explanation-foot,
+.message-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--surface-foreground-subtle);
+}
+
+.as-of {
+  margin: 0;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.stale {
+  display: block;
+  margin-top: 4px;
+  color: var(--status-warning-container-fg);
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  background: var(--surface-background-bright);
+}
+
+.message {
+  max-width: 92%;
+  padding: 8px 12px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  background: var(--surface-container-background);
+}
+
+.message p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message.is-user {
+  align-self: flex-end;
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+  border-color: var(--accent-primary-background);
+}
+
+.message.is-problem {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+  border-color: var(--status-error-container-line);
+}
+
+.ask {
+  display: flex;
+  gap: 8px;
+}
+
+.ask .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.method {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.method summary {
+  cursor: pointer;
+}
+
+.method p {
+  margin: 6px 0 0;
+}
+
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--surface-foreground-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill {
+    transition: none;
+  }
+}
