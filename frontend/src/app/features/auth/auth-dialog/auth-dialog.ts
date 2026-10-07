@@ -9,6 +9,7 @@ import { safeReturnUrl } from '../../../core/guards/return-url';
 import { PreferencesStore } from '../../../core/preferences.store';
 import { SessionService } from '../../../core/session.service';
 import { AccountSetupForm } from '../account-setup-form/account-setup-form';
+import { ForgotPasswordForm, PasswordResetEvent } from '../forgot-password-form/forgot-password-form';
 import { LoginForm } from '../login-form/login-form';
 import { RegisterForm } from '../register-form/register-form';
 import { SignedInEvent } from '../signed-in-event';
@@ -19,6 +20,10 @@ const HEADINGS: Record<AuthMode, { title: string; subtitle: string }> = {
   account: {
     title: 'Open your trading account',
     subtitle: 'Step 2 of 2: tell us about you to link a trading account to your login.',
+  },
+  forgot: {
+    title: 'Reset your password',
+    subtitle: 'We will email a code to the address on your account.',
   },
 };
 
@@ -31,7 +36,7 @@ const HEADINGS: Record<AuthMode, { title: string; subtitle: string }> = {
  */
 @Component({
   selector: 'app-auth-dialog',
-  imports: [LoginForm, RegisterForm, AccountSetupForm],
+  imports: [LoginForm, RegisterForm, AccountSetupForm, ForgotPasswordForm],
   templateUrl: './auth-dialog.html',
   styleUrl: './auth-dialog.css',
 })
@@ -83,13 +88,32 @@ export class AuthDialog {
       await this.finish();
       return;
     }
-    this.authDialog.setPrefillEmail(email ?? '');
+    this.authDialog.setPrefillEmail(email ?? this.authDialog.prefillEmail());
     this.authDialog.setMode('account');
   }
 
   protected async onAccountCompleted(): Promise<void> {
     this.notifications.success('Your trading account is ready');
     await this.finish();
+  }
+
+  /**
+   * A login was created. The email it was created with is kept for the account step that follows the first sign-in,
+   * and the sign-in form opens with the username filled in.
+   */
+  protected onRegistered({ username, email }: SignedInEvent): void {
+    this.authDialog.setPrefillEmail(email ?? '');
+    this.authDialog.returnToLogin(username, 'Your login was created. Sign in to continue: we will email you a code.');
+  }
+
+  /** "Forgot password?" on the sign-in form: the reset, with the username typed so far. */
+  protected onForgotPassword(username: string): void {
+    this.authDialog.startPasswordReset(username);
+  }
+
+  /** The password was changed. Nobody is signed in: back to the sign-in form, which then needs the new password and a code. */
+  protected onPasswordReset(event: PasswordResetEvent): void {
+    this.authDialog.returnToLogin(event.username, 'Your password was changed. Sign in with your new password.');
   }
 
   /** Closing from any step: a signed-in user without an account still lands on the dashboard. */

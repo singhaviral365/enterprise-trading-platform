@@ -10,7 +10,12 @@
     <div class="auth-panel" [class.is-wide]="authDialog.mode() === 'account'">
       <div class="auth-panel-header">
         <div class="auth-brand" aria-hidden="true">
-          <i class="fas" [class.fa-chart-line]="authDialog.mode() !== 'account'" [class.fa-building-columns]="authDialog.mode() === 'account'"></i>
+          <i
+            class="fas"
+            [class.fa-chart-line]="authDialog.mode() === 'login' || authDialog.mode() === 'register'"
+            [class.fa-building-columns]="authDialog.mode() === 'account'"
+            [class.fa-key]="authDialog.mode() === 'forgot'"
+          ></i>
         </div>
         <div class="auth-heading">
           <h2 id="auth-dialog-title" class="auth-title">{{ heading().title }}</h2>
@@ -33,6 +38,14 @@
           (completed)="onAccountCompleted()"
           (skipped)="dismiss()"
         />
+      } @else if (authDialog.mode() === 'forgot') {
+        <div class="auth-body" data-testid="forgot-panel">
+          <app-forgot-password-form
+            [initialUsername]="authDialog.prefillUsername()"
+            (completed)="onPasswordReset($event)"
+            (backToLogin)="authDialog.returnToLogin()"
+          />
+        </div>
       } @else {
         <div class="auth-tabs" role="tablist" aria-label="Sign in or register" (keydown)="onTabKeydown($event)">
           @for (mode of modes; track mode.id) {
@@ -60,9 +73,15 @@
           [attr.aria-labelledby]="'auth-tab-' + authDialog.mode()"
         >
           @if (authDialog.mode() === 'login') {
-            <app-login-form (signedIn)="onSignedIn($event)" (switchToRegister)="authDialog.setMode('register')" />
+            <app-login-form
+              [initialUsername]="authDialog.prefillUsername()"
+              [notice]="authDialog.notice()"
+              (signedIn)="onSignedIn($event)"
+              (switchToRegister)="authDialog.setMode('register')"
+              (forgotPassword)="onForgotPassword($event)"
+            />
           } @else {
-            <app-register-form (signedIn)="onSignedIn($event)" (switchToLogin)="authDialog.setMode('login')" />
+            <app-register-form (registered)="onRegistered($event)" (switchToLogin)="authDialog.setMode('login')" />
           }
         </div>
       }
