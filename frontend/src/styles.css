@@ -117,7 +117,8 @@
   --modal-z: 9998;
   --sidebar-z: 100;
   --header-z: 200;
-  --footer-z: 200;
+  /* Below the sidebar (100), so the footer scrolling into view never covers the navigation. */
+  --footer-z: 50;
 }
 
 :root[data-theme="dark"],

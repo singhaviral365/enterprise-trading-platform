@@ -136,3 +136,19 @@ rather than `Set`s that JSON would never produce. Code: `org.example.backend.pre
 account (balance, purchasing power, order and holding prices) in one transaction at the live rate. Added `409` (`ACC-409`, an order is
 still NEW) and `503` (`FX-503`, no exchange rate) to `PUT`. Market data keeps the currency it is quoted in.
 
+## notifications-api.yaml (new: customer notifications module of the Trade REST API, `services/order-service`)
+
+New contract, written before the controller. `GET /api/v1/accounts/{accountId}/notifications` (search `q`, repeatable
+`category`, `page`, `size`; returns the page with `unreadCount`) and `POST .../{notificationId}/read`. Bearer token, the
+account's owner checked on both routes (`ACC-403` / `ACC-404`), and a notification of another account answers `NTF-404`
+like one that does not exist. **There is deliberately no route that creates a notification**: handing one over is the
+in-process `NotificationGateway`, so a customer's token cannot send itself anything. The inbox lists unread notifications
+and ones read within the last hour. New code: `NTF-404`. Code: `org.example.backend.notifications`.
+
+## watchlist-api.yaml: price alerts
+
+`PUT` and `DELETE /api/v1/accounts/{a}/watchlists/{w}/items/{ticker}/alert` (tag `Price alerts`), and an `alert` object
+(nullable) on every `WatchlistItem` (`direction`, `targetPrice`, `status` ACTIVE/TRIGGERED, `setAt`, `triggeredAt`,
+`triggerPrice`, `delivery` PENDING/HANDED_OVER/FAILED). Both routes answer with the whole watchlist, like the others. One
+alert per entry, fires once, capped per account. New codes: `ALR-404`, `ALR-409`, `ALR-422`. The contract text records what
+"crossed" means and why it fires once. Existing clients are unaffected (a new nullable field and new routes).

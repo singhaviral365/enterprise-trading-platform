@@ -105,36 +105,27 @@
       </div>
 
       <form class="wl-add" novalidate (submit)="addStock($event)" data-testid="watchlist-add-form">
-        <label class="form-label" for="watchlist-ticker">Add a stock</label>
-        <div class="wl-form-row">
-          <input
-            id="watchlist-ticker"
-            class="form-input"
-            type="text"
-            list="watchlist-symbols"
-            autocomplete="off"
-            autocapitalize="characters"
-            placeholder="e.g. AAPL"
-            data-testid="watchlist-ticker-input"
-            [class.is-error]="tickerError()"
-            [attr.maxlength]="maxTickerLength"
-            [attr.aria-invalid]="tickerError() ? 'true' : null"
-            [attr.aria-describedby]="tickerError() ? 'watchlist-ticker-error' : null"
-            [disabled]="atItemLimit()"
-            [value]="tickerDraft()"
-            (input)="onTickerInput($event)"
+        <div class="wl-form-row is-bottom">
+          <app-dropdown
+            class="wl-add-select"
+            inputId="watchlist-stock"
+            label="Add a stock"
+            placeholder="Choose a stock"
+            [options]="stockOptions()"
+            [value]="chosenTicker()"
+            (valueChange)="onTickerChosen($event)"
+            [disabled]="atItemLimit() || boardUnavailable()"
+            [invalid]="!!tickerError()"
+            [errorText]="tickerError()"
           />
-          <datalist id="watchlist-symbols">
-            @for (symbol of symbolSuggestions(); track symbol) {
-              <option [value]="symbol"></option>
-            }
-          </datalist>
           <app-tooltip [text]="'A watchlist can hold up to ' + maxItems + ' stocks'" [disabled]="!atItemLimit()">
-            <button type="submit" class="btn is-primary" data-testid="watchlist-add" [disabled]="busy() || atItemLimit()">Add</button>
+            <button type="submit" class="btn is-primary" data-testid="watchlist-add" [disabled]="!canAdd()">Add</button>
           </app-tooltip>
         </div>
-        @if (tickerError()) {
-          <p id="watchlist-ticker-error" class="form-error-text" role="alert" data-testid="watchlist-ticker-error">{{ tickerError() }}</p>
+        @if (boardUnavailable()) {
+          <p class="form-hint" role="status" data-testid="watchlist-stocks-unavailable">The list of stocks could not be loaded. Refresh to try again.</p>
+        } @else if (stockOptions().length === 0 && !atItemLimit()) {
+          <p class="form-hint" data-testid="watchlist-stocks-none">Every available stock is already on this list.</p>
         }
       </form>
 
@@ -151,6 +142,7 @@
                 <th scope="col">Symbol</th>
                 <th scope="col" class="num">Price</th>
                 <th scope="col">Status</th>
+                <th scope="col">Alert</th>
                 <th scope="col"><span class="sr-only">Remove</span></th>
               </tr>
             </thead>
@@ -215,6 +207,50 @@
                       <span class="updated">{{ item.quotedAt | date: 'mediumTime' }}</span>
                     }
                   </td>
+                  <td class="wl-alert-cell">
+                    @if (item.alert; as alert) {
+                      <button
+                        type="button"
+                        class="alert-chip"
+                        [class.is-active]="alert.status === AlertStatus.Active"
+                        [class.is-triggered]="alert.status === AlertStatus.Triggered && alert.delivery !== AlertDelivery.Failed"
+                        [class.is-failed]="alert.status === AlertStatus.Triggered && alert.delivery === AlertDelivery.Failed"
+                        [attr.data-testid]="'watchlist-alert-' + item.tickerSymbol"
+                        [attr.aria-label]="'Price alert on ' + item.tickerSymbol + ': ' + alertSummary(alert) + (alert.status === AlertStatus.Active ? ', active' : ', triggered, ' + deliveryLabel(alert))"
+                        [disabled]="busy()"
+                        (click)="openAlert(item)"
+                      >
+                        <i
+                          class="fas"
+                          [class.fa-bell]="alert.status === AlertStatus.Active"
+                          [class.fa-circle-check]="alert.status === AlertStatus.Triggered && alert.delivery !== AlertDelivery.Failed"
+                          [class.fa-triangle-exclamation]="alert.status === AlertStatus.Triggered && alert.delivery === AlertDelivery.Failed"
+                          aria-hidden="true"
+                        ></i>
+                        <span>{{ alertSummary(alert) }}</span>
+                      </button>
+                      @if (alert.status === AlertStatus.Triggered) {
+                        <span class="alert-state" [attr.data-testid]="'watchlist-alert-state-' + item.tickerSymbol">
+                          Hit {{ alert.triggerPrice | number: '1.2-4' }} · {{ deliveryLabel(alert) }}
+                        </span>
+                      } @else {
+                        <span class="alert-state" [attr.data-testid]="'watchlist-alert-state-' + item.tickerSymbol">Active</span>
+                      }
+                    } @else {
+                      <app-tooltip [text]="'You can have up to ' + maxAlerts + ' active alerts'" [disabled]="!atAlertLimit(item)">
+                        <button
+                          type="button"
+                          class="btn is-tertiary is-small"
+                          [attr.data-testid]="'watchlist-alert-set-' + item.tickerSymbol"
+                          [attr.aria-label]="'Set a price alert for ' + item.tickerSymbol"
+                          [disabled]="busy() || atAlertLimit(item)"
+                          (click)="openAlert(item)"
+                        >
+                          <i class="far fa-bell" aria-hidden="true"></i> Set alert
+                        </button>
+                      </app-tooltip>
+                    }
+                  </td>
                   <td class="num">
                     <button
                       type="button"
@@ -228,6 +264,64 @@
                     </button>
                   </td>
                 </tr>
+                @if (alertEditing() === item.tickerSymbol) {
+                  <tr class="wl-alert-row">
+                    <td colspan="5">
+                      <form class="wl-alert-form" novalidate (submit)="saveAlert($event)" [attr.data-testid]="'watchlist-alert-form-' + item.tickerSymbol">
+                        <p class="form-hint wl-alert-hint">
+                          Tell me when {{ item.tickerSymbol }}
+                          @if (item.price !== null && item.price !== undefined) {
+                            (now {{ item.price | number: '1.2-2' }})
+                          }
+                          crosses a price. It fires once, then you set a new one.
+                        </p>
+                        <div class="wl-alert-fields">
+                          <app-dropdown
+                            class="wl-alert-direction"
+                            inputId="watchlist-alert-direction"
+                            label="When the price"
+                            [options]="directionOptions"
+                            [value]="alertDirection()"
+                            (valueChange)="alertDirection.set($event)"
+                          />
+                          <div class="wl-alert-target">
+                            <label class="form-label" for="watchlist-alert-target">Target price</label>
+                            <input
+                              id="watchlist-alert-target"
+                              class="form-input"
+                              type="text"
+                              inputmode="decimal"
+                              autocomplete="off"
+                              data-testid="watchlist-alert-target"
+                              [class.is-error]="targetProblem()"
+                              [attr.aria-invalid]="targetProblem() ? 'true' : null"
+                              [attr.aria-describedby]="targetProblem() ? 'watchlist-alert-target-error' : null"
+                              [value]="alertTarget()"
+                              (input)="onTargetInput($event)"
+                            />
+                          </div>
+                          <div class="wl-alert-buttons">
+                            <button type="submit" class="btn is-primary" data-testid="watchlist-alert-save" [disabled]="!canSaveAlert()">
+                              {{ item.alert?.status === AlertStatus.Active ? 'Update alert' : 'Set alert' }}
+                            </button>
+                            @if (item.alert) {
+                              <button type="button" class="btn is-secondary" data-testid="watchlist-alert-clear" [disabled]="busy()" (click)="clearAlert(item)">
+                                Remove alert
+                              </button>
+                            }
+                            <button type="button" class="btn is-tertiary" (click)="closeAlert()">Cancel</button>
+                          </div>
+                        </div>
+                        @if (targetProblem()) {
+                          <p id="watchlist-alert-target-error" class="form-error-text" data-testid="watchlist-alert-target-error">{{ targetProblem() }}</p>
+                        }
+                        @if (alertError()) {
+                          <p class="form-error-text" role="alert" data-testid="watchlist-alert-error">{{ alertError() }}</p>
+                        }
+                      </form>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>

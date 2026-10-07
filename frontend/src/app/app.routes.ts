@@ -37,6 +37,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/positions/positions').then((m) => m.Positions),
       },
       {
+        path: 'notifications',
+        title: 'Notifications | Trading Platform',
+        loadComponent: () => import('./features/notifications/notifications').then((m) => m.Notifications),
+      },
+      {
         path: 'settings',
         title: 'Settings | Trading Platform',
         loadComponent: () => import('./features/settings/settings').then((m) => m.Settings),

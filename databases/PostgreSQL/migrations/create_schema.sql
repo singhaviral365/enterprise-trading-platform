@@ -5,6 +5,10 @@
 
 BEGIN;
 
+-- A complete, from-empty schema: run this one file against a new database (the Trade API's own start-up scripts
+-- are idempotent and also load it). Statements under "UPGRADING AN EXISTING DATABASE" at the end are for
+-- databases made by an older version of this file and do nothing on a new one.
+
 -- ============================================================
 -- 1. ADVISOR
 -- ============================================================
@@ -39,6 +43,13 @@ CREATE TABLE account
     -- It is NOT a foreign key.
     user_id             INTEGER NOT NULL,
 
+    -- How to reach the customer. A copy of what was given when the account was set up: the Trade API cannot read
+    -- the Auth service's database, so notifications (email now, SMS later) read the address from here. NULL for
+    -- accounts opened before these columns existed.
+    email               VARCHAR(255),
+
+    phone_no            VARCHAR(20),
+
     opening_date        DATE NOT NULL,
 
     balance             NUMERIC(19,4) NOT NULL DEFAULT 0.0000,
@@ -67,6 +78,12 @@ CREATE TABLE account
     -- Explicit check that user_id cannot be NULL.
     CONSTRAINT chk_account_user_id
         CHECK (user_id IS NOT NULL),
+
+    CONSTRAINT chk_account_email
+        CHECK (email IS NULL OR email ~ '^[^@[:space:]]+@[^@[:space:]]+$'),
+
+    CONSTRAINT chk_account_phone_no
+        CHECK (phone_no IS NULL OR phone_no ~ '^\+?[0-9[:space:]()-]{10,20}$'),
 
     CONSTRAINT chk_account_status
         CHECK (
@@ -499,6 +516,19 @@ CREATE TABLE IF NOT EXISTS watchlist_item
     ticker_symbol   VARCHAR(20) NOT NULL,
     added_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    -- Price alert: one per entry, as columns on the entry itself (a direction and a target on an instrument the
+    -- customer already watches). All NULL while there is no alert; set and cleared together
+    -- (chk_watchlist_item_alert_shape), so "above and below at once" cannot be stored.
+    alert_direction         VARCHAR(5),
+    alert_target_price      NUMERIC(19,4),
+    alert_status            VARCHAR(9),
+    alert_set_at            TIMESTAMPTZ,
+    alert_triggered_at      TIMESTAMPTZ,
+    alert_trigger_price     NUMERIC(19,4),
+    -- How the hand-over to Customer Notifications went for a triggered alert.
+    alert_delivery          VARCHAR(11),
+    alert_delivery_attempts INTEGER NOT NULL DEFAULT 0,
+
     PRIMARY KEY (watchlist_id, ticker_symbol),
 
     CONSTRAINT fk_watchlist_item_watchlist
@@ -508,12 +538,50 @@ CREATE TABLE IF NOT EXISTS watchlist_item
 
     CONSTRAINT fk_watchlist_item_instrument
         FOREIGN KEY (ticker_symbol)
-        REFERENCES instrument(instrument_ticker)
+        REFERENCES instrument(instrument_ticker),
+
+    CONSTRAINT chk_watchlist_item_alert_direction
+        CHECK (alert_direction IN ('ABOVE', 'BELOW')),
+
+    CONSTRAINT chk_watchlist_item_alert_target
+        CHECK (alert_target_price > 0),
+
+    CONSTRAINT chk_watchlist_item_alert_status
+        CHECK (alert_status IN ('ACTIVE', 'TRIGGERED')),
+
+    CONSTRAINT chk_watchlist_item_alert_delivery
+        CHECK (alert_delivery IN ('PENDING', 'HANDED_OVER', 'FAILED')),
+
+    -- The alert is either entirely absent or entirely described.
+    CONSTRAINT chk_watchlist_item_alert_shape
+        CHECK (
+            (alert_status IS NULL
+                AND alert_direction IS NULL AND alert_target_price IS NULL AND alert_set_at IS NULL
+                AND alert_triggered_at IS NULL AND alert_trigger_price IS NULL AND alert_delivery IS NULL)
+            OR
+            (alert_status = 'ACTIVE'
+                AND alert_direction IS NOT NULL AND alert_target_price IS NOT NULL AND alert_set_at IS NOT NULL
+                AND alert_triggered_at IS NULL AND alert_trigger_price IS NULL AND alert_delivery IS NULL)
+            OR
+            (alert_status = 'TRIGGERED'
+                AND alert_direction IS NOT NULL AND alert_target_price IS NOT NULL AND alert_set_at IS NOT NULL
+                AND alert_triggered_at IS NOT NULL AND alert_trigger_price IS NOT NULL AND alert_delivery IS NOT NULL)
+        )
 );
 
 -- executor-service's market poller reads DISTINCT ticker_symbol from this table.
 CREATE INDEX IF NOT EXISTS idx_watchlist_item_ticker
     ON watchlist_item(ticker_symbol);
+
+-- The index behind the per-quote lookup: only entries with an ACTIVE alert, found by symbol.
+CREATE INDEX IF NOT EXISTS idx_watchlist_item_active_alert
+    ON watchlist_item(ticker_symbol)
+    WHERE alert_status = 'ACTIVE';
+
+-- Triggered alerts whose hand-over has not succeeded yet, for the bounded retry.
+CREATE INDEX IF NOT EXISTS idx_watchlist_item_alert_undelivered
+    ON watchlist_item(alert_triggered_at)
+    WHERE alert_status = 'TRIGGERED' AND alert_delivery IN ('PENDING', 'FAILED');
 
 -- ============================================================
 -- 10. CUSTOMER PREFERENCE
@@ -581,5 +649,130 @@ CREATE TABLE IF NOT EXISTS customer_preference
     CONSTRAINT chk_customer_preference_order_type
         CHECK (default_order_type IN ('MARKET', 'LIMIT'))
 );
+
+
+-- ============================================================
+-- 11. NOTIFICATION
+-- ============================================================
+-- One row per notification, keyed by the event that caused it (event_key), so a replayed event inserts nothing.
+-- The in-app inbox is that row: recording it durably IS delivering it in-app.
+
+CREATE TABLE IF NOT EXISTS notification
+(
+    notification_id BIGSERIAL PRIMARY KEY,
+    account_id      INTEGER NOT NULL,
+    category        VARCHAR(20) NOT NULL,
+    -- Idempotency key: the Kafka eventId for an order outcome, a stable alert key for a price alert.
+    event_key       VARCHAR(120) NOT NULL,
+    title           VARCHAR(120) NOT NULL,
+    message         VARCHAR(500) NOT NULL,
+    -- The channels resolved from Customer Preferences at send time, comma separated; NONE if the customer opted out.
+    channels        VARCHAR(30) NOT NULL,
+    -- True when IN_APP is one of the resolved channels: only those appear in the bell.
+    in_app          BOOLEAN NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    read_at         TIMESTAMPTZ,
+
+    CONSTRAINT chk_notification_category
+        CHECK (category IN ('ORDER_STATUS', 'WATCHLIST_ALERTS')),
+
+    CONSTRAINT fk_notification_account
+        FOREIGN KEY (account_id)
+        REFERENCES account(account_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_notification_event_key
+        UNIQUE (event_key)
+);
+
+-- The inbox: one account's in-app notifications, newest first.
+CREATE INDEX IF NOT EXISTS idx_notification_inbox
+    ON notification(account_id, created_at DESC, notification_id DESC)
+    WHERE in_app;
+
+-- The unread badge.
+CREATE INDEX IF NOT EXISTS idx_notification_unread
+    ON notification(account_id)
+    WHERE in_app AND read_at IS NULL;
+
+
+-- ============================================================
+-- 12. NOTIFICATION DELIVERY
+-- ============================================================
+-- EMAIL and SMS deliveries, one row per notification and channel, tracked apart from the Kafka offset.
+
+CREATE TABLE IF NOT EXISTS notification_delivery
+(
+    delivery_id     BIGSERIAL PRIMARY KEY,
+    notification_id BIGINT NOT NULL,
+    channel         VARCHAR(5) NOT NULL,
+    -- QUEUED: recorded, not yet attempted. SENT: the provider accepted it. FAILED: attempts exhausted.
+    -- SKIPPED: nothing could be sent by design (channel switched off, not provisioned, or no address held).
+    status          VARCHAR(7) NOT NULL,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    -- A short reason, never a credential or an address.
+    detail          VARCHAR(200),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_notification_delivery_channel
+        CHECK (channel IN ('EMAIL', 'SMS')),
+
+    CONSTRAINT chk_notification_delivery_status
+        CHECK (status IN ('QUEUED', 'SENT', 'FAILED', 'SKIPPED')),
+
+    CONSTRAINT fk_notification_delivery_notification
+        FOREIGN KEY (notification_id)
+        REFERENCES notification(notification_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT uq_notification_delivery_channel
+        UNIQUE (notification_id, channel)
+);
+
+-- What the email dispatcher sweeps.
+CREATE INDEX IF NOT EXISTS idx_notification_delivery_queued
+    ON notification_delivery(created_at)
+    WHERE status = 'QUEUED';
+
+
+-- ============================================================
+-- UPGRADING AN EXISTING DATABASE
+-- ============================================================
+-- Everything above creates the whole schema from an empty database. These statements bring a database created by an
+-- OLDER version of this script up to date, and do nothing on a fresh one. Each is idempotent.
+
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS currency CHAR(3) NOT NULL DEFAULT 'USD';
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS icon_url VARCHAR(255);
+
+-- Databases created before the contact columns existed pick them up here (the rows keep NULL until the customer's
+-- account is set up again or the values are filled in by hand).
+ALTER TABLE account ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE account ADD COLUMN IF NOT EXISTS phone_no VARCHAR(20);
+
+-- A database that also has a duplicate phone_number column (added by hand or by an earlier draft) keeps phone_no, the
+-- column the application uses: copy any values across, then drop the duplicate.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = current_schema() AND table_name = 'account' AND column_name = 'phone_number') THEN
+        UPDATE account
+        SET phone_no = LEFT(TRIM(phone_number), 20)
+        WHERE phone_no IS NULL
+          AND phone_number IS NOT NULL
+          AND TRIM(phone_number) ~ '^\+?[0-9[:space:]()-]{10,20}$';
+        ALTER TABLE account DROP COLUMN phone_number;
+    END IF;
+END
+$$;
+ALTER TABLE account DROP CONSTRAINT IF EXISTS chk_account_email;
+ALTER TABLE account ADD CONSTRAINT chk_account_email
+    CHECK (email IS NULL OR email ~ '^[^@[:space:]]+@[^@[:space:]]+$');
+ALTER TABLE account DROP CONSTRAINT IF EXISTS chk_account_phone_no;
+ALTER TABLE account ADD CONSTRAINT chk_account_phone_no
+    CHECK (phone_no IS NULL OR phone_no ~ '^\+?[0-9[:space:]()-]{10,20}$');
+
+-- The price-alert columns on watchlist_item and the notification tables are upgraded by
+-- add_notifications_and_price_alerts.sql; the preference table by add_customer_preferences.sql.
 
 COMMIT;

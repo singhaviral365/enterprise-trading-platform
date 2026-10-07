@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 import { PriceStatus } from './priceStatus';
+import { PriceAlert } from './priceAlert';
 
 
 export interface WatchlistItem { 
@@ -22,6 +23,10 @@ export interface WatchlistItem {
      */
     quotedAt?: string | null;
     priceStatus: PriceStatus;
+    /**
+     * The entry\'s price alert, or null if none is set.
+     */
+    alert?: PriceAlert | null;
 }
 
 

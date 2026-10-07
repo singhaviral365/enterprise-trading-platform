@@ -82,44 +82,46 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_active ON refresh_tokens(revoked_a
 -- SEED TEST DATA
 -- ============================================================
 
--- Insert 10 test users
+-- Insert 10 test users, with FIXED user_ids 1000-1009. The trading database's sample accounts (sample_data.sql) carry
+-- the same user_id and the very same email, so a seeded login and its account line up. The two databases cannot enforce
+-- that, which is why it is written down here and checked by SeedDataConsistencyTest.
 -- Note: These passwords are placeholder hashes. In production,
 -- register users through the API to get proper Argon2id hashes.
 -- Account setup happens post-registration via PUT /auth/me/profile
 
 INSERT INTO users (
-  username, email, password_hash, roles, created_on, updated_at
+  user_id, username, email, password_hash, roles, created_on, updated_at
 ) VALUES
-  ('john.smith', 'john.smith@local.auth', 
+  (1000, 'alice.trader', 'alice.trader@example.com',
    '$2b$12$clienthash001', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('olivia.martin', 'olivia.martin@local.auth', 
+
+  (1001, 'yuvaraj.k', 'yuvaraj.k@example.com',
    '$2b$12$clienthash002', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('david.taylor', 'david.taylor@local.auth', 
+
+  (1002, 'aviral.singh', 'aviral.singh@example.com',
    '$2b$12$clienthash003', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('sophia.anderson', 'sophia.anderson@local.auth', 
+
+  (1003, 'riya.rajesh', 'riya.rajesh@example.com',
    '$2b$12$clienthash004', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('james.thomas', 'james.thomas@local.auth', 
+
+  (1004, 'lalitha.prakash', 'lalitha.prakash@example.com',
    '$2b$12$clienthash005', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('liam.harris', 'liam.harris@local.auth', 
+
+  (1005, 'vishal.fmri', 'vishal.fmri@example.com',
    '$2b$12$clienthash006', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('amelia.walker', 'amelia.walker@local.auth', 
+
+  (1006, 'aashifa.aalifa', 'aashifa.aalifa@example.com',
    '$2b$12$clienthash007', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('noah.hall', 'noah.hall@local.auth', 
+
+  (1007, 'swetha.fmri', 'swetha.fmri@example.com',
    '$2b$12$clienthash008', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('mia.allen', 'mia.allen@local.auth', 
+
+  (1008, 'agneya.fmri', 'agneya.fmri@example.com',
    '$2b$12$clienthash009', ARRAY['CUSTOMER'], NOW(), NOW()),
-  
-  ('oliver.young', 'oliver.young@local.auth', 
+
+  (1009, 'nanditha.fmri', 'nanditha.fmri@example.com',
    '$2b$12$clienthash010', ARRAY['CUSTOMER'], NOW(), NOW())
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Grant privileges to auth_user
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO auth_user;
@@ -129,9 +131,9 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO auth_user;
 -- FIX SEQUENCE START VALUE
 -- ============================================================
 
--- Reset the users_user_id_seq sequence to start from 1000
+-- Make the next generated user_id one past the highest in use (and never below 1000)
 -- (This is needed because TypeORM synchronize might recreate with default START 1)
-SELECT setval('users_user_id_seq', 1000, false);
+SELECT setval(pg_get_serial_sequence('users', 'user_id'), GREATEST((SELECT COALESCE(MAX(user_id), 0) FROM users) + 1, 1000), false);
 
 -- Verify sequence is at 1000
 SELECT last_value FROM users_user_id_seq;

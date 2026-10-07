@@ -1,0 +1,166 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 900px;
+}
+
+.ni-head .page-title {
+  margin-bottom: 4px;
+}
+
+.ni-head .form-hint {
+  margin: 0;
+}
+
+.ni-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.ni-search {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.ni-search > i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}
+
+.ni-search .form-input {
+  height: 40px;
+  padding-left: 40px;
+}
+
+.ni-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px dashed var(--surface-line-subtle);
+  border-radius: 12px;
+  color: var(--surface-foreground-subtle);
+  text-align: center;
+}
+
+.ni-state > i {
+  font-size: 26px;
+}
+
+.ni-state.is-error {
+  color: var(--status-error-container-fg);
+}
+
+/* A page, not a card: the list is as long as the page size and the page scrolls. */
+.ni-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ni-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  font: inherit;
+  text-align: left;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  cursor: pointer;
+}
+
+.ni-item:hover {
+  background: var(--surface-container-background);
+}
+
+/* Unread stands out by weight, a dot and an accent edge, not by colour alone. */
+.ni-item.is-unread {
+  border-left: 4px solid var(--accent-primary-background);
+  background: var(--surface-container-background-low);
+}
+
+.ni-item:not(.is-unread) {
+  color: var(--surface-foreground-subtle);
+}
+
+.ni-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: var(--status-info-container-fg);
+  background: var(--status-info-container-bg);
+}
+
+.ni-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ni-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ni-item-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ni-item:not(.is-unread) .ni-item-title {
+  font-weight: 600;
+}
+
+.ni-message {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ni-time {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.ni-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-primary-background);
+}
+
+.ni-read {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}

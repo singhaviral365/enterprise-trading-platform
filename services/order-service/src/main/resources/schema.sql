@@ -39,6 +39,13 @@ CREATE TABLE IF NOT EXISTS account
     -- It is NOT a foreign key.
     user_id             INTEGER NOT NULL,
 
+    -- How to reach the customer. A copy of what was given when the account was set up: the Trade API cannot read
+    -- the Auth service's database, so notifications (email now, SMS later) read the address from here. NULL for
+    -- accounts opened before these columns existed.
+    email               VARCHAR(255),
+
+    phone_no            VARCHAR(20),
+
     opening_date        DATE NOT NULL,
 
     balance             NUMERIC(19,4) NOT NULL DEFAULT 0.0000,
@@ -67,6 +74,12 @@ CREATE TABLE IF NOT EXISTS account
     -- Explicit check that user_id cannot be NULL.
     CONSTRAINT chk_account_user_id
         CHECK (user_id IS NOT NULL),
+
+    CONSTRAINT chk_account_email
+        CHECK (email IS NULL OR email ~ '^[^@[:space:]]+@[^@[:space:]]+$'),
+
+    CONSTRAINT chk_account_phone_no
+        CHECK (phone_no IS NULL OR phone_no ~ '^\+?[0-9[:space:]()-]{10,20}$'),
 
     CONSTRAINT chk_account_status
         CHECK (
@@ -176,6 +189,17 @@ CREATE TABLE IF NOT EXISTS instrument
 -- db/migrations/add_instrument_icon_and_currency.sql.
 ALTER TABLE instrument ADD COLUMN IF NOT EXISTS currency CHAR(3) NOT NULL DEFAULT 'USD';
 ALTER TABLE instrument ADD COLUMN IF NOT EXISTS icon_url VARCHAR(255);
+
+-- Databases created before the contact columns existed pick them up here (the rows keep NULL until the customer's
+-- account is set up again or the values are filled in by hand).
+ALTER TABLE account ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE account ADD COLUMN IF NOT EXISTS phone_no VARCHAR(20);
+ALTER TABLE account DROP CONSTRAINT IF EXISTS chk_account_email;
+ALTER TABLE account ADD CONSTRAINT chk_account_email
+    CHECK (email IS NULL OR email ~ '^[^@[:space:]]+@[^@[:space:]]+$');
+ALTER TABLE account DROP CONSTRAINT IF EXISTS chk_account_phone_no;
+ALTER TABLE account ADD CONSTRAINT chk_account_phone_no
+    CHECK (phone_no IS NULL OR phone_no ~ '^\+?[0-9[:space:]()-]{10,20}$');
 
 
 -- ============================================================

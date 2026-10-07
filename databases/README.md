@@ -280,6 +280,49 @@ psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/a
 A new database gets the table from `create_schema.sql` and sample rows from `sample_data.sql`. The order-service also runs
 `preferences-schema.sql` (the same idempotent statements, without the back-fill) every time it starts.
 
+### One script for a new database
+
+`databases/PostgreSQL/migrations/create_schema.sql` creates the **whole** schema from an empty database: advisor, account
+(with `email` and `phone_no`, the contact details given at account set-up), instrument, orders, holdings, watchlist and
+watchlist_item (with the price-alert columns and indexes), customer_preference, notification and notification_delivery,
+plus their triggers. Run it, then `sample_data.sql`, and nothing else is needed. The last section of the file ("Upgrading an
+existing database") holds `ALTER TABLE ... IF NOT EXISTS` statements for older databases and does nothing on a new one;
+the per-feature scripts (`add_customer_preferences.sql`, `add_notifications_and_price_alerts.sql`) are the same upgrades
+on their own.
+
+```bash
+psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/create_schema.sql
+psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/sample_data.sql
+```
+
+### Bringing an existing machine up to date (pgAdmin, no command line)
+
+Two plain-SQL files, one per database. Nothing here needs `psql`: open the **Query Tool** on the database, paste the whole
+file (or open it with the folder icon), and press **F5**. Each is safe to run repeatedly: every step checks first, skips
+what is already there and applies what is not, so a machine several versions behind ends in the same place as one that
+is one version behind.
+
+| Run on | File | Does |
+|---|---|---|
+| `trading_db` | `update_trading_db.sql` | Creates anything missing (a database with no tables gets the whole schema); adds `account.email` and `account.phone_no`, merging and dropping a duplicate `phone_number` column; adds watchlist price-alert columns, preferences and notification tables; inserts missing sample rows and fills the contact details of sample accounts that lack them. One transaction: on an error nothing changes, so fix it and run it again. |
+| `auth_db` | `update_auth_db.sql` | Creates `users` / `refresh_tokens` if absent; gives the ten sample users their fixed ids 1000-1009 and `<username>@example.com` emails (moving the old `@local.auth` placeholders); moves the id sequence past the highest id so new registrations cannot collide. |
+
+Registered customers' own data is never overwritten. `update_trading_db.sql` is the application's start-up scripts and
+`sample_data.sql` pasted together (so one paste is enough); `UpdateScriptSyncTest` fails the build if a source changes and the
+update script was not rebuilt. `auth_setup.sql` (which creates the database and role) and `create_schema.sql` remain for a
+brand-new machine and still need `psql`.
+
+**The email in `auth_db.users` and `trading_db.account` must be the same for the same user.** The databases cannot enforce
+that, so both seeds come from one list (sample account `1001` is user `1000`, and so on) and `SeedDataConsistencyTest` fails
+the build if they drift. To check a running pair by eye, list the users and the accounts and compare:
+
+```sql
+-- in auth_db                                   -- in trading_db
+SELECT user_id, email FROM users                SELECT user_id, email, phone_no FROM account
+WHERE user_id BETWEEN 1000 AND 1009             WHERE user_id BETWEEN 1000 AND 1009
+ORDER BY user_id;                               ORDER BY user_id;
+```
+
 ---
 
 ## 9. Primary Key Summary

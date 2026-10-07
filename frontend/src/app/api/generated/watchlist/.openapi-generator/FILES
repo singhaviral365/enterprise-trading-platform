@@ -1,6 +1,8 @@
 api.base.service.ts
 api.module.ts
 api/api.ts
+api/priceAlerts.service.ts
+api/priceAlerts.serviceInterface.ts
 api/watchlistItems.service.ts
 api/watchlistItems.serviceInterface.ts
 api/watchlists.service.ts
@@ -9,10 +11,15 @@ configuration.ts
 encoder.ts
 index.ts
 model/addItemRequest.ts
+model/alertDelivery.ts
+model/alertDirection.ts
+model/alertStatus.ts
 model/errorResponse.ts
 model/models.ts
 model/nameRequest.ts
+model/priceAlert.ts
 model/priceStatus.ts
+model/setAlertRequest.ts
 model/watchlist.ts
 model/watchlistItem.ts
 param.ts

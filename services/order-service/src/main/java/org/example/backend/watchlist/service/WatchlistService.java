@@ -3,6 +3,7 @@ package org.example.backend.watchlist.service;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
 import org.example.backend.mapper.AccountMapper;
+import org.example.backend.watchlist.dto.PriceAlertResponse;
 import org.example.backend.watchlist.dto.WatchlistItemResponse;
 import org.example.backend.watchlist.dto.WatchlistResponse;
 import org.example.backend.watchlist.exceptions.WatchlistAccessDeniedException;
@@ -122,6 +123,13 @@ public class WatchlistService {
                         watchlist,
                         itemsByWatchlist.getOrDefault(watchlist.getWatchlistId(), List.of())))
                 .toList();
+    }
+
+    /** One watchlist with its entries, prices and alerts. Used to answer a change to one of its entries. */
+    public WatchlistResponse getWatchlist(long userId, long accountId, long watchlistId) {
+        assertAccountAccess(userId, accountId);
+        Watchlist watchlist = requireWatchlistForAccount(accountId, watchlistId);
+        return toResponse(watchlist, toItemResponses(watchlistMapper.selectWatchlistItems(watchlistId)));
     }
 
     public WatchlistResponse renameWatchlist(
@@ -302,7 +310,8 @@ public class WatchlistService {
                             item.getAddedAt(),
                             price.price(),
                             price.quotedAt(),
-                            price.status());
+                            price.status(),
+                            PriceAlertResponse.from(item.getAlert()));
                 })
                 .toList();
     }

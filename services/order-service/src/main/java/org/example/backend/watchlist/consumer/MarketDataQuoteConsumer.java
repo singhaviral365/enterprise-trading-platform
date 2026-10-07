@@ -2,11 +2,13 @@ package org.example.backend.watchlist.consumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.backend.watchlist.alert.PriceAlertEvaluator;
 import org.example.backend.watchlist.exceptions.PoisonQuoteMessageException;
 import org.example.backend.watchlist.price.LatestQuoteStore;
 import org.example.backend.watchlist.price.Quote;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -31,10 +33,18 @@ public class MarketDataQuoteConsumer {
     private static final String QUOTE_EVENT = "QUOTE";
 
     private final LatestQuoteStore store;
+    private final PriceAlertEvaluator alerts;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public MarketDataQuoteConsumer(LatestQuoteStore store) {
+    @Autowired
+    public MarketDataQuoteConsumer(LatestQuoteStore store, PriceAlertEvaluator alerts) {
         this.store = store;
+        this.alerts = alerts;
+    }
+
+    /** Prices only, no alerts: what the quote store alone needs. */
+    public MarketDataQuoteConsumer(LatestQuoteStore store) {
+        this(store, null);
     }
 
     @KafkaListener(
@@ -70,7 +80,28 @@ public class MarketDataQuoteConsumer {
         }
 
         Quote quote = new Quote(symbol.trim(), price(body), quotedAt(body, envelope));
-        return store.offer(quote) ? quote : null;
+        if (!store.offer(quote)) {
+            return null;
+        }
+        evaluateAlerts(quote);
+        return quote;
+    }
+
+    /**
+     * Asks whether this quote crosses anyone's alert. Only a quote that moved the store forward gets here, so a replayed
+     * or out-of-order quote cannot fire anything. A failure is logged and swallowed: the price is already applied, and
+     * retrying the message would find it no newer and skip this step, so letting it propagate would only dead-letter a
+     * good quote. The alert stays armed and is judged against the next quote.
+     */
+    private void evaluateAlerts(Quote quote) {
+        if (alerts == null) {
+            return;
+        }
+        try {
+            alerts.evaluate(quote);
+        } catch (RuntimeException ex) {
+            LOGGER.error("Could not evaluate price alerts for {}; they stay armed", quote.symbol(), ex);
+        }
     }
 
     private JsonNode parse(String payload) {

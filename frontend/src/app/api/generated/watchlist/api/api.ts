@@ -1,7 +1,10 @@
+export * from './priceAlerts.service';
+import { PriceAlertsService } from './priceAlerts.service';
+export * from './priceAlerts.serviceInterface';
 export * from './watchlistItems.service';
 import { WatchlistItemsService } from './watchlistItems.service';
 export * from './watchlistItems.serviceInterface';
 export * from './watchlists.service';
 import { WatchlistsService } from './watchlists.service';
 export * from './watchlists.serviceInterface';
-export const APIS = [WatchlistItemsService, WatchlistsService];
+export const APIS = [PriceAlertsService, WatchlistItemsService, WatchlistsService];

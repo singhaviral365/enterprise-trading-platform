@@ -37,3 +37,61 @@ CREATE TABLE IF NOT EXISTS watchlist_item (
 -- executor-service's market poller reads DISTINCT ticker_symbol from this table.
 CREATE INDEX IF NOT EXISTS idx_watchlist_item_ticker
     ON watchlist_item(ticker_symbol);
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Price alerts. One alert per watchlist entry, as columns on the entry itself: an alert is a direction and a target on
+-- an instrument the customer is already watching, so it needs no table of its own, and "above and below at once" cannot
+-- be represented. All alert columns are NULL while the entry has no alert, and are set and cleared together.
+-- Same statements, for a database created before this module had alerts, in
+-- databases/PostgreSQL/migrations/add_notifications_and_price_alerts.sql.
+-- ---------------------------------------------------------------------------------------------------------------------
+
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_direction VARCHAR(5)
+        CONSTRAINT chk_watchlist_item_alert_direction CHECK (alert_direction IN ('ABOVE', 'BELOW'));
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_target_price NUMERIC(19, 4)
+        CONSTRAINT chk_watchlist_item_alert_target CHECK (alert_target_price > 0);
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_status VARCHAR(9)
+        CONSTRAINT chk_watchlist_item_alert_status CHECK (alert_status IN ('ACTIVE', 'TRIGGERED'));
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_set_at TIMESTAMPTZ;
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_triggered_at TIMESTAMPTZ;
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_trigger_price NUMERIC(19, 4);
+-- How the hand-over to Customer Notifications went for a triggered alert.
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_delivery VARCHAR(11)
+        CONSTRAINT chk_watchlist_item_alert_delivery CHECK (alert_delivery IN ('PENDING', 'HANDED_OVER', 'FAILED'));
+ALTER TABLE watchlist_item
+    ADD COLUMN IF NOT EXISTS alert_delivery_attempts INTEGER NOT NULL DEFAULT 0;
+
+-- The alert is either entirely absent or entirely described.
+ALTER TABLE watchlist_item
+    DROP CONSTRAINT IF EXISTS chk_watchlist_item_alert_shape;
+ALTER TABLE watchlist_item
+    ADD CONSTRAINT chk_watchlist_item_alert_shape CHECK (
+        (alert_status IS NULL
+            AND alert_direction IS NULL AND alert_target_price IS NULL AND alert_set_at IS NULL
+            AND alert_triggered_at IS NULL AND alert_trigger_price IS NULL AND alert_delivery IS NULL)
+        OR
+        (alert_status = 'ACTIVE'
+            AND alert_direction IS NOT NULL AND alert_target_price IS NOT NULL AND alert_set_at IS NOT NULL
+            AND alert_triggered_at IS NULL AND alert_trigger_price IS NULL AND alert_delivery IS NULL)
+        OR
+        (alert_status = 'TRIGGERED'
+            AND alert_direction IS NOT NULL AND alert_target_price IS NOT NULL AND alert_set_at IS NOT NULL
+            AND alert_triggered_at IS NOT NULL AND alert_trigger_price IS NOT NULL AND alert_delivery IS NOT NULL));
+
+-- The index behind the per-quote lookup: only entries with an ACTIVE alert, found by symbol. It is what loads the
+-- in-memory alert index at start-up, and what the guarded "fire" update walks.
+CREATE INDEX IF NOT EXISTS idx_watchlist_item_active_alert
+    ON watchlist_item(ticker_symbol)
+    WHERE alert_status = 'ACTIVE';
+
+-- Triggered alerts whose hand-over has not succeeded yet, for the bounded retry.
+CREATE INDEX IF NOT EXISTS idx_watchlist_item_alert_undelivered
+    ON watchlist_item(alert_triggered_at)
+    WHERE alert_status = 'TRIGGERED' AND alert_delivery IN ('PENDING', 'FAILED');

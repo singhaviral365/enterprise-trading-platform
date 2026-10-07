@@ -6,7 +6,7 @@
 -- One row per account, created the first time the customer saves their settings. No row means "all defaults":
 -- the Trade API answers with them (preferred currency = the account's own currency) and never needs the row.
 -- Contact details (email address, phone number) are NOT stored here: a channel is only a switch, and the address
--- it points at stays where it already lives (the Auth service's user record).
+-- it points at is kept on the account row (account.email, account.phone_no).
 
 CREATE TABLE IF NOT EXISTS customer_preference (
     account_id INTEGER PRIMARY KEY,

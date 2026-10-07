@@ -2,6 +2,7 @@ import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
 import { provideApi as provideAuthApi } from './generated/auth';
 import { provideApi as providePreferencesApi } from './generated/preferences';
+import { provideApi as provideNotificationsApi } from './generated/notifications';
 import { provideApi as provideTradeApi } from './generated/trade';
 import { provideApi as provideWatchlistApi } from './generated/watchlist';
 
@@ -22,6 +23,7 @@ export function provideApiClients(): EnvironmentProviders {
     provideAuthApi(AUTH_API_BASE_URL),
     provideTradeApi(TRADE_API_BASE_URL),
     provideWatchlistApi(TRADE_API_BASE_URL),
+    provideNotificationsApi(TRADE_API_BASE_URL),
     providePreferencesApi(TRADE_API_BASE_URL),
   ]);
 }

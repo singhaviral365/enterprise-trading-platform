@@ -7,7 +7,7 @@ info:
   description: |
     The watchlist half of the "Watchlists and price alerts" extension. It is a module inside the
     Trade REST API (`services/order-service`), in its own package, and its routes are served by the same service on 8080.
-    Price alerts are a separate part of the module and are not described here.
+    Each watchlist entry can carry **one price alert** (see "Price alerts" below).
 
     ## Authorisation
 
@@ -38,6 +38,31 @@ info:
 
     The poller publishes about once a minute, so polling this API faster than that shows no change.
 
+    ## Price alerts
+
+    An alert is a **direction** (`ABOVE` or `BELOW`) and a **target price** set on one watchlist entry. It is
+    never both: a customer who wants both sets one on each of two entries, or sets the other later.
+
+    * **What "crossed" means.** `ABOVE` fires on the first quote at or over the target; `BELOW` on the first
+      quote at or under it. Creating an alert whose target the latest known price has already reached is
+      refused with `ALR-409`, so an alert never fires the moment it is created. If no price is known yet
+      (`UNAVAILABLE`) the alert is accepted and judged against the next quote.
+    * **What happens next: it fires once.** The alert becomes `TRIGGERED`, keeps the price that crossed it,
+      and stays visible. It does **not** fire again on later quotes; the customer sets a new alert on the entry
+      to re-arm it (setting one replaces the old). Firing on every quote past the level would send a customer
+      dozens of messages in a minute through a module somebody else owns.
+    * **Delivery.** A fired alert is handed in-process to Customer Notifications, which resolves the
+      customer's channel from their preferences. This module never chooses a channel. `delivery` says how the
+      hand-over went: `PENDING` (not yet handed over), `HANDED_OVER` (notifications accepted it) or `FAILED`
+      (notifications raised; the hand-over is retried a bounded number of times, then stays `FAILED` and
+      visible). An alert is never lost silently and never fires twice: the state change is one guarded
+      statement, and notifications ignores a repeated hand-over of the same alert.
+    * **Cap.** An account may hold a bounded number of **active** alerts (default 20, configuration
+      `watchlist.limits.max-alerts-per-account`). Going over is `ALR-422`. The count and the write are one
+      statement, so concurrent requests cannot both slip past it.
+    * **Lookup.** The market-data consumer decides per quote whether any customer cares with an in-memory
+      index keyed by symbol (O(1) miss); the database is touched only when a quote actually crosses a level.
+
     ## Limits
 
     An account may hold a bounded number of watchlists, and a watchlist a bounded number of
@@ -62,6 +87,8 @@ tags:
     description: Creating, listing, renaming and deleting watchlists.
   - name: Watchlist items
     description: Adding and removing instruments on a watchlist.
+  - name: Price alerts
+    description: A target price and a direction on a watchlist entry, delivered through Customer Notifications.
 
 security:
   - bearerAuth: []
@@ -261,6 +288,109 @@ paths:
                     errorCode: WLI-404
                     message: Stock not found in watchlist
 
+  /api/v1/accounts/{accountId}/watchlists/{watchlistId}/items/{tickerSymbol}/alert:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+      - $ref: '#/components/parameters/WatchlistId'
+      - name: tickerSymbol
+        in: path
+        required: true
+        description: The instrument's ticker, matched ignoring case. Must already be on the watchlist.
+        schema:
+          type: string
+          maxLength: 20
+        example: AAPL
+
+    put:
+      operationId: setPriceAlert
+      tags: [Price alerts]
+      summary: Set (or replace) the price alert on a watchlist entry
+      description: |
+        Arms an alert on the entry. An existing alert, active or already triggered, is replaced, which is how
+        a fired alert is re-armed. Replacing an active alert does not count against the cap twice.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetAlertRequest'
+      responses:
+        '200':
+          description: The watchlist after the change, with the alert on its entry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          description: Account, watchlist or entry not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                item:
+                  value:
+                    errorCode: WLI-404
+                    message: Stock not found in watchlist
+        '409':
+          description: The latest known price has already reached the target, so the alert would fire at once.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                reached:
+                  value:
+                    errorCode: ALR-409
+                    message: The target has already been reached
+        '422':
+          description: The request failed validation, or the account is at its active-alert limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid:
+                  value:
+                    errorCode: VAL-422
+                    message: Invalid input
+                alertLimit:
+                  value:
+                    errorCode: ALR-422
+                    message: Price alert limit reached
+
+    delete:
+      operationId: clearPriceAlert
+      tags: [Price alerts]
+      summary: Remove the price alert from a watchlist entry
+      description: Works on an active or a triggered alert. The entry stays on the watchlist.
+      responses:
+        '200':
+          description: The watchlist after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          description: Account, watchlist or entry not found, or the entry has no alert.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                noAlert:
+                  value:
+                    errorCode: ALR-404
+                    message: No price alert on this stock
+
 components:
 
   securitySchemes:
@@ -397,6 +527,65 @@ components:
       type: string
       enum: [LIVE, STALE, UNAVAILABLE]
 
+    AlertDirection:
+      type: string
+      enum: [ABOVE, BELOW]
+      description: '`ABOVE` fires when the price rises to the target; `BELOW` when it falls to it.'
+
+    AlertStatus:
+      type: string
+      enum: [ACTIVE, TRIGGERED]
+      description: '`ACTIVE` is armed. `TRIGGERED` has fired once and will not fire again unless replaced.'
+
+    AlertDelivery:
+      type: string
+      enum: [PENDING, HANDED_OVER, FAILED]
+      description: |
+        How the hand-over to Customer Notifications went, for a triggered alert. `FAILED` means notifications
+        raised; the hand-over is retried a bounded number of times.
+
+    SetAlertRequest:
+      type: object
+      additionalProperties: false
+      required: [direction, targetPrice]
+      properties:
+        direction:
+          $ref: '#/components/schemas/AlertDirection'
+        targetPrice:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 1000000000
+          description: In the same unit as the entry's `price`. Up to 4 decimal places.
+          example: 200.5
+
+    PriceAlert:
+      type: object
+      additionalProperties: false
+      required: [direction, targetPrice, status, setAt]
+      properties:
+        direction:
+          $ref: '#/components/schemas/AlertDirection'
+        targetPrice:
+          type: number
+          example: 200.5
+        status:
+          $ref: '#/components/schemas/AlertStatus'
+        setAt:
+          type: string
+          format: date-time
+        triggeredAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the alert fired. Null while `ACTIVE`.
+        triggerPrice:
+          type: [number, 'null']
+          description: The quote that crossed the target. Null while `ACTIVE`.
+        delivery:
+          oneOf:
+            - $ref: '#/components/schemas/AlertDelivery'
+            - type: 'null'
+          description: Null while `ACTIVE`.
+
     WatchlistItem:
       type: object
       additionalProperties: false
@@ -418,6 +607,11 @@ components:
           description: When that price was quoted. Null when `priceStatus` is `UNAVAILABLE`.
         priceStatus:
           $ref: '#/components/schemas/PriceStatus'
+        alert:
+          oneOf:
+            - $ref: '#/components/schemas/PriceAlert'
+            - type: 'null'
+          description: The entry's price alert, or null if none is set.
 
     Watchlist:
       type: object
@@ -453,11 +647,11 @@ components:
       required: [errorCode, message]
       description: |
         The platform's single error envelope. Clients branch on `errorCode`, never on `message`.
-        The watchlist module adds four codes to the platform catalogue because nothing in it fits.
+        The watchlist module adds codes to the platform catalogue because nothing in it fits.
       properties:
         errorCode:
           type: string
-          enum: [AUTH-401, ACC-403, ACC-404, INS-404, VAL-422, WTL-404, WTL-409, WTL-422, WLI-404, WLI-409, WLI-422]
+          enum: [AUTH-401, ACC-403, ACC-404, INS-404, VAL-422, WTL-404, WTL-409, WTL-422, WLI-404, WLI-409, WLI-422, ALR-404, ALR-409, ALR-422]
           description: |
             | Code | HTTP | Meaning |
             |---|---|---|
@@ -472,6 +666,9 @@ components:
             | `WLI-404` | 404 | Instrument not on this watchlist |
             | `WLI-409` | 409 | Instrument already on this watchlist |
             | `WLI-422` | 422 | Watchlist is at its item limit |
+            | `ALR-404` | 404 | No price alert on this instrument |
+            | `ALR-409` | 409 | The target has already been reached at the latest price |
+            | `ALR-422` | 422 | Account is at its active price-alert limit |
           example: WTL-404
         message:
           type: string
