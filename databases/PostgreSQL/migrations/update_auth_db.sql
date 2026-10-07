@@ -14,6 +14,8 @@
 --       - if the fixed username or email is already taken by a DIFFERENT user_id, that id is skipped with a notice
 --         (it would break a unique rule), and you decide what to do with the clash.
 --   * The id sequence is moved past the highest id in use, so new registrations never collide with the sample users.
+--   * otp_challenges and users.two_factor_enabled (two-step sign-in, forgot password, email-checked registration) are created
+--     or brought up to date, the same statements as add_auth_otp_challenges.sql.
 --
 -- A users table in the old layout (a UUID id column and no user_id) is not migrated: the script stops and says so.
 -- Users with other ids are never touched. It does not create the database or the auth_user role (auth_setup.sql does,
@@ -95,6 +97,56 @@ BEGIN
                    GREATEST((SELECT COALESCE(MAX(user_id), 0) FROM users) + 1, 1000), false);
 END
 $$;
+
+
+-- Two-step sign-in, forgot password and email-checked registration (from add_auth_otp_challenges.sql, which the auth service also
+-- applies itself on start-up): the otp_challenges table and users.two_factor_enabled. Needs the users table above.
+CREATE TABLE IF NOT EXISTS otp_challenges (
+    id                     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id                BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+    purpose                VARCHAR(14) NOT NULL,
+    code_hash              VARCHAR(64) NOT NULL,
+    attempts               INTEGER NOT NULL DEFAULT 0,
+    sends                  INTEGER NOT NULL DEFAULT 1,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_sent_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at             TIMESTAMPTZ NOT NULL,
+    consumed_at            TIMESTAMPTZ,
+    pending_username       VARCHAR(64),
+    pending_email          VARCHAR(255),
+    pending_password_hash  VARCHAR(255),
+    reset_token_hash       VARCHAR(64) UNIQUE,
+    reset_expires_at       TIMESTAMPTZ,
+    reset_used_at          TIMESTAMPTZ,
+
+    CONSTRAINT chk_otp_challenges_attempts CHECK (attempts >= 0),
+    CONSTRAINT chk_otp_challenges_sends CHECK (sends >= 1)
+);
+
+-- From the first version of the table: the user becomes optional, the typed details get their columns, and REGISTRATION is allowed.
+ALTER TABLE otp_challenges ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS pending_username VARCHAR(64);
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS pending_email VARCHAR(255);
+ALTER TABLE otp_challenges ADD COLUMN IF NOT EXISTS pending_password_hash VARCHAR(255);
+ALTER TABLE otp_challenges DROP CONSTRAINT IF EXISTS chk_otp_challenges_purpose;
+ALTER TABLE otp_challenges ADD CONSTRAINT chk_otp_challenges_purpose
+    CHECK (purpose IN ('LOGIN', 'PASSWORD_RESET', 'REGISTRATION'));
+
+CREATE INDEX IF NOT EXISTS idx_otp_challenges_user_id ON otp_challenges(user_id);
+CREATE INDEX IF NOT EXISTS idx_otp_challenges_expires_at ON otp_challenges(expires_at);
+
+-- Two-step sign-in is each user's own choice, off until they switch it on in Settings.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- The auth service connects as auth_user in the setup script's layout; keep it able to use the new table.
+DO
+$grants$
+BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'auth_user') THEN
+    GRANT ALL PRIVILEGES ON TABLE otp_challenges TO auth_user;
+  END IF;
+END
+$grants$;
 
 -- The sample users as they are now. The same user_ids in trading_db:
 --   SELECT user_id, email, phone_no FROM account WHERE user_id BETWEEN 1000 AND 1009 ORDER BY user_id;

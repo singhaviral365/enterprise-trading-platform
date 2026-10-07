@@ -12,6 +12,8 @@ Main tables:
 5. orders
 6. holdings
 7. customer_preference
+8. strategy and strategy_run (automated strategies: the rule, the customer's limits, and the trail of what each one did; the lifecycle
+   trigger refuses to leave a final status and to claim anything that is not ACTIVE)
 
 ---
 
@@ -269,7 +271,7 @@ email address or phone number is stored here.
 | chk_customer_preference_order_type | default_order_type | MARKET or LIMIT |
 
 Channels (`channel_sms`, `channel_email`, `channel_in_app`) and categories (`notify_order_status`,
-`notify_watchlist_alerts`) are one boolean column each. All three channels false means "No notifications".
+`notify_watchlist_alerts`, `notify_strategy_execution`) are one boolean column each. All three channels false means "No notifications".
 
 **Upgrading an existing database** (nothing is dropped; safe to run twice):
 
@@ -285,7 +287,8 @@ A new database gets the table from `create_schema.sql` and sample rows from `sam
 `databases/PostgreSQL/migrations/create_schema.sql` creates the **whole** schema from an empty database: advisor, account
 (with `email` and `phone_no`, the contact details given at account set-up), instrument, orders, holdings, watchlist and
 watchlist_item (with the price-alert columns and indexes), customer_preference, notification and notification_delivery,
-plus their triggers. Run it, then `sample_data.sql`, and nothing else is needed. The last section of the file ("Upgrading an
+the realised P&L and portfolio-performance tables, and strategy and strategy_run (automated strategies, see
+`documentation/readme/STRATEGIES.md`), plus their triggers. Run it, then `sample_data.sql`, and nothing else is needed. The last section of the file ("Upgrading an
 existing database") holds `ALTER TABLE ... IF NOT EXISTS` statements for older databases and does nothing on a new one;
 the per-feature scripts (`add_customer_preferences.sql`, `add_notifications_and_price_alerts.sql`) are the same upgrades
 on their own.

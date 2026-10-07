@@ -737,4 +737,36 @@ WHERE a.account_id = c.account_id
   AND (a.email IS DISTINCT FROM c.email OR a.phone_no IS NULL);
 
 
+-- ============================================================
+-- 8. AUTOMATED STRATEGIES - 4 rows
+-- ============================================================
+-- Examples of each state a customer sees. The two ACTIVE ones have triggers far from any real price (sell AAPL above 1000,
+-- buy MSFT below 50), so a development machine never places an order from sample data by accident. Every limit is filled in,
+-- as it must be on a real strategy.
+
+INSERT INTO strategy
+(
+    strategy_id,
+    account_id,
+    instrument_id,
+    side,
+    quantity,
+    trigger_direction,
+    trigger_price,
+    armed,
+    max_order_value,
+    max_position_qty,
+    max_executions,
+    max_failures,
+    status,
+    status_reason
+)
+VALUES
+(5001, 1001, 2001, 'SELL', 10, 'ABOVE', 1000.0000, TRUE, 20000.00, 1000, 1, 3, 'ACTIVE',    NULL),
+(5002, 1002, 2002, 'BUY',   5, 'BELOW',   50.0000, TRUE,  1000.00,  100, 1, 3, 'ACTIVE',    NULL),
+(5003, 1001, 2002, 'BUY',   3, 'BELOW',   40.0000, TRUE,   500.00,   50, 1, 3, 'DISABLED',  'Switched off by the customer'),
+(5004, 1001, 2001, 'BUY',   2, 'BELOW',   20.0000, TRUE,   200.00,   50, 1, 3, 'CANCELLED', 'Cancelled by the customer')
+ON CONFLICT DO NOTHING;
+
+
 COMMIT;

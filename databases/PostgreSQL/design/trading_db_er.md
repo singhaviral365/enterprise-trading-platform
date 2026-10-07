@@ -11,6 +11,42 @@ erDiagram
     account ||--o{ watchlist : owns
     watchlist ||--o{ watchlist_item : contains
     instrument ||--o{ watchlist_item : watched_as
+    account ||--o{ strategy : sets
+    instrument ||--o{ strategy : triggers_on
+    strategy ||--o{ strategy_run : records
+
+    strategy {
+        bigint strategy_id PK
+        int account_id FK
+        int instrument_id FK
+        varchar side "BUY or SELL"
+        bigint quantity
+        varchar trigger_direction "BELOW or ABOVE"
+        numeric trigger_price "instrument currency"
+        boolean armed "a price was seen on the safe side"
+        timestamptz valid_from
+        timestamptz valid_until
+        numeric max_order_value "customer limit"
+        bigint max_position_qty "customer limit"
+        int max_executions
+        int max_failures
+        int executions
+        int consecutive_failures
+        varchar status "ACTIVE EXECUTING DISABLED EXECUTED CANCELLED EXPIRED FAILED"
+        bigint last_order_id
+        timestamptz claimed_at
+        bigint version
+    }
+
+    strategy_run {
+        bigint run_id PK
+        bigint strategy_id FK
+        int run_number "idempotency key strat-id-run"
+        numeric quote_price
+        varchar outcome "ORDERED DUPLICATE BLOCKED_LIMIT REJECTED API_ERROR STALE DISABLED"
+        bigint order_id
+        varchar settled_status "FILLED REJECTED CANCELLED"
+    }
 
     advisor {
         int advisor_id PK

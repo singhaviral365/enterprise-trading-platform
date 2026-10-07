@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS notification (
     notification_id BIGSERIAL PRIMARY KEY,
     account_id INTEGER NOT NULL,
     category VARCHAR(20) NOT NULL
-        CONSTRAINT chk_notification_category CHECK (category IN ('ORDER_STATUS', 'WATCHLIST_ALERTS')),
+        CONSTRAINT chk_notification_category CHECK (category IN ('ORDER_STATUS', 'WATCHLIST_ALERTS', 'STRATEGY_EXECUTION')),
     -- Idempotency key: the Kafka eventId for an order outcome, a stable alert key for a price alert.
     event_key VARCHAR(120) NOT NULL,
     title VARCHAR(120) NOT NULL,
@@ -28,6 +28,14 @@ CREATE TABLE IF NOT EXISTS notification (
     CONSTRAINT uq_notification_event_key
         UNIQUE (event_key)
 );
+
+-- Self-heal: a table made before strategy notifications existed carries the older list of categories, and CREATE TABLE
+-- IF NOT EXISTS leaves it as it is. Put the current list in place; the rows already there all satisfy it.
+ALTER TABLE notification
+    DROP CONSTRAINT IF EXISTS chk_notification_category;
+ALTER TABLE notification
+    ADD CONSTRAINT chk_notification_category
+        CHECK (category IN ('ORDER_STATUS', 'WATCHLIST_ALERTS', 'STRATEGY_EXECUTION'));
 
 -- The inbox: one account's in-app notifications, newest first.
 CREATE INDEX IF NOT EXISTS idx_notification_inbox
