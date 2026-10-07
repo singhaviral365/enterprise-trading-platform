@@ -19,8 +19,8 @@
           [class.is-down]="change.amount < 0"
           data-testid="quote-chart-change"
         >
-          {{ change.amount >= 0 ? '+' : '−' }}{{ formatPrice()(Math.abs(change.amount)) }}
-          ({{ change.amount >= 0 ? '+' : '−' }}{{ Math.abs(change.percent).toFixed(2) }}%)
+          {{ change.amount >= 0 ? '+' : '-' }}{{ formatPrice()(Math.abs(change.amount)) }}
+          ({{ change.amount >= 0 ? '+' : '-' }}{{ Math.abs(change.percent).toFixed(2) }}%)
         </span>
       }
     </header>

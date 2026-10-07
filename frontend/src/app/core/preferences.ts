@@ -166,7 +166,7 @@ export const CURRENCY_OPTIONS: readonly PreferenceOption<Currency>[] = [
 ];
 
 export const CHANNEL_OPTIONS: readonly PreferenceOption<NotificationChannel>[] = [
-  { value: NotificationChannel.Sms, label: 'SMS' },
+  // { value: NotificationChannel.Sms, label: 'SMS' },
   { value: NotificationChannel.Email, label: 'Email' },
   { value: NotificationChannel.InApp, label: 'In-application' },
 ];
