@@ -54,8 +54,8 @@ Everything lives in `frontend/src`:
   - [4.8 Notification (`shared/ui/notification/notification` + `core/notification.service`)](#48-notification-shareduinotificationnotification--corenotificationservice)
   - [4.9 Side toggle (`shared/ui/side-toggle`)](#49-side-toggle-shareduiside-toggle)
   - [4.10b Order status badge (`shared/ui/order-status/order-status`)](#410b-order-status-badge-shareduiorder-statusorder-status)
-  - [4.10c Order history and Positions pages (`features/orders`, `features/positions`)](#410c-order-history-and-positions-pages-featuresorders-featurespositions)
-  - [4.10d Positions page (`features/positions`)](#410d-positions-page-featurespositions)
+  - [4.10c Order history page (`features/orders`)](#410c-order-history-page-featuresorders)
+  - [4.10d Holdings on the Portfolio page](#410d-holdings-on-the-portfolio-page)
   - [4.10e Market data page (`features/market`)](#410e-market-data-page-featuresmarket)
   - [4.10f Dashboard (`features/dashboard`)](#410f-dashboard-featuresdashboard)
   - [4.11 Instrument icon and label (`shared/ui/instrument-icon`, `shared/ui/instrument-label`)](#411-instrument-icon-and-label-shareduiinstrument-icon-shareduiinstrument-label)
@@ -68,6 +68,7 @@ Everything lives in `frontend/src`:
   - [4.17 Settings, preferences and the formatting pipes (`features/settings`, `core/preferences*`, `shared/formatting`)](#417-settings-preferences-and-the-formatting-pipes)
   - [4.18 Notification bell and page (`layout/notifications`, `features/notifications`)](#418-notification-bell-and-page-layoutnotifications-featuresnotifications)
   - [4.19 Watchlist panel: add dropdown and price alerts](#419-watchlist-panel-add-dropdown-and-price-alerts)
+  - [4.20 Portfolio page (`features/portfolio`)](#420-portfolio-page-featuresportfolio)
   - [4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)](#410-noclipboard-directive-shareddirectivesno-clipboard)
 - [5. Services the UI relies on](#5-services-the-ui-relies-on)
 - [6. Recipes](#6-recipes)
@@ -342,7 +343,7 @@ Modifiers: `is-striped`, `is-compact` (table); `is-numeric` (cell, right-aligned
 
 ### Selectable tables (`.row-table`)
 
-One style for every table whose rows open something (Market data and the Positions table). Plain read-only tables
+One style for every table whose rows open something (Market data and the holdings table). Plain read-only tables
 (Order history, Recent orders) stay `.data-table`.
 
 ```html
@@ -541,10 +542,9 @@ Buy / Sell segmented control on native radios: `<app-side-toggle [(side)]="side"
 icon as well as its colour, so it works for colour-blind users: NEW shows **Working**, then **Filled**,
 **Rejected**, **Cancelled**. Use it anywhere an order status is shown; never print the raw status.
 
-### 4.10c Order history and Positions pages (`features/orders`, `features/positions`)
+### 4.10c Order history page (`features/orders`)
 
-Routes `/orders` and `/positions`, both in the sidebar. Both read from the shared `AccountOverviewStore`
-and use the global table classes.
+Route `/orders`, in the sidebar. It reads from the shared `AccountOverviewStore` and uses the global table classes.
 
 - **Order history:** every order (rejections included), default sort Placed descending, sortable by
   Placed and Symbol (`aria-sort` on the header), filters for Side and Status (multi-select dropdowns) and
@@ -554,7 +554,7 @@ and use the global table classes.
   icon-only `is-error` trash button appears left of Reset; it asks with `DialogService.confirm` (type
   `warning`), then calls `DELETE /api/v1/orders/{id}` for each, reports successes and failures in toasts and
   refreshes the store. Selections are dropped if the order stops being `NEW` or the filters hide it.
-- **Positions:** see 4.10d.
+- **Positions:** there is no separate page any more. The holdings are a section of the Portfolio page (4.10d, 4.20); `/positions` redirects to `/portfolio`.
   Order history rows show the logo, symbol and company name (`app-instrument-label`). The dashboard's Recent orders
   panel shows the latest 5 with "View more".
 - **Live updates:** while any order is at `NEW` the store re-reads the account on a bounded interval
@@ -562,22 +562,26 @@ and use the global table classes.
   buttons, and placing an order) grants a new allowance. A fill therefore shows up on every page and in
   the order ticket's confirmation without a reload. Never add another polling loop.
 
-### 4.10d Positions page (`features/positions`)
+### 4.10d Holdings on the Portfolio page
 
-`/positions` is a parent with two presentational children and a detail pane (a split view, 4.15):
+The holdings are the **Holdings section of `/portfolio`** (4.20). The old Positions page is gone: `/positions` redirects to `/portfolio`
+and the sidebar has no Positions item. The section is a parent (`Portfolio`) with two presentational children and a detail pane (a split
+view, 4.15), all under `features/portfolio`:
 
 | Component | Role |
 |---|---|
-| `Positions` (`positions.ts`) | Owns the data (from `AccountOverviewStore`), the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is selected |
-| `PositionsCard` (`app-positions-card`) | **Default view.** A grid of clickable cards: logo, symbol, name and **cost basis only**. Four to five per desktop row (`auto-fill, minmax(210px, 1fr)`), one per row under 600px. Each card is a `<button>` |
-| `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, total row. Rows are `clickable-row`s (Tab, Enter, Space) |
+| `Portfolio` (`portfolio.ts`) | Owns the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is selected. Rows come from `toPricedRows()` (prices up) or `toUnpricedRows()` (prices down), both in `position-row.ts` |
+| `PositionsCard` (`app-positions-card`) | **Default view.** A grid of clickable cards (`auto-fill, minmax(240px, 1fr)`, one per row under 600px): logo, symbol, name, a **price status** badge, the **market value** (the cost basis, labelled, when there is no price), **Unrealised** and **Today** (`app-pnl-value`) and the quantity times the price. Each card is a `<button>` |
+| `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, price, market value, unrealised, today and the price status. No total row: the totals are the summary tiles above. Rows are `clickable-row`s (Tab, Enter, Space) |
+| `app-price-status` | The **Live / Delayed / Unavailable** badge, words plus an icon, with the "as of" time when delayed |
 | `PositionDetail` (`app-position-detail`) | Opens from either view, in the right-hand pane on wide screens and in a dialog on narrow ones. Symbol, name and cost basis on one line, then quantity and average cost, then **"How your cost basis adds up"**: the filled BUY orders for that symbol (date, quantity, price, cost), a total row and the sum written out (`$8,760.00 ÷ 50 = $175.20`). A sentence covers sells ("selling lowers the quantity, not the average cost") and a note appears when the history does not account for the holding. **Buy more** and **Sell** switch the pane to the shared trade panel (4.16): the same price card and order ticket the market data page uses |
 
-The switch sits at the top right: two icon buttons in a `role="group"`, `aria-pressed`, tooltips ("Card view" with the
+The switch sits at the right of the section title: two icon buttons in a `role="group"`, `aria-pressed`, tooltips ("Card view" with the
 four-squares icon, "Table view" with the list icon). The choice is remembered in `localStorage`
-(`positions.view`) as a per-browser convenience. The detail follows the live row, so quantity and cost update as
-orders fill, and keeps the last row if the position disappears (sold out) so the order confirmation stays on screen.
-The breakdown is `positionBreakdown()` in `core/position-lots.ts`; it mirrors the executor's weighted-average rule.
+(`positions.view`) as a per-browser convenience. The detail follows the live holding from the account store, so quantity and cost update as
+orders fill, and keeps the last row if the position disappears (sold out) so the order confirmation stays on screen; it still opens when
+prices are down, so a holding can be traded. The breakdown is `positionBreakdown()` in `core/position-lots.ts`; it mirrors the executor's
+weighted-average rule.
 
 ### 4.10e Market data page (`features/market`)
 
@@ -593,8 +597,8 @@ another one); **Buy** and **Sell** open the shared trade panel.
 About the user's own account: three stat cards (cash balance, invested at cost, open orders), then **Invested over time**
 (a stepped line of what the holdings cost after each filled order, rebuilt from the order history by
 `core/invested-history.ts`; it does not move with market prices, and the real performance curve is planned in
-`PORTFOLIO-HISTORY-PLAN.md`), **Investments** (donut of holdings by cost with the total in the
-middle and a "View more" link to `/positions`; with more than ten holdings the smallest are grouped as "Other"),
+`PORTFOLIO_PLAN.md`), **Investments** (donut of holdings by cost with the total in the
+middle and a "View portfolio" link; with more than ten holdings the smallest are grouped as "Other"),
 **Recent orders** and the watchlist placeholder.
 
 ### 4.11 Instrument icon and label (`shared/ui/instrument-icon`, `shared/ui/instrument-label`)
@@ -746,6 +750,47 @@ Update alert** (disabled until the target is a valid price the market has not al
 alert and Cancel. Server errors (`ALR-409`, `ALR-422`) show inside the editor. Set alert is disabled on every entry once
 the account has 20 active alerts, except entries that already have one (replacing does not add to the count).
 
+### 4.20 Portfolio page (`features/portfolio`)
+
+`/portfolio` (sidebar: **Portfolio**) is the account's statement: what it is worth now, how it has done, what it holds and where the profit
+and loss came from. It is one page of independent sections, in this order:
+
+1. **Header**: the title, "Prices as of ..." (with a **Delayed** badge when any served price is old) and **Refresh** (the account and every section).
+2. **Tiles** (`.card.tile`, a grid of three, two below 1000 px, one below 560 px): *Total value* (the featured gradient tile, the only one),
+   *Cash*, *Market value* (with the cost under it), *Unrealised P&L*, *Realised P&L*, *Today*. Figures are in the account currency and
+   formatted by the preference pipes.
+3. **Performance** (`app-portfolio-performance`): the graph, straight under the tiles (below).
+4. **Holdings**: the cards and table of 4.10d, with the position detail.
+5. **Profit and loss by instrument** (below).
+
+* **Sections load on their own.** The page is three resources in `PortfolioStore`: the summary and priced positions (`data`), profit and loss
+  by instrument (`pnl`) and the history (`performance`). Applying the realised date filter reloads **only** the profit-and-loss section, which
+  shows its own spinner ("Loading profit and loss...", `aria-busy` on the section); the benchmark toggle reloads only the performance section.
+  The tiles, holdings and graph stay on screen and make no request. The page-level spinner appears only for the first load.
+* **Performance section.** A range switch (1M, 3M, 6M, 1Y, All; changing it reloads nothing, the points are already there), a
+  "Compare with SPY" checkbox, the range figures (return, profit, annualised for a range over a year, max drawdown, best and worst day) and
+  the **shared `app-line-chart`**, drawn as percent change from the start of the range, with the benchmark as a second series. The chart has an
+  `aria-label` giving the range and the return; the same figures and a **Daily statements** table (value, day P&L, unrealised, realised total,
+  NAV, newest first, 30 shown and "Show all") carry the numbers for anyone who does not read the chart. Estimated days are flagged in words
+  ("Estimated") and a note says some prices were estimated. States, all inside the section: loading, "We are preparing your history" (HTTP 202,
+  asked again every 4 seconds a bounded number of times), an error card with **Try again**, and "Your curve starts tomorrow" under two closed days.
+  It measures with the NAV, so money put in or taken out never looks like a gain or a loss.
+* **`app-pnl-value`** (`shared/ui/pnl-value`) shows every profit or loss: a sign (`+` or `-`), an arrow icon (`fa-arrow-trend-up` / `-down` / `fa-minus`), the amount,
+  and an optional percentage, in the success or error container tokens. **Colour is never the only signal.** A figure that is not known
+  shows a dash with the screen-reader text "Not available", never a zero.
+* **Price status** is words plus an icon (`app-price-status`): **Live** (success tokens, a dot), **Delayed** (warning tokens, `fa-clock`, with the "as of" time) or **Unavailable**
+  (error tokens, `fa-triangle-exclamation`). A holding that could not be priced is still listed: its card shows the cost basis (labelled), its table row "No price" and a dash.
+* **Freshness.** When some holdings could not be priced, a `role="status"` warning says how many and that the totals cover only the others.
+* **Pricing unavailable (`MKT-503`).** Not an error screen: a `role="alert"` notice ("Prices are unavailable right now") with **Try again**,
+  the cash, the cost of the holdings and, because realised profit and loss needs no price, the **Realised P&L** tile (read from its own route;
+  left out only if that fails too), the performance section (it reads stored statements), and the holdings listed as unavailable. Profit and loss by
+  instrument says it needs prices. Any other failure is the usual error card with a retry.
+* **Profit and loss by instrument**: a `.row-table` of realised, unrealised and total per symbol, above which a small form (Signal Forms) bounds the
+  **realised** figure by two dates. A start after the end is refused with an inline message and Apply stays disabled; the hint says the dates
+  bound realised only and unrealised is always as at now.
+* State lives in `PortfolioStore` (`core/portfolio.store.ts`); `autoRefresh()` is started by the page while it is open (every minute; the server caches quotes) and
+  stops when it closes. The page only holds what is being typed, the view, the page and the selection.
+
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
 `<input type="password" appNoClipboard (clipboardBlocked)="explain()">` blocks copy / cut / paste /
@@ -781,6 +826,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
 |---|---|
 | `ThemeService` | `isDark()`, `toggle()` |
 | `NotificationService` | Toasts |
+| `PortfolioStore` | The signed-in customer's portfolio in three independent resources: `data` (summary and priced positions: `snapshot()`, `unavailable()` for `MKT-503`), `pnl` (by instrument, reloaded alone when the realised date range changes) and `performance` (the closed-day history, reloaded alone by the benchmark toggle; polled while it is being built), plus `autoRefresh()` (started by the page while it is open) |
 | `NotificationInboxStore` | The customer's notification inbox: the page being viewed (query, categories, page, size), `items()`, `unreadCount()` (the bell badge), `markRead()`, refreshed every 30 s. Not to be confused with `NotificationService` (toasts) |
 | `DialogService` | Promise-based confirmations |
 | `AuthDialogService` | Open the sign-in / register dialog |
