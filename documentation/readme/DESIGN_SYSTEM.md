@@ -66,6 +66,8 @@ Everything lives in `frontend/src`:
   - [4.15 Split view (`shared/ui/split-view`)](#415-split-view-shareduisplit-view)
   - [4.16 Quote summary and trade panel (`shared/ui/quote-summary`, `shared/ui/trade-panel`)](#416-quote-summary-and-trade-panel-shareduiquote-summary-shareduitrade-panel)
   - [4.17 Settings, preferences and the formatting pipes (`features/settings`, `core/preferences*`, `shared/formatting`)](#417-settings-preferences-and-the-formatting-pipes)
+  - [4.18 Notification bell and page (`layout/notifications`, `features/notifications`)](#418-notification-bell-and-page-layoutnotifications-featuresnotifications)
+  - [4.19 Watchlist panel: add dropdown and price alerts](#419-watchlist-panel-add-dropdown-and-price-alerts)
   - [4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)](#410-noclipboard-directive-shareddirectivesno-clipboard)
 - [5. Services the UI relies on](#5-services-the-ui-relies-on)
 - [6. Recipes](#6-recipes)
@@ -709,6 +711,41 @@ wherever it starts.
   Buy / Sell. `PositionDetail` shows the holding (quantity, average cost, the buys behind it). Buy / Sell on either
   opens `app-trade-panel`. A mode change is kept while the same instrument gets fresh prices and resets for another.
 
+### 4.18 Notification bell and page (`layout/notifications`, `features/notifications`)
+
+`app-notification-bell` is one of the sidebar's navigation links (`app-sidebar` renders it after the page links, so it is
+always reachable and never pinned under the footer, and exists only while signed in): an `<a routerLink="/notifications">`
+styled like a sidebar link, a bell icon and an unread **badge** (solid error-token pill with the count as text, `99+` above 99;
+`aria-hidden`, the count is in the link's `aria-label`). Input `expanded` shows the "Notifications" label. It is highlighted
+like the other links while the notifications page is open.
+
+The **Notifications page** (`/notifications`, `app-notifications-page`) replaces the earlier pop-up, because an inbox can hold
+hundreds of items: a title with "N unread" / "You are all caught up", a search box (debounced 300 ms), a category
+`app-multi-dropdown`, the list (newest first, as long as the page size; the page scrolls), `app-pagination` with a "Rows per
+page" selector, and empty, loading and error states. Unread items carry an accent edge, a dot and a bold title; read ones show
+the word "Read" (never colour alone) and drop out of the list an hour after they were read. Each item is a `<button>` whose
+`aria-label` starts "Unread:" or "Read:". Clicking an unread one marks it read.
+
+State lives in `NotificationInboxStore` (`core/notification-inbox.store.ts`): the applied query, categories, page and
+page size, the loaded page, `unreadCount` (what the badge shows) and a 30-second refresh. Components hold only what is
+being typed. The bell does not use `.sidebar-link` (that class is scoped to the sidebar), so `notification-bell.css`
+repeats its few spacing rules with the same tokens. The footer's `--footer-z` is below the sidebar's, so the footer scrolling
+into view never covers the navigation.
+
+### 4.19 Watchlist panel: add dropdown and price alerts
+
+The "Add a stock" control is the shared `app-dropdown` of every tradable instrument on the market board that is not on
+the list already, labelled "SYMBOL, name", with **Add disabled until one is chosen** (and at the per-list limit). There is
+no free-text box and no `datalist`.
+
+The table has an **Alert** column. An entry without an alert shows a tertiary "Set alert" button; with one it shows a
+chip (`is-active` info tokens, `is-triggered` success tokens, `is-failed` error tokens, each with an icon and words) and,
+below it, "Active" or "Hit 201.25 · Notified / Sending… / Delivery failed". Opening it shows an editor row under the
+entry: an `app-dropdown` for the direction ("Rises to or above", "Falls to or below"), the target price, **Set alert /
+Update alert** (disabled until the target is a valid price the market has not already reached; the form says why), Remove
+alert and Cancel. Server errors (`ALR-409`, `ALR-422`) show inside the editor. Set alert is disabled on every entry once
+the account has 20 active alerts, except entries that already have one (replacing does not add to the count).
+
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
 `<input type="password" appNoClipboard (clipboardBlocked)="explain()">` blocks copy / cut / paste /
@@ -744,6 +781,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
 |---|---|
 | `ThemeService` | `isDark()`, `toggle()` |
 | `NotificationService` | Toasts |
+| `NotificationInboxStore` | The customer's notification inbox: the page being viewed (query, categories, page, size), `items()`, `unreadCount()` (the bell badge), `markRead()`, refreshed every 30 s. Not to be confused with `NotificationService` (toasts) |
 | `DialogService` | Promise-based confirmations |
 | `AuthDialogService` | Open the sign-in / register dialog |
 | `SessionService` | `isLoggedIn()`, `username()`, `session()`, `start()`, `renew()`, `clear()`. Holds only `{ username, expiresAt }` (persisted to localStorage, followed across tabs). **No tokens**: they are HttpOnly cookies, see `AUTH-COOKIES.md` |
