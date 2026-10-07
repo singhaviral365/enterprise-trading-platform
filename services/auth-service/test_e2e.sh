@@ -145,7 +145,7 @@ echo "Response:"
 echo "$REGISTER_RESPONSE" | jq '.' 2>/dev/null || echo "$REGISTER_RESPONSE"
 
 # Extract user ID for later use
-USER_ID=$(echo "$REGISTER_RESPONSE" | jq -r '.id' 2>/dev/null)
+USER_ID=$(echo "$REGISTER_RESPONSE" | jq -r '.user.id // .id' 2>/dev/null)
 
 if [ "$USER_ID" != "null" ] && [ ! -z "$USER_ID" ]; then
   echo "✓ Register successful, User ID: $USER_ID"
