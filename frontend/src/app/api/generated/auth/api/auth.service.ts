@@ -19,15 +19,33 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { ErrorResponse } from '../model/errorResponse';
 // @ts-ignore
+import { ForgotPasswordRequest } from '../model/forgotPasswordRequest';
+// @ts-ignore
+import { ForgotPasswordResponse } from '../model/forgotPasswordResponse';
+// @ts-ignore
 import { LoginRequest } from '../model/loginRequest';
+// @ts-ignore
+import { LoginResponse } from '../model/loginResponse';
+// @ts-ignore
+import { OtpChallenge } from '../model/otpChallenge';
 // @ts-ignore
 import { RefreshRequest } from '../model/refreshRequest';
 // @ts-ignore
 import { RegisterRequest } from '../model/registerRequest';
 // @ts-ignore
+import { RegisterResponse } from '../model/registerResponse';
+// @ts-ignore
+import { ResendCodeRequest } from '../model/resendCodeRequest';
+// @ts-ignore
+import { ResetPasswordRequest } from '../model/resetPasswordRequest';
+// @ts-ignore
+import { ResetTokenResponse } from '../model/resetTokenResponse';
+// @ts-ignore
 import { TokenResponse } from '../model/tokenResponse';
 // @ts-ignore
 import { UserResponse } from '../model/userResponse';
+// @ts-ignore
+import { VerifyCodeRequest } from '../model/verifyCodeRequest';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -36,6 +54,7 @@ import { BaseService } from '../api.base.service';
 import {
     AuthServiceInterface
 } from './auth.serviceInterface';
+
 
 
 @Injectable({
@@ -48,17 +67,84 @@ export class AuthService extends BaseService implements AuthServiceInterface {
     }
 
     /**
-     * Log in and receive tokens
-     * Verifies the credentials and issues an access token and a refresh token. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body. The pair is also set as HttpOnly &#x60;access_token&#x60; and &#x60;refresh_token&#x60; cookies. 
+     * Forgot password - email a reset code to the address on the account
+     * Takes a username and the email on the account. **The answer is the same whether or not they match an account** (same status, same shape, similar time), so nobody can use it to find out who is registered. When they do match, a six-digit code is emailed to the address on the account\&#39;s own record; the request never chooses the destination. When they do not, nothing is sent and the challenge in the answer can never be verified. 
+     * @endpoint post /auth/password/forgot
+     * @param forgotPasswordRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ForgotPasswordResponse>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ForgotPasswordResponse>>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ForgotPasswordResponse>>;
+    public forgotPassword(forgotPasswordRequest: ForgotPasswordRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (forgotPasswordRequest === null || forgotPasswordRequest === undefined) {
+            throw new Error('Required parameter forgotPasswordRequest was null or undefined when calling forgotPassword.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/password/forgot`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<ForgotPasswordResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: forgotPasswordRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Log in, step one - check the password and email a code
+     * Verifies the credentials. Every failure, whatever its cause, returns the same &#x60;AUTH-401&#x60; body.  **Two-step sign-in (the default).** The password alone does not sign anyone in. A six-digit code is emailed to the address on the user\&#39;s record and the answer carries a &#x60;challenge&#x60; and no tokens, so no session and no cookie exists yet. The client then calls &#x60;POST /auth/login/verify&#x60; with the code. If the code cannot be sent the answer is &#x60;OTP-503&#x60;: nobody is told a code is on its way when it is not.  With two-step sign-in switched off in the service (&#x60;AUTH_TWO_FACTOR_ENABLED&#x3D;false&#x60;) the answer holds the &#x60;tokens&#x60; straight away, and the pair is set as HttpOnly &#x60;access_token&#x60; and &#x60;refresh_token&#x60; cookies, as before. 
      * @endpoint post /auth/login
      * @param loginRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public login(loginRequest: LoginRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<TokenResponse>;
-    public login(loginRequest: LoginRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<TokenResponse>>;
-    public login(loginRequest: LoginRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<TokenResponse>>;
+    public login(loginRequest: LoginRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<LoginResponse>;
+    public login(loginRequest: LoginRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<LoginResponse>>;
+    public login(loginRequest: LoginRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<LoginResponse>>;
     public login(loginRequest: LoginRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (loginRequest === null || loginRequest === undefined) {
             throw new Error('Required parameter loginRequest was null or undefined when calling login.');
@@ -100,7 +186,7 @@ export class AuthService extends BaseService implements AuthServiceInterface {
 
         let localVarPath = `/auth/login`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<TokenResponse>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<LoginResponse>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: loginRequest,
@@ -243,17 +329,17 @@ export class AuthService extends BaseService implements AuthServiceInterface {
     }
 
     /**
-     * Register a user
-     * Creates a user with the &#x60;CUSTOMER&#x60; role. It does not create or link a trading account: after the first login the client calls the Trade REST API, &#x60;GET /api/v1/accounts/link&#x60; to see whether the user already has an account and &#x60;POST /api/v1/accounts/create&#x60; to open one.  Registration does not return tokens. The client logs in afterwards. Returning a session from a registration endpoint makes the endpoint an unauthenticated session factory, and any weakness in it becomes an authentication bypass. 
+     * Register, step one - check the details and email a code to the address typed
+     * Registering verifies the email address first. Nothing is created yet: a six-digit code is emailed to the address in the request, the details wait (the password already hashed) and the answer carries a &#x60;challenge&#x60;. The login is created only when the code is sent to &#x60;POST /auth/register/verify&#x60;. An address nobody can read therefore never becomes a login. A taken username or email is &#x60;AUTH-409&#x60;; if the code cannot be sent, &#x60;OTP-503&#x60;.  With email verification switched off in the service (&#x60;AUTH_EMAIL_VERIFICATION_ENABLED&#x3D;false&#x60;) the login is created at once and the answer holds the &#x60;user&#x60;.  Neither step returns tokens: the client signs in afterwards. It does not create or link a trading account: after the first sign-in the client calls the Trade REST API, &#x60;GET /api/v1/accounts/link&#x60; and &#x60;POST /api/v1/accounts/create&#x60;. 
      * @endpoint post /auth/register
      * @param registerRequest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public register(registerRequest: RegisterRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<UserResponse>;
-    public register(registerRequest: RegisterRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<UserResponse>>;
-    public register(registerRequest: RegisterRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<UserResponse>>;
+    public register(registerRequest: RegisterRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<RegisterResponse>;
+    public register(registerRequest: RegisterRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<RegisterResponse>>;
+    public register(registerRequest: RegisterRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<RegisterResponse>>;
     public register(registerRequest: RegisterRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (registerRequest === null || registerRequest === undefined) {
             throw new Error('Required parameter registerRequest was null or undefined when calling register.');
@@ -295,10 +381,479 @@ export class AuthService extends BaseService implements AuthServiceInterface {
 
         let localVarPath = `/auth/register`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<UserResponse>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<RegisterResponse>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: registerRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Log in, step two - email the code again
+     * Sends a fresh code for a sign-in that is waiting for one, and the old code stops working. Not sooner than &#x60;resendAfter&#x60; seconds after the last one, and at most three emails per sign-in attempt (&#x60;OTP-429&#x60;). 
+     * @endpoint post /auth/login/resend
+     * @param resendCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public resendLoginCode(resendCodeRequest: ResendCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<OtpChallenge>;
+    public resendLoginCode(resendCodeRequest: ResendCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<OtpChallenge>>;
+    public resendLoginCode(resendCodeRequest: ResendCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<OtpChallenge>>;
+    public resendLoginCode(resendCodeRequest: ResendCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (resendCodeRequest === null || resendCodeRequest === undefined) {
+            throw new Error('Required parameter resendCodeRequest was null or undefined when calling resendLoginCode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/login/resend`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<OtpChallenge>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: resendCodeRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Register, step two - email the code again
+     * A fresh code to the address that was typed, and the old one stops working. Not too soon, and at most three emails.
+     * @endpoint post /auth/register/resend
+     * @param resendCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public resendRegistrationCode(resendCodeRequest: ResendCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<OtpChallenge>;
+    public resendRegistrationCode(resendCodeRequest: ResendCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<OtpChallenge>>;
+    public resendRegistrationCode(resendCodeRequest: ResendCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<OtpChallenge>>;
+    public resendRegistrationCode(resendCodeRequest: ResendCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (resendCodeRequest === null || resendCodeRequest === undefined) {
+            throw new Error('Required parameter resendCodeRequest was null or undefined when calling resendRegistrationCode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/register/resend`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<OtpChallenge>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: resendCodeRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Forgot password - email the code again
+     * Always answers &#x60;202&#x60; in the same shape, whatever the state of the challenge (unknown, used, expired, too soon), so it cannot be used to find out whether a challenge is real. 
+     * @endpoint post /auth/password/resend
+     * @param resendCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public resendResetCode(resendCodeRequest: ResendCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ForgotPasswordResponse>;
+    public resendResetCode(resendCodeRequest: ResendCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ForgotPasswordResponse>>;
+    public resendResetCode(resendCodeRequest: ResendCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ForgotPasswordResponse>>;
+    public resendResetCode(resendCodeRequest: ResendCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (resendCodeRequest === null || resendCodeRequest === undefined) {
+            throw new Error('Required parameter resendCodeRequest was null or undefined when calling resendResetCode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/password/resend`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<ForgotPasswordResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: resendCodeRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Forgot password - set the new password
+     * Sets the password with the reset token. The password follows the registration rules (at least 12 characters, a capital letter, a number and a special symbol), must differ from the username (&#x60;VAL-422&#x60;) and from the current password (&#x60;PWD-422&#x60;). A refused password does **not** use the token up, so another can be tried. When it is accepted the token is spent, every session the user had is ended, and a notice is emailed. The person then signs in again, with the new password and a new code. 
+     * @endpoint post /auth/password/reset
+     * @param resetPasswordRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public resetPassword(resetPasswordRequest: ResetPasswordRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any>;
+    public resetPassword(resetPasswordRequest: ResetPasswordRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
+    public resetPassword(resetPasswordRequest: ResetPasswordRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
+    public resetPassword(resetPasswordRequest: ResetPasswordRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (resetPasswordRequest === null || resetPasswordRequest === undefined) {
+            throw new Error('Required parameter resetPasswordRequest was null or undefined when calling resetPassword.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/password/reset`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: resetPasswordRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Log in, step two - send the emailed code and receive tokens
+     * Checks the code against the challenge. A right code, used once, issues the access and refresh tokens and sets them as HttpOnly cookies. A wrong, expired or already used code is always &#x60;OTP-401&#x60;, whichever it is. Five wrong guesses kill the code, and a caller who keeps guessing is &#x60;OTP-429&#x60; for a few minutes. 
+     * @endpoint post /auth/login/verify
+     * @param verifyCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public verifyLogin(verifyCodeRequest: VerifyCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<TokenResponse>;
+    public verifyLogin(verifyCodeRequest: VerifyCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<TokenResponse>>;
+    public verifyLogin(verifyCodeRequest: VerifyCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<TokenResponse>>;
+    public verifyLogin(verifyCodeRequest: VerifyCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (verifyCodeRequest === null || verifyCodeRequest === undefined) {
+            throw new Error('Required parameter verifyCodeRequest was null or undefined when calling verifyLogin.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/login/verify`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<TokenResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: verifyCodeRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Register, step two - send the emailed code and the login is created
+     * A right code, used once, creates the login from the details that were typed. Wrong, expired and used codes are all &#x60;OTP-401&#x60;. If the username or email was taken meanwhile, &#x60;AUTH-409&#x60; and nothing is created. 
+     * @endpoint post /auth/register/verify
+     * @param verifyCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public verifyRegistration(verifyCodeRequest: VerifyCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<UserResponse>;
+    public verifyRegistration(verifyCodeRequest: VerifyCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<UserResponse>>;
+    public verifyRegistration(verifyCodeRequest: VerifyCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<UserResponse>>;
+    public verifyRegistration(verifyCodeRequest: VerifyCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (verifyCodeRequest === null || verifyCodeRequest === undefined) {
+            throw new Error('Required parameter verifyCodeRequest was null or undefined when calling verifyRegistration.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/register/verify`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<UserResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: verifyCodeRequest,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Forgot password - send the emailed code and receive a one-time reset token
+     * A right code, used once, returns a &#x60;resetToken&#x60; that lets the next call set the new password. Wrong, expired and used codes are all &#x60;OTP-401&#x60;; a caller who keeps guessing is &#x60;OTP-429&#x60;. 
+     * @endpoint post /auth/password/verify
+     * @param verifyCodeRequest 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public verifyResetCode(verifyCodeRequest: VerifyCodeRequest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ResetTokenResponse>;
+    public verifyResetCode(verifyCodeRequest: VerifyCodeRequest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ResetTokenResponse>>;
+    public verifyResetCode(verifyCodeRequest: VerifyCodeRequest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ResetTokenResponse>>;
+    public verifyResetCode(verifyCodeRequest: VerifyCodeRequest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (verifyCodeRequest === null || verifyCodeRequest === undefined) {
+            throw new Error('Required parameter verifyCodeRequest was null or undefined when calling verifyResetCode.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/auth/password/verify`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<ResetTokenResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: verifyCodeRequest,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

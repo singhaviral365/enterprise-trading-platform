@@ -19,5 +19,9 @@ export interface UserResponse {
     email: string;
     roles: Array<Role>;
     createdOn?: string;
+    /**
+     * The user asked for an emailed code at every sign-in. Off unless they switch it on.
+     */
+    twoFactorEnabled: boolean;
 }
 
