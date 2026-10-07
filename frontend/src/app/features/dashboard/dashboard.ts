@@ -32,7 +32,7 @@ export const OTHER_SLICE = 'Other';
 
 /**
  * Signed-in landing page, about the user's own account: balances, how the investments are spread (a donut with
- * the total in the middle, linking to the Positions page), where the portfolio history chart will go, the
+ * the total in the middle, linking to the Portfolio page), where the portfolio history chart will go, the
  * watchlist and recent orders. Live market data has its own page in the sidebar.
  */
 @Component({

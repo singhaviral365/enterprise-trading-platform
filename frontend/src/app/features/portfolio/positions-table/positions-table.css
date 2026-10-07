@@ -1,0 +1,13 @@
+:host {
+  display: block;
+}
+
+.muted {
+  color: var(--surface-foreground-subtle);
+  font-weight: 400;
+}
+
+/* A holding with no price is still listed, just visibly de-emphasised. */
+.is-unpriced .num {
+  color: var(--surface-foreground-subtle);
+}

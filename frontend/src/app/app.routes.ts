@@ -32,9 +32,15 @@ export const routes: Routes = [
         loadComponent: () => import('./features/orders/order-history/order-history').then((m) => m.OrderHistory),
       },
       {
+        path: 'portfolio',
+        title: 'Portfolio | Trading Platform',
+        loadComponent: () => import('./features/portfolio/portfolio').then((m) => m.Portfolio),
+      },
+      {
+        // Positions now live on the portfolio page; the old address keeps working.
         path: 'positions',
-        title: 'Positions | Trading Platform',
-        loadComponent: () => import('./features/positions/positions').then((m) => m.Positions),
+        redirectTo: 'portfolio',
+        pathMatch: 'full',
       },
       {
         path: 'notifications',

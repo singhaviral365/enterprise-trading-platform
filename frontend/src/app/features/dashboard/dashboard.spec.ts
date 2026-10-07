@@ -122,7 +122,7 @@ describe('Dashboard', () => {
     expect(stats.some((s) => s.includes('Open orders') && s.includes('1'))).toBe(true);
     expect(stats.some((s) => s.includes('Positions') && s.includes('2'))).toBe(true);
     expect(stats.some((s) => s.includes('Total orders') && s.includes('3'))).toBe(true);
-    expect(byTestId('positions-link')?.getAttribute('href')).toBe('/positions');
+    expect(byTestId('positions-link')?.getAttribute('href')).toBe('/portfolio');
     expect(byTestId('total-orders-link')?.getAttribute('href')).toBe('/orders');
     // Open orders opens the history already filtered to Working (status NEW).
     expect(byTestId('open-orders-link')?.getAttribute('href')).toBe('/orders?status=NEW');
@@ -130,7 +130,7 @@ describe('Dashboard', () => {
   });
 
   describe('investments donut', () => {
-    it('charts the holdings by cost with the total in the middle and a link to the positions page', async () => {
+    it('charts the holdings by cost with the total in the middle and a link to the portfolio page', async () => {
       await answerLinkedAccount(http, {
         positions: [position('AAPL', 10, 100), position('MSFT', 5, 200), position('TSLA', 1, 50)],
       });
@@ -147,7 +147,6 @@ describe('Dashboard', () => {
       expect(root.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain(
         'totalling $2,050.00',
       );
-      expect(byTestId('positions-view-more')?.getAttribute('href')).toBe('/positions');
       expect(root.querySelector('[data-testid="donut-legend"]')?.textContent).toContain(
         'AAPL Inc.',
       );

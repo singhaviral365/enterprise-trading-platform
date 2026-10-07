@@ -1,0 +1,273 @@
+openapi: 3.1.0
+
+info:
+  title: Portfolio performance
+  version: 1.0.0
+  summary: The closed-day history of an account and its NAV performance curve.
+  description: |
+    Team extension of the Portfolio module, served by the Trade REST API on 8080 beside `portfolio-api.yaml`. It is a separate
+    contract so the programme's binding portfolio contract is left as it is.
+
+    ## What it is
+
+    A customer's absolute profit, or the plain value of the account, is a poor measure of how it performed: a deposit looks like a
+    gain and a withdrawal like a loss. The **NAV curve** treats the account like a fund. The account is a pool of units, the unit
+    price is the NAV, and money put in or taken out only creates or cancels units, so it cannot move the NAV. Only the market moves
+    it. The NAV is 1000 on the first day with value.
+
+    ## What is stored, and what is not
+
+    Only **closed days**. Each is the account's statement for that day (value, cost basis, unrealised and cumulative realised profit
+    and loss, the day's profit and loss, units and NAV), written once and not changed, apart from the last few days, which are
+    recomputed if Fauxnance later replaces a synthetic candle with a real one. Live figures (as at now) are never stored; they are on
+    `portfolio-api.yaml`. This route never calls the market data vendor: it only reads what was stored.
+
+    ## Estimated days
+
+    A day is `estimated` when a price it used was synthetic, missing (the holding was carried at cost), filled forward over more than
+    a long weekend, or an exchange rate was today's rather than that day's. Surface it; do not present an estimate as exact.
+
+    ## Building
+
+    The first time an account is asked for, its history is built in the background and the answer is `202` with
+    `{"status": "building"}`. Ask again shortly.
+  contact:
+    name: Enterprise Trading Platform, platform team
+  license:
+    name: Instructional use only
+
+servers:
+  - url: http://localhost:8080
+    description: Local development.
+
+tags:
+  - name: Performance
+    description: Closed-day statements and the NAV curve.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/portfolio/{accountId}/performance:
+    get:
+      tags: [Performance]
+      operationId: getPerformance
+      summary: Get the performance history
+      description: |
+        The account's closed-day statements and NAV curve for a range, with a summary of the range and, optionally, a benchmark
+        rebased to the same start. Owner-only, like every portfolio route.
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          description: The numeric account key. The token's user must own it.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 1
+        - name: from
+          in: query
+          required: false
+          description: First day to include. Defaults to the first day there is a statement for.
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          description: Last day to include. Defaults to the last closed day.
+          schema:
+            type: string
+            format: date
+        - name: benchmark
+          in: query
+          required: false
+          description: A configured benchmark symbol (for example `SPY`). Its adjusted closes are rebased to 1000 at the first day.
+          schema:
+            type: string
+            maxLength: 32
+      responses:
+        '200':
+          description: The history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceResponse'
+        '202':
+          description: The history is being built for the first time. Ask again shortly.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceBuilding'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Error:
+      description: |
+        `AUTH-401` unauthorised, `ACC-403` another customer's account (never 404), `ACC-404` no such account, `VAL-422` invalid
+        input (a start after the end, an unknown benchmark), `PRF-503` the performance history is switched off.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+
+    PerformanceResponse:
+      type: object
+      additionalProperties: false
+      required: [accountId, baseCurrency, estimated, points]
+      properties:
+        accountId:
+          type: integer
+          format: int64
+        baseCurrency:
+          type: string
+          minLength: 3
+          maxLength: 3
+          description: The account currency every amount is in.
+        estimated:
+          type: boolean
+          description: True if any day in the range is estimated.
+        availableFrom:
+          type: [string, 'null']
+          format: date
+          description: The first day there is a statement for. Null when there is none yet.
+        summary:
+          oneOf:
+            - $ref: '#/components/schemas/PerformanceSummary'
+            - type: 'null'
+          description: What the range came to. Null when the range has no days.
+        points:
+          type: array
+          description: One closed day each, oldest first.
+          items:
+            $ref: '#/components/schemas/NavPoint'
+        benchmark:
+          $ref: '#/components/schemas/BenchmarkSeries'
+
+    NavPoint:
+      type: object
+      additionalProperties: false
+      required: [date, nav, value, netFlow, dayPnl, unrealisedPnl, realisedPnlCumulative, estimated]
+      properties:
+        date:
+          type: string
+          format: date
+        nav:
+          type: number
+          format: double
+          description: The value of one unit. 1000 on the first day.
+        value:
+          type: number
+          format: double
+          description: Cash plus holdings at that day's close.
+        netFlow:
+          type: number
+          format: double
+          description: Money put in or taken out that day. On the first day, the whole starting value.
+        dayPnl:
+          type: number
+          format: double
+          description: Value less the previous day's, less any flow. Trades swap cash for shares and cancel, so only prices move it.
+        unrealisedPnl:
+          type: number
+          format: double
+          description: Holdings value less what the holdings cost, at that day's close.
+        realisedPnlCumulative:
+          type: number
+          format: double
+          description: Realised profit and loss booked on or before that day.
+        estimated:
+          type: boolean
+
+    PerformanceSummary:
+      type: object
+      additionalProperties: false
+      required: [returnPct, pnl]
+      properties:
+        returnPct:
+          type: number
+          format: double
+          description: NAV change over the range, in percentage points.
+        pnl:
+          type: number
+          format: double
+          description: Value change over the range, less money put in after the first day.
+        annualisedPct:
+          type: [number, 'null']
+          format: double
+          description: Only for a range longer than a year.
+        maxDrawdownPct:
+          type: [number, 'null']
+          format: double
+          description: The worst fall from a peak, negative.
+        bestDayPct:
+          type: [number, 'null']
+          format: double
+        worstDayPct:
+          type: [number, 'null']
+          format: double
+
+    BenchmarkSeries:
+      type: object
+      additionalProperties: false
+      required: [symbol, points]
+      properties:
+        symbol:
+          type: string
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/BenchmarkPoint'
+
+    BenchmarkPoint:
+      type: object
+      additionalProperties: false
+      required: [date, nav]
+      properties:
+        date:
+          type: string
+          format: date
+        nav:
+          type: number
+          format: double
+          description: The benchmark's adjusted close, rebased so the first point is 1000.
+
+    PerformanceBuilding:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [building]
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          enum: [ACC-404, ACC-403, AUTH-401, VAL-422, PRF-503]
+        message:
+          type: string

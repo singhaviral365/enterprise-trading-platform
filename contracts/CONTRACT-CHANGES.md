@@ -152,3 +152,34 @@ and ones read within the last hour. New code: `NTF-404`. Code: `org.example.back
 `triggerPrice`, `delivery` PENDING/HANDED_OVER/FAILED). Both routes answer with the whole watchlist, like the others. One
 alert per entry, fires once, capped per account. New codes: `ALR-404`, `ALR-409`, `ALR-422`. The contract text records what
 "crossed" means and why it fires once. Existing clients are unaffected (a new nullable field and new routes).
+
+## portfolio-api.yaml (new: Portfolio and P&L module of the Trade REST API, `services/order-service`)
+
+Copied from the programme's `contracts/portfolio-api.yaml`; the three routes, `/health`, the definitions, the error catalogue and the
+staleness rules are unchanged. New code on this platform: **`MKT-503`** (pricing unavailable for every held instrument; the other four
+codes are the platform's own). Code: `org.example.backend.portfolio`.
+
+Team additions, all marked in the file and all additive (nothing renamed, nothing newly required):
+
+- **Price fields are in the account's base currency** (`lastPrice`, `previousClose`, `marketValue`, `unrealisedPnl`, `dayPnl`), because the
+  platform stores cost basis and average cost in the account currency. `PricedPosition.currency` stays the instrument's currency.
+- **Profit and loss for the day**: `dayPnl` and `dayPnlPercent` on `PortfolioSummary` and `PricedPosition`, `previousClose` on
+  `PricedPosition`, `dayPnl` on `PnlResponse`. Live, from the quote's previous close; never stored.
+- **Realised profit and loss without a price**: `GET /api/v1/portfolio/{accountId}/realised` (`RealisedPnlResponse`) returns only what was
+  booked at sales, so it never needs a quote and is never `503 MKT-503`. A portfolio screen can still show realised profit and loss while
+  pricing is down.
+- **The account claim**: the token carries the authenticated user; `account.user_id` links the user to the account, and that link is what
+  is compared with the path account (`403 ACC-403` on a mismatch).
+
+## portfolio-performance-api.yaml (new: end-of-day statements and the NAV curve, `services/order-service`)
+
+A separate team contract, so the programme's binding `portfolio-api.yaml` is left as it is. One route,
+`GET /api/v1/portfolio/{accountId}/performance` (`from`, `to`, `benchmark`), owner-only like every portfolio route (`ACC-403` / `ACC-404`).
+It returns the account's **closed-day** statements (value, cost basis, unrealised and cumulative realised profit and loss, the day's profit and
+loss, net flow, NAV), a summary of the range and, optionally, a benchmark rebased to 1000 on the same first day. It only reads what was stored:
+it never calls the market data vendor. The first time an account is asked for, its history is built in the background and the answer is
+`202` `{"status": "building"}`; ask again shortly. A day is `estimated` when a price it used was synthetic, missing, filled forward over more
+than a long weekend, or an exchange rate was today's. Money put in or taken out is `netFlow` and never moves the NAV.
+
+New codes: **`PRF-503`** (the history is switched off, `portfolio.performance.enabled=false`) and, on this route, `VAL-422` for a start after
+the end or a benchmark that is not configured. Additive: no existing route, field or code changed. Code: `org.example.backend.portfolio.performance`.

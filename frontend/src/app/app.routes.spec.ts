@@ -26,7 +26,13 @@ describe('app routes', () => {
     expect(document.title).toBe('Trading Platform');
   });
 
-  it.each(['/dashboard', '/market', '/orders', '/positions', '/settings', '/showcase'])(
+  it('sends the old positions address to the portfolio page', async () => {
+    await RouterTestingHarness.create('/positions');
+
+    expect(TestBed.inject(AuthDialogService).returnUrl()).toBe('/portfolio');
+  });
+
+  it.each(['/dashboard', '/market', '/orders', '/portfolio', '/settings', '/showcase'])(
     'keeps a guest out of %s and opens sign-in',
     async (path) => {
       await RouterTestingHarness.create(path);

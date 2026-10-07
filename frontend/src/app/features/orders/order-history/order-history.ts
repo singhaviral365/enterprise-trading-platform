@@ -17,7 +17,7 @@ import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
 import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
-const PAGE_SIZE = 10;
+export const ORDER_HISTORY_PAGE_SIZES = [5, 10, 20, 50] as const;
 
 /**
  * The order blotter: every order for the linked account, rejections included, sorted by Placed (newest
@@ -36,7 +36,8 @@ const PAGE_SIZE = 10;
 })
 export class OrderHistory {
   protected readonly OrderSide = OrderSide;
-  protected readonly pageSize = PAGE_SIZE;
+  protected readonly pageSizes = ORDER_HISTORY_PAGE_SIZES;
+  protected readonly pageSize = signal<number>(ORDER_HISTORY_PAGE_SIZES[0]);
   protected readonly store = inject(AccountOverviewStore);
   private readonly trade = inject(TradeApi);
   private readonly dialog = inject(DialogService);
@@ -78,13 +79,14 @@ export class OrderHistory {
 
   /** Back to page 1 whenever the filters or the sort change. */
   protected readonly page = linkedSignal<unknown, number>({
-    source: () => ({ sides: this.sides(), statuses: this.statuses(), sort: this.sort() }),
+    source: () => ({ sides: this.sides(), statuses: this.statuses(), sort: this.sort(), size: this.pageSize() }),
     computation: () => 1,
   });
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.rows().length / PAGE_SIZE)));
+  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
   protected readonly pageRows = computed(() => {
     const page = Math.min(this.page(), this.totalPages());
-    return this.rows().slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    const size = this.pageSize();
+    return this.rows().slice((page - 1) * size, page * size);
   });
 
   /** Ids the user has clicked. Only `selectedIds` (below) is trusted: it drops anything no longer cancellable. */

@@ -1,0 +1,10 @@
+export * from './operations.service';
+import { OperationsService } from './operations.service';
+export * from './operations.serviceInterface';
+export * from './pL.service';
+import { PLService } from './pL.service';
+export * from './pL.serviceInterface';
+export * from './portfolio.service';
+import { PortfolioService } from './portfolio.service';
+export * from './portfolio.serviceInterface';
+export const APIS = [OperationsService, PLService, PortfolioService];

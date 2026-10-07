@@ -9,6 +9,7 @@ These specs drive a real browser against the **running stack**. They mock nothin
 | `sign-in.spec.ts` | Guard redirect, refused sign-in, successful sign-in, arriving at the page you asked for |
 | `place-order.spec.ts` | (from the Market data page) Non-active (read-only) account, rejection before submission, a placed order (NEW, FILLED or REJECTED accepted) |
 | `blotter.spec.ts` | Order history: guard, rows, sorting, refresh (bonus) |
+| `portfolio.spec.ts` | Portfolio: guard; valued (or honestly unavailable) with every price marked live, delayed or unavailable, and no call to the quote vendor from the browser; and, with the portfolio routes forced to `MKT-503`, a page that does not go blank and leaves trading alone (bonus) |
 
 Isolation: each spec file runs in its own worker process, each test in a fresh browser context, and there is
 no shared module state. No test expects an order, token or session left by another.

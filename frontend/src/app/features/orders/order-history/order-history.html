@@ -151,9 +151,13 @@
         </tbody>
       </table>
     </div>
-    @if (totalPages() > 1) {
-      <app-pagination [totalPages]="totalPages()" [(currentPage)]="page" />
-    }
+    <app-pagination
+      [pageSizeOptions]="pageSizes"
+      [(pageSize)]="pageSize"
+      [totalItems]="rows().length"
+      [totalPages]="totalPages()"
+      [(currentPage)]="page"
+    />
   } @else {
     <div class="card empty-state" data-testid="orders-no-match">
       <i class="fas fa-filter" aria-hidden="true"></i>

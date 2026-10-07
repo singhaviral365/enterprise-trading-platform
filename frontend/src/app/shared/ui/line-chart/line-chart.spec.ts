@@ -85,6 +85,48 @@ describe('LineChart', () => {
     expect(setData.mock.calls[0][0]).toEqual([[1, 5]]);
   });
 
+  it('draws a second, comparison line only when one is given, and keeps it up to date', async () => {
+    const addSeries = vi.fn();
+    const comparisonSetData = vi.fn();
+    const remove = vi.fn();
+    chart.mockImplementation(() => ({ series: [{ setData }, { setData: comparisonSetData, remove }], addSeries, destroy }));
+    fixture.componentRef.setInput('comparison', [{ time: 1, value: 2 }]);
+    fixture.componentRef.setInput('comparisonName', 'SPY');
+    await render();
+
+    const series = options().series as Array<{ name: string; data: Array<[number, number]> }>;
+    expect(series.map((s) => s.name)).toEqual(['Invested at cost', 'SPY']);
+    expect(series[1].data).toEqual([[1, 2]]);
+
+    fixture.componentRef.setInput('comparison', [{ time: 1, value: 3 }]);
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(comparisonSetData).toHaveBeenCalled());
+    expect(comparisonSetData.mock.calls[0][0]).toEqual([[1, 3]]);
+
+    fixture.componentRef.setInput('comparison', null);
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(remove).toHaveBeenCalled());
+  });
+
+  it('adds the comparison line to a chart that was drawn without one', async () => {
+    const addSeries = vi.fn();
+    chart.mockImplementation(() => ({ series: [{ setData }], addSeries, destroy }));
+    await render();
+    expect(options().series).toHaveLength(1);
+
+    fixture.componentRef.setInput('comparison', [{ time: 1, value: 2 }]);
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(addSeries).toHaveBeenCalled());
+    expect(addSeries.mock.calls[0][0]).toMatchObject({ type: 'area', name: 'Benchmark', data: [[1, 2]] });
+  });
+
+  it('names the hovered series in the tooltip', async () => {
+    await render();
+
+    const tooltip = options().tooltip?.formatter as (this: unknown) => string;
+    expect(tooltip.call({ x: Date.UTC(2026, 8, 1), y: 7, series: { name: 'SPY' } })).toContain('<b>SPY</b>');
+  });
+
   it('tears the chart down with the component', async () => {
     await render();
 

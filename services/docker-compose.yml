@@ -127,6 +127,10 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       EXCHANGE_RATE_API_URL: ${EXCHANGE_RATE_API_URL:-https://v6.exchangerate-api.com/v6}
       EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY:-}
+      # The Portfolio module prices holdings with its own batched Fauxnance client (the browser never calls Fauxnance).
+      # Without these the portfolio routes answer MKT-503 and nothing else is affected.
+      FAUXNANCE_BASE_URL: ${FAUXNANCE_BASE_URL:-}
+      FAUXNANCE_API_KEY: ${FAUXNANCE_API_KEY:-}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092

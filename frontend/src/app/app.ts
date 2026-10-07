@@ -26,7 +26,7 @@ export class App {
   protected readonly navItems: readonly SidebarItem[] = [
     { route: '/dashboard', label: 'Dashboard', icon: 'fas fa-gauge-high' },
     { route: '/market', label: 'Market data', icon: 'fas fa-chart-line' },
-    { route: '/positions', label: 'Positions', icon: 'fas fa-layer-group' },
+    { route: '/portfolio', label: 'Portfolio', icon: 'fas fa-chart-pie' },
     { route: '/orders', label: 'Order history', icon: 'fas fa-clock-rotate-left' },
     { route: '/settings', label: 'Settings', icon: 'fas fa-gear' },
     // { route: '/showcase', label: 'Components', icon: 'fas fa-puzzle-piece' },

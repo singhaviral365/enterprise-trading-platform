@@ -1,0 +1,32 @@
+:host {
+  display: inline-block;
+}
+
+.pnl {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--surface-foreground-subtle);
+}
+
+.pnl > i {
+  font-size: 0.85em;
+}
+
+.pnl.is-gain {
+  color: var(--status-success-container-fg);
+}
+
+.pnl.is-loss {
+  color: var(--status-error-container-fg);
+}
+
+.pnl-amount {
+  font-weight: 700;
+}
+
+.pnl-percent {
+  font-size: 0.9em;
+}
