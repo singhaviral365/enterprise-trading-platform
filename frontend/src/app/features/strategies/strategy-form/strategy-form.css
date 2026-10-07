@@ -1,0 +1,85 @@
+:host {
+  display: block;
+}
+
+.strategy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-header .card-title {
+  margin-bottom: 4px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 16px;
+}
+
+.section-legend {
+  padding: 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--surface-foreground);
+}
+
+.rule-grid,
+.limits-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.instrument-field {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .instrument-field {
+    grid-column: span 2;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-group .form-hint,
+.form-group .form-error-text {
+  margin: 0;
+}
+
+.prefixed {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.prefix {
+  position: absolute;
+  inset-inline-start: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}
+
+.prefixed .prefix + .form-input {
+  padding-inline-start: 52px;
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
