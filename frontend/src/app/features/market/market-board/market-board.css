@@ -74,6 +74,11 @@
   }
 }
 
+/* Compact (a detail is open beside the list): the title and the Live chip and refresh stay, the updated time goes. */
+.board-card.is-compact .updated {
+  display: none;
+}
+
 /* The table itself is the global .row-table; this only trims it to sit inside the Market card. */
 .row-table-scroll {
   margin: 0 -8px;

@@ -1,10 +1,12 @@
 <app-split-view
+  #split
   [open]="!!selectedRow()"
+  [aside]="assistantOn()"
   labelledBy="detail-title"
   testId="quote-detail"
   (closed)="selectedSymbol.set(null)"
 >
-  <section class="card board-card" list aria-labelledby="market-title">
+  <section class="card board-card" list aria-labelledby="market-title" [class.is-compact]="split.compact()">
     <div class="market-head">
       <h2 id="market-title" class="card-title">Market</h2>
       <div class="market-status" aria-live="polite">
@@ -56,7 +58,7 @@
       </div>
     } @else {
       <div class="row-table-scroll">
-        <table class="row-table" aria-labelledby="market-title" data-testid="market-table">
+        <table class="row-table" [class.is-compact]="split.compact()" aria-labelledby="market-title" data-testid="market-table">
           <thead>
             <tr>
               <th scope="col">Instrument</th>
@@ -113,23 +115,29 @@
                 </td>
                 <td class="num delta col-extra">
                   @if (row.change === null) {
-                    <span class="muted">—</span>
+                    <span class="no-value" aria-hidden="true">-</span>
+                    <span class="visually-hidden">No value</span>
                   } @else {
                     {{ row.change > 0 ? '+' : '' }}{{ row.change | number: '1.2-2' }}
                   }
                 </td>
                 <td class="num col-last">
                   @if (row.changePercent === null) {
-                    <span class="muted">—</span>
+                    <span class="no-value" aria-hidden="true">-</span>
+                    <span class="visually-hidden">No value</span>
                   } @else {
                     <span class="pct-chip">
-                      <i
-                        class="fas"
-                        [class.fa-caret-up]="row.changePercent > 0"
-                        [class.fa-caret-down]="row.changePercent < 0"
-                        [class.fa-minus]="row.changePercent === 0"
-                        aria-hidden="true"
-                      ></i>
+                      @if (row.changePercent === 0) {
+                        <span class="zero-mark" aria-hidden="true">-</span>
+                        <span class="visually-hidden">Unchanged</span>
+                      } @else {
+                        <i
+                          class="fas"
+                          [class.fa-caret-up]="row.changePercent > 0"
+                          [class.fa-caret-down]="row.changePercent < 0"
+                          aria-hidden="true"
+                        ></i>
+                      }
                       {{ row.changePercent | number: '1.2-2' }}%
                     </span>
                   }
@@ -139,7 +147,8 @@
                   [attr.data-testid]="'market-prev-close-' + row.quote.symbol"
                 >
                   @if (row.previousClose === null) {
-                    <span class="muted">—</span>
+                    <span class="no-value" aria-hidden="true">-</span>
+                    <span class="visually-hidden">No value</span>
                   } @else if (row.currency) {
                     {{ row.previousClose | currency: row.currency }}
                   } @else {
@@ -158,6 +167,7 @@
           [(pageSize)]="pageSize"
           [totalItems]="rows().length"
           [totalPages]="totalPages()"
+          [compact]="split.compact()"
           [(currentPage)]="page"
         />
       </div>
@@ -171,7 +181,17 @@
 
   <div detail>
     @if (selectedRow(); as current) {
-      <app-quote-detail [row]="current" (closed)="selectedSymbol.set(null)" />
+      <app-quote-detail
+        [row]="current"
+        [chatInline]="assistantOn() && !split.asideVisible()"
+        (closed)="selectedSymbol.set(null)"
+      />
+    }
+  </div>
+
+  <div aside>
+    @if (split.asideVisible() && selectedSymbol(); as symbol) {
+      <app-assistant-chat layout="pane" [symbol]="symbol" />
     }
   </div>
 </app-split-view>

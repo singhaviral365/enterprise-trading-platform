@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideApiClients } from '../../../api/api.config';
+import { PreferencesStore } from '../../../core/preferences.store';
 import { QUOTES_URL, SAMPLE_QUOTES } from '../../../testing/trade-http';
 import { MarketBoardPanel } from './market-board';
 
@@ -59,7 +61,7 @@ describe('MarketBoardPanel', () => {
 
     const nvda = byTestId('market-row-NVDA')!.closest('tr')!;
     expect(nvda.textContent).toContain('No quote');
-    expect(nvda.textContent).toContain('—');
+    expect(nvda.textContent).toContain('-');
   });
 
   it('shows a Live badge normally and Delayed when the executor serves a stale snapshot', async () => {
@@ -172,5 +174,97 @@ describe('MarketBoardPanel', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  describe('on a wide screen, with a quote open', () => {
+    let assistantOn: ReturnType<typeof signal<boolean>>;
+    let resize: (width: number) => void;
+
+    async function openWide(on: boolean, width: number): Promise<void> {
+      fixture.destroy();
+      assistantOn = signal(on);
+      const observers = new Set<(entries: { contentRect: { width: number } }[]) => void>();
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: (entries: { contentRect: { width: number } }[]) => void) {
+            observers.add(callback);
+          }
+          observe(): void {}
+          disconnect(): void {}
+        },
+      );
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined })),
+      );
+      resize = (w) => observers.forEach((callback) => callback([{ contentRect: { width: w } }]));
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [MarketBoardPanel],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideApiClients(),
+          { provide: PreferencesStore, useValue: { aiAssistantEnabled: assistantOn } },
+        ],
+      }).compileComponents();
+      http = TestBed.inject(HttpTestingController);
+      fixture = TestBed.createComponent(MarketBoardPanel);
+      root = fixture.nativeElement as HTMLElement;
+      await load();
+      byTestId<HTMLButtonElement>('market-row-MSFT')!.click();
+      (await vi.waitFor(() => http.expectOne('/api/v1/market/candles/MSFT'))).flush({
+        symbol: 'MSFT',
+        currency: 'USD',
+        interval: '1d',
+        candles: [],
+      });
+      resize(width);
+      await fixture.whenStable();
+    }
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shrinks the list to the instrument column, with a compact footer', async () => {
+      await openWide(false, 1200);
+
+      expect(root.querySelector('table.row-table')!.classList.contains('is-compact')).toBe(true);
+      expect(root.querySelector('.board-card')!.classList.contains('is-compact')).toBe(true);
+      expect(root.querySelector('[data-testid="pagination-compact"]')).not.toBeNull();
+      expect(root.querySelector('[data-testid="pagination-page-size"]')).toBeNull();
+    });
+
+    it('puts the chat in its own pane on the right, not inside the quote, when the assistant is on and there is room', async () => {
+      await openWide(true, 1200);
+
+      expect(root.querySelector('[data-testid="split-aside"] [data-testid="assistant-chat"]')).not.toBeNull();
+      expect(root.querySelector('[data-testid="quote-detail"] [data-testid="assistant-chat"]')).toBeNull();
+      expect(root.querySelector('[data-testid="assistant-chat-symbol"]')?.textContent).toBe('MSFT');
+    });
+
+    it('falls back to the chat inside the quote when the container is too narrow for the pane', async () => {
+      await openWide(true, 900);
+
+      expect(root.querySelector('[data-testid="split-aside"] [data-testid="assistant-chat"]')).toBeNull();
+      expect(root.querySelector('[data-testid="quote-detail"] [data-testid="assistant-chat"]')).not.toBeNull();
+    });
+
+    it('has no chat anywhere while the assistant is off, and keeps the list compact', async () => {
+      await openWide(false, 1400);
+
+      expect(root.querySelector('[data-testid="assistant-chat"]')).toBeNull();
+      expect(root.querySelector('table.row-table')!.classList.contains('is-compact')).toBe(true);
+    });
+
+    it('brings the full table back when the quote is closed', async () => {
+      await openWide(true, 1200);
+
+      byTestId<HTMLButtonElement>('quote-close')!.click();
+      await fixture.whenStable();
+
+      expect(root.querySelector('table.row-table')!.classList.contains('is-compact')).toBe(false);
+      expect(root.querySelector('[data-testid="pagination-page-size"]')).not.toBeNull();
+    });
   });
 });

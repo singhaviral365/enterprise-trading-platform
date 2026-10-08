@@ -3,19 +3,22 @@ import { OrderSide } from '../../../api/generated/trade';
 import { FormatPreferences } from '../../../core/format-preferences';
 import { MarketError, MarketService } from '../../../core/market.service';
 import type { MarketRow } from '../../../core/market-row';
+import { toCandles } from '../../../core/price-candles';
+import { CandleChart } from '../../../shared/ui/candle-chart/candle-chart';
 import { LineChart, LinePoint } from '../../../shared/ui/line-chart/line-chart';
-import { SignalAdvisor } from '../signal-advisor/signal-advisor';
+import { AssistantChat } from '../assistant-chat/assistant-chat';
+import { SignalCard } from '../signal-card/signal-card';
 import { QuoteSummary } from '../../../shared/ui/quote-summary/quote-summary';
 import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
 
 /**
  * What the market page shows for the selected instrument (in the side pane on a wide screen, in a dialog on a narrow
- * one): the price card, a one-year chart of daily closes, the trade signal with its assistant, and Buy / Sell. Buy / Sell switch to the shared
+ * one): the price card, a one-year chart of daily closes, the trade signal card, and Buy / Sell. The assistant chat sits beside it in the split view's aside pane when there is room; when there is not (`chatInline`) it is shown here under the signal card instead. Buy / Sell switch to the shared
  * `TradePanel`, the same buy / sell screen the positions page uses.
  */
 @Component({
   selector: 'app-quote-detail',
-  imports: [QuoteSummary, TradePanel, LineChart, SignalAdvisor],
+  imports: [AssistantChat, CandleChart, QuoteSummary, TradePanel, LineChart, SignalCard],
   templateUrl: './quote-detail.html',
   styleUrl: './quote-detail.css',
 })
@@ -24,6 +27,8 @@ export class QuoteDetail {
   private readonly formats = inject(FormatPreferences);
 
   readonly row = input.required<MarketRow>();
+  /** Show the assistant chat inside the detail, because the page has no room for its own pane. */
+  readonly chatInline = input(false);
   /** The pane's close button (or a finished order) asks for the detail to be dismissed. */
   readonly closed = output<void>();
 
@@ -49,6 +54,10 @@ export class QuoteDetail {
     params: () => this.symbol(),
     loader: ({ params: symbol }) => this.market.getPriceHistory(symbol),
   });
+
+  /** The chart's look: a line of closes, or candles with volume. A different instrument keeps the choice. */
+  protected readonly chartKind = signal<'line' | 'candles'>('line');
+  protected readonly candles = computed(() => (this.history.hasValue() ? toCandles(this.history.value()) : []));
 
   protected readonly chartPoints = computed<LinePoint[]>(() =>
     this.history.hasValue()

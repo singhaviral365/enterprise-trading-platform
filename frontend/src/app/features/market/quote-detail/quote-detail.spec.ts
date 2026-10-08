@@ -4,11 +4,14 @@ import {
   TestRequest,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Options } from 'highcharts';
 import { provideApiClients } from '../../../api/api.config';
+import { AccountOverviewStore } from '../../../core/account-overview.store';
 import type { MarketRow } from '../../../core/market-row';
-import { HIGHCHARTS_LOADER } from '../../../shared/ui/donut-chart/highcharts-loader';
+import { PreferencesStore } from '../../../core/preferences.store';
+import { HIGHCHARTS_LOADER, HIGHCHARTS_MODULE_LOADER } from '../../../shared/ui/donut-chart/highcharts-loader';
 import { QuoteDetail } from './quote-detail';
 
 const ROW: MarketRow = {
@@ -57,6 +60,7 @@ describe('QuoteDetail', () => {
         provideHttpClientTesting(),
         provideApiClients(),
         { provide: HIGHCHARTS_LOADER, useValue: () => Promise.resolve({ chart }) },
+        { provide: HIGHCHARTS_MODULE_LOADER, useValue: () => Promise.resolve() },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(QuoteDetail);
@@ -105,6 +109,49 @@ describe('QuoteDetail', () => {
     ]);
     expect(byTestId('quote-chart-change')?.textContent).toContain('+$50.00');
     expect(byTestId('quote-chart-change')?.textContent).toContain('+25.00%');
+  });
+
+  describe('chart style', () => {
+    const history = {
+      symbol: 'AAPL',
+      currency: 'USD',
+      interval: '1d',
+      candles: [
+        { date: '2025-10-06', open: 190, high: 205, low: 188, close: 200, volume: 10, synthetic: false },
+        { date: '2026-10-05', open: 240, high: 255, low: 238, close: 250, volume: 12, synthetic: false },
+      ],
+    };
+
+    it('offers Line and Candles once there are candles, and starts on the line', async () => {
+      await show(ROW, (request) => request.flush(history));
+
+      expect(byTestId('quote-chart-line')?.getAttribute('aria-pressed')).toBe('true');
+      expect(byTestId('quote-chart-candles')?.getAttribute('aria-pressed')).toBe('false');
+      expect(byTestId('line-chart')).not.toBeNull();
+      expect(byTestId('candle-chart')).toBeNull();
+    });
+
+    it('draws candles when Candles is chosen, and the line again when Line is', async () => {
+      await show(ROW, (request) => request.flush(history));
+
+      byTestId<HTMLButtonElement>('quote-chart-candles')!.click();
+      await fixture.whenStable();
+      expect(byTestId('candle-chart')).not.toBeNull();
+      expect(byTestId('line-chart')).toBeNull();
+      expect(byTestId('quote-chart-candles')?.getAttribute('aria-pressed')).toBe('true');
+      expect(byTestId('candle-chart')?.querySelector('[role="img"]')?.getAttribute('aria-label')).toContain('as candlesticks');
+
+      byTestId<HTMLButtonElement>('quote-chart-line')!.click();
+      await fixture.whenStable();
+      expect(byTestId('line-chart')).not.toBeNull();
+      expect(byTestId('candle-chart')).toBeNull();
+    });
+
+    it('offers no choice when the history has no candle with all four prices', async () => {
+      await show(ROW);
+
+      expect(byTestId('quote-chart-candles')).toBeNull();
+    });
   });
 
   it('says so when the price history cannot be loaded', async () => {
@@ -183,5 +230,60 @@ describe('QuoteDetail', () => {
     byTestId<HTMLButtonElement>('quote-close')!.click();
 
     expect(closed).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('QuoteDetail: where the assistant chat lives', () => {
+  let fixture: ComponentFixture<QuoteDetail>;
+  let root: HTMLElement;
+
+  async function create(assistantOn: boolean, chatInline: boolean): Promise<void> {
+    await TestBed.configureTestingModule({
+      imports: [QuoteDetail],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideApiClients(),
+        { provide: HIGHCHARTS_LOADER, useValue: () => Promise.resolve({ chart: vi.fn() }) },
+        { provide: HIGHCHARTS_MODULE_LOADER, useValue: () => Promise.resolve() },
+        { provide: AccountOverviewStore, useValue: { linked: signal(null) } },
+        { provide: PreferencesStore, useValue: { aiAssistantEnabled: signal(assistantOn) } },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(QuoteDetail);
+    root = fixture.nativeElement as HTMLElement;
+    fixture.componentRef.setInput('row', ROW);
+    fixture.componentRef.setInput('chatInline', chatInline);
+    const http = TestBed.inject(HttpTestingController);
+    (await vi.waitFor(() => http.expectOne('/api/v1/market/candles/AAPL'))).flush({
+      symbol: 'AAPL',
+      currency: 'USD',
+      interval: '1d',
+      candles: [],
+    });
+    await fixture.whenStable();
+  }
+
+  it('shows the signal card but no chat inside when the page has its own chat pane', async () => {
+    await create(true, false);
+
+    expect(root.querySelector('app-signal-card')).toBeTruthy();
+    expect(root.querySelector('app-assistant-chat')).toBeNull();
+  });
+
+  it('shows the chat inline, under the signal card, when there is no room for the pane', async () => {
+    await create(true, true);
+
+    const card = root.querySelector('app-signal-card')!;
+    const chat = root.querySelector('app-assistant-chat')!;
+    expect(chat).toBeTruthy();
+    expect(card.compareDocumentPosition(chat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chat.querySelector('[data-testid="assistant-chat"]')).toBeTruthy();
+  });
+
+  it('shows no chat at all while the assistant is off, even inline', async () => {
+    await create(false, true);
+
+    expect(root.querySelector('[data-testid="assistant-chat"]')).toBeNull();
   });
 });

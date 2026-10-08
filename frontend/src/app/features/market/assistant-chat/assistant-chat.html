@@ -1,0 +1,75 @@
+@if (assistantOn()) {
+  <section
+    class="chat"
+    [class.is-pane]="layout() === 'pane'"
+    [attr.aria-labelledby]="titleId"
+    data-testid="assistant-chat"
+  >
+    <header class="chat-header">
+      <h3 [id]="titleId" class="chat-title">
+        <i class="fas fa-comments" aria-hidden="true"></i>
+        Ask the assistant
+      </h3>
+      <span class="chat-symbol" data-testid="assistant-chat-symbol">{{ symbol() }}</span>
+    </header>
+
+    <div class="quick" role="group" aria-label="Suggested questions">
+      @for (q of quickQuestions; track q) {
+        <button type="button" class="btn is-secondary is-small" [disabled]="sending()" (click)="ask(q)">
+          {{ q }}
+        </button>
+      }
+    </div>
+
+    @if (messages().length > 0 || layout() === 'pane') {
+      <div #log class="log" role="log" aria-live="polite" aria-label="Conversation" data-testid="signal-chat-log">
+        @if (messages().length === 0) {
+          <p class="log-hint">Ask about this signal, what it is built from, or what would change it.</p>
+        }
+        @for (m of messages(); track m.id) {
+          <div class="message" [class.is-user]="m.role === 'user'" [class.is-problem]="m.role === 'problem'">
+            <span class="visually-hidden">{{ m.role === 'user' ? 'You said' : m.role === 'assistant' ? 'Assistant said' : 'Problem' }}:</span>
+            <p>{{ m.text }}</p>
+            @if (m.role === 'assistant') {
+              <div class="message-foot">
+                <span class="source">
+                  @if (m.source === ExplanationSource.Gemini) {
+                    <i class="fas fa-robot" aria-hidden="true"></i> AI assistant
+                  } @else {
+                    <i class="fas fa-list-check" aria-hidden="true"></i> Standard answer
+                  }
+                </span>
+                <button type="button" class="btn is-tertiary is-small" aria-label="Copy this answer" (click)="copy(m.text)">
+                  <i class="fas fa-copy" aria-hidden="true"></i>
+                </button>
+              </div>
+            }
+          </div>
+        }
+        @if (thinking()) {
+          <p class="log-hint" aria-live="polite">
+            <app-spinner [inline]="true" label="The assistant is answering" />
+            Thinking…
+          </p>
+        }
+      </div>
+    }
+
+    <form class="ask" novalidate (submit)="onSubmit($event)">
+      <label class="visually-hidden" [for]="questionId">Ask a question about this signal</label>
+      <input
+        [id]="questionId"
+        class="form-input"
+        type="text"
+        autocomplete="off"
+        placeholder="Ask about this signal"
+        data-testid="signal-question"
+        [formField]="chatForm.text"
+      />
+      <button type="submit" class="btn is-primary" data-testid="signal-send" [disabled]="sending() || chatForm().invalid()">
+        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+        Ask
+      </button>
+    </form>
+  </section>
+}
