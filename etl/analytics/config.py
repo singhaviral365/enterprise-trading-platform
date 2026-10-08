@@ -1,7 +1,6 @@
 from pathlib import Path
 import os
 
-from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ANALYTICS_ROOT = Path(__file__).resolve().parent
@@ -9,10 +8,34 @@ ANALYTICS_ROOT = Path(__file__).resolve().parent
 MAX_API_RETRIES = 2
 RETRY_BACKOFF_SECONDS = 1
 
-load_dotenv(PROJECT_ROOT / ".env")
+def _central(path, default=""):
+    """A value from config/application.yml (config/application.example.yml when it is missing); see config/README.md."""
+    import yaml
 
-FAUXNANCE_BASE_URL = os.getenv("FAUXNANCE_BASE_URL", "").rstrip("/")
-FAUXNANCE_API_KEY = os.getenv("FAUXNANCE_API_KEY", "")
+    folder = PROJECT_ROOT / "config"
+    merged = {}
+    for name in ("application.example.yml", "application.yml"):
+        file = folder / name
+        if file.exists():
+            merged = _merge(merged, yaml.safe_load(file.read_text(encoding="utf8")) or {})
+    node = merged
+    for key in path.split("."):
+        node = node.get(key) if isinstance(node, dict) else None
+    return default if node is None or node == "" else str(node)
+
+
+def _merge(base, over):
+    if not isinstance(over, dict):
+        return over
+    out = dict(base) if isinstance(base, dict) else {}
+    for key, value in over.items():
+        out[key] = _merge(out.get(key), value)
+    return out
+
+
+
+FAUXNANCE_BASE_URL = _central("external.fauxnance.base-url").rstrip("/")
+FAUXNANCE_API_KEY = _central("external.fauxnance.api-key")
 
 CANDLES_ENDPOINT = "/candles/{symbol}"
 

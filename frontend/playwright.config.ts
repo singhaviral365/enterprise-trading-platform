@@ -1,10 +1,13 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-// Local values live in frontend/.env.e2e (git-ignored; copy .env.e2e.example). Variables already in the
-// environment, e.g. from CI, win over the file.
-if (existsSync('.env.e2e')) {
-  process.loadEnvFile('.env.e2e');
+// The values come from config/application.yml (the `e2e` block, the frontend port and the MailHog port); `npm run config` writes them to
+// this git-ignored file. Variables already in the environment, e.g. from CI, win over the file.
+const generated = 'e2e/support/e2e-config.generated.json';
+if (existsSync(generated)) {
+  for (const [name, value] of Object.entries(JSON.parse(readFileSync(generated, 'utf8')) as Record<string, string>)) {
+    process.env[name] ??= value;
+  }
 }
 
 /**

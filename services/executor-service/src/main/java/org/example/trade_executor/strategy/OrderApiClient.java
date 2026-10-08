@@ -60,7 +60,7 @@ public class OrderApiClient {
     @Autowired
     public OrderApiClient(
             ObjectMapper objectMapper,
-            @Value("${strategy.order-api.base-url:http://localhost:8081}") String baseUrl,
+            @Value("${strategy.order-api.base-url}") String baseUrl,
             @Value("${strategy.order-api.connect-timeout-millis:2000}") long connectTimeoutMillis,
             @Value("${strategy.order-api.request-timeout-millis:5000}") long requestTimeoutMillis) {
         this(HttpClient.newBuilder().connectTimeout(Duration.ofMillis(Math.max(100, connectTimeoutMillis))).build(),

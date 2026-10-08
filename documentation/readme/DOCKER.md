@@ -90,14 +90,14 @@ docker images | grep trading-backend
 
 3. Start PostgreSQL
 ```bash
-docker run -d --name sprint6-postgres -e POSTGRES_PASSWORD=n3u3d4! -e POSTGRES_DB=trading -p 5433:5432 postgres:16-alpine
+docker run -d --name sprint6-postgres -e POSTGRES_PASSWORD=<database password from config/application.yml> -e POSTGRES_DB=trading -p 5433:5432 postgres:16-alpine
 docker ps
 ```
 
 4. Load schema from backend/src/main/resources/schema.sql
 ```bash
 docker cp src/main/resources/schema.sql sprint6-postgres:/schema.sql
-docker exec -e PGPASSWORD=n3u3d4! sprint6-postgres psql -U postgres -d trading -f /schema.sql
+docker exec -e PGPASSWORD=<database password from config/application.yml> sprint6-postgres psql -U postgres -d trading -f /schema.sql
 ```
 
 5. Create network and attach Postgres
@@ -114,7 +114,7 @@ docker run -d --name auth-stub --network trading-net -p 4000:4000 -e JWT_SECRET=
 
 7. Run backend on the same network
 ```bash
-docker run -d --name trading-backend-m12 --network trading-net -p 8081:8080 -e SPRING_DATASOURCE_URL=jdbc:postgresql://sprint6-postgres:5432/trading -e SPRING_DATASOURCE_USERNAME=postgres -e DB_PASSWORD=n3u3d4! -e JWT_SECRET=dev-only-change-me-this-secret-is-not-for-production-use -e KAFKA_BOOTSTRAP_SERVERS=kafka:29092 trading-backend:m12
+docker run -d --name trading-backend-m12 --network trading-net -p 8081:8080 -e SPRING_DATASOURCE_URL=jdbc:postgresql://sprint6-postgres:5432/trading -e SPRING_DATASOURCE_USERNAME=postgres -e DB_PASSWORD=<database password from config/application.yml> -e JWT_SECRET=dev-only-change-me-this-secret-is-not-for-production-use -e KAFKA_BOOTSTRAP_SERVERS=kafka:29092 trading-backend:m12
 ```
 
 8. Validate

@@ -55,7 +55,9 @@ A customer's data leaves the platform only if they switched the assistant on. Wh
 
 It is not told the account id, name, email, balance, orders or anything else, and the key is sent in a request header, never in a URL.
 The customer's own words go in as a *user message*, never in the instructions, and the instructions tell the model to ignore a request
-in it to change them. The model is given **no tools**: all it can produce is text, which the screen shows as plain text (never as
+in it to change them. **The chat stays on the signal:** a message that tries to take the assistant over ("ignore your rules", "act as", "show your
+prompt") never reaches the model, and the model is told to answer anything not about this instrument's signal with the single word `OFF_TOPIC`;
+in both cases the customer sees one fixed sentence that points back to the signal (`GeminiSignalExplainer.OFF_TOPIC_REPLY`). The model is given **no tools**: all it can produce is text, which the screen shows as plain text (never as
 HTML). Its reply is stripped of control characters and cut to 1,200 characters. It is told never to tell the customer to buy, sell or
 hold, never to predict a price, and never to promise or imply a return.
 
@@ -79,7 +81,7 @@ refused server-side (`AST-403`), and nothing about the customer reaches the assi
 | Setting | Default | |
 |---|---|---|
 | `GEMINI_API_KEY` | (none) | Without it every explanation is the platform's own wording and the chat says the assistant is not set up |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Model names change; check the name your key can use |
+| `external.gemini.model` (config/application.yml) | `gemini-flash-lite-latest` | A named model is retired for new keys over time (`gemini-2.5-flash` now answers HTTP 404); the `-latest` alias follows the current one; lite is fast (about 0.6 s) and has the higher free-tier request limit. List what your key can use with `GET https://generativelanguage.googleapis.com/v1beta/models` |
 | `GEMINI_RATE_LIMIT_RPM` | 60 | Per order-service instance |
 | `CANDLE_CACHE_TTL_MINUTES` | 10 | |
 | `SIGNAL_CACHE_TTL_MINUTES` | 5 | Also the explanation cache |

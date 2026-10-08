@@ -1,4 +1,4 @@
-<fieldset class="segmented side-toggle" [class.is-sell]="side() === OrderSide.Sell">
+<fieldset class="segmented side-toggle" [class.is-sell]="side() === OrderSide.Sell" [class.is-compact]="compact()">
   <legend class="visually-hidden">Order side</legend>
   <span class="segment-thumb" aria-hidden="true"></span>
   <label class="segment" [class.is-active]="side() === OrderSide.Buy">

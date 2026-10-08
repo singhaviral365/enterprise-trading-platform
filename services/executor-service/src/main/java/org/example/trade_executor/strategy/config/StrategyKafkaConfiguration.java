@@ -35,7 +35,7 @@ public class StrategyKafkaConfiguration {
 
     @Bean
     public ConsumerFactory<String, String> strategyConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${strategy.kafka.consumer-group:strategy-worker}") String groupId,
             @Value("${strategy.kafka.consumer.start-from:latest}") String startFrom) {
 

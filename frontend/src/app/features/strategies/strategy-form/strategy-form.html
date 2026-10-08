@@ -14,6 +14,7 @@
           placeholder="Choose an instrument"
           inputId="strategy-symbol"
           data-testid="strategy-symbol"
+          [block]="true"
           [options]="instrumentOptions()"
           [(value)]="symbol"
         />
@@ -34,7 +35,7 @@
 
     <div class="form-group">
       <span class="form-label">Do this</span>
-      <app-side-toggle [(side)]="tradeSide" />
+      <app-side-toggle [(side)]="tradeSide" [compact]="true" />
     </div>
 
     <div class="form-group">
@@ -42,6 +43,7 @@
         label="When the price"
         inputId="strategy-direction"
         data-testid="strategy-direction"
+        [block]="true"
         [options]="directionOptions"
         [(value)]="direction"
       />
@@ -98,14 +100,21 @@
         {{ direction() === 'BELOW' ? 'lower' : 'higher' }} price.
       </p>
     } @else if (summary()) {
-      <p class="summary-text" data-testid="strategy-summary-text">{{ summary() }}</p>
+      <p class="summary-text" data-testid="strategy-summary-text">
+        <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+        {{ summary() }}
+      </p>
     } @else {
       <p class="form-hint">Choose an instrument and a price to see what this will do.</p>
     }
   </div>
 
   <details class="more-options" data-testid="strategy-more">
-    <summary>More options</summary>
+    <summary>
+      <i class="fas fa-chevron-right chevron" aria-hidden="true"></i>
+      More options
+      <span class="more-hint">spending cap, largest holding, repeats, end date</span>
+    </summary>
     <div class="options-grid">
       <div class="form-group">
         <label class="form-label" for="strategy-max-executions">Repeat up to (times)</label>

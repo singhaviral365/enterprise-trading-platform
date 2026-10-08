@@ -24,9 +24,11 @@ at once, `verificationRequired: false`); it is **on by default** and, like all e
 
 ## Two-step sign-in (each user's own choice)
 
-Two-step sign-in is a **per-user preference, off until the user turns it on**: Settings > "Sign-in security" > "Two-step sign-in"
-(`PUT /auth/me/two-factor { enabled }`, saved at once; stored as `users.two_factor_enabled`). Turning it **on** is refused (`OTP-503`)
-if no code could be emailed here, so nobody locks themselves out; turning it off always works. `AUTH_TWO_FACTOR_ENABLED=false` removes
+Two-step sign-in is a **per-user preference, on for every new user**: Settings > "Sign-in security" > "Two-step sign-in" switches it off
+or on again, and the choice is saved with the rest of the settings when the customer presses Save
+(`PUT /auth/me/two-factor { enabled }`; stored as `users.two_factor_enabled`, default true; accounts that existed before keep their own
+value). Turning it **on** is refused (`OTP-503`) if no code could be emailed here, so nobody locks themselves out; turning it off always
+works. While email is off (`auth.email.mode: off`) sign-in skips the code step for everyone, and says so in the log. `AUTH_TWO_FACTOR_ENABLED=false` removes
 the option for everyone (nobody is asked for a code, whatever they chose).
 
 ```

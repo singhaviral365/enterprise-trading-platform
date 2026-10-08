@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './config/load-central-config';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -28,7 +28,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: ['http://localhost:4200', 'http://127.0.0.1:5500/'], 
+    origin: (process.env.AUTH_CORS_ORIGINS ?? '').split(',').filter((o) => o !== ''),
     methods: 'GET, POST ,PUT, DELETE', 
     allowedHeaders: 'Content-Type, Authorization, X-Requested-With, X-Envelope',
     exposedHeaders: 'Date',
@@ -84,7 +84,7 @@ async function bootstrap() {
 
   await app.listen(config.port, '0.0.0.0');
   console.log(`Auth service is running on http://0.0.0.0:${config.port}`);
-  console.log(`Swagger documentation is running on http://127.0.0.1:${config.port}/api-docs`);
+  console.log(`Swagger documentation is running on http://localhost:${config.port}/api-docs`);
 }
 
 bootstrap().catch((err) => {

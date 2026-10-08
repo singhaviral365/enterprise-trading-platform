@@ -39,7 +39,7 @@ public class WatchlistKafkaConfiguration {
 
     @Bean
     public ConsumerFactory<String, String> watchlistConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${watchlist.kafka.consumer-group:watchlist-prices}") String groupId) {
 
         Map<String, Object> properties = new HashMap<>();
@@ -58,7 +58,7 @@ public class WatchlistKafkaConfiguration {
 
     @Bean
     public ProducerFactory<String, String> watchlistDeadLetterProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
 
         Map<String, Object> properties = new HashMap<>();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);

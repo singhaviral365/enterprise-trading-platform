@@ -1,0 +1,184 @@
+# Enterprise Trading Platform: the ONE place where every URL, port, credential and switch lives.
+#
+#   config/application.example.yml   this file, committed, no secrets. It is also the fallback when application.yml is missing, so a fresh
+#                                    clone builds and its tests run.
+#   config/application.yml           your copy with real values. Git-ignored. Create it with:   cp config/application.example.yml config/application.yml
+#
+# Everything reads this file and nothing else:
+#   auth-service      src/config/central-config.ts   maps the keys to its settings at start-up
+#   order-service     spring.config.import           the keys are properties; application*.properties refer to them as ${key}
+#   executor-service  spring.config.import           the same
+#   frontend          config/cli.js frontend         generates src/app/config/platform.config.ts and proxy.conf.json (npm start/build/test do it)
+#   contracts         config/cli.js contracts        writes each contract's `servers:` URLs
+#   run-app.ps1, services/docker-compose.yml, scripts.sh     config/cli.js get | compose-env
+# A real environment variable still wins over a key (the auth-service maps `database.auth.password` to DATABASE_PASSWORD, Spring maps it
+# to DATABASE_AUTH_PASSWORD), which is how a container or a CI job overrides one value without editing the file.
+# See config/README.md.
+
+# NODE_ENV of the auth-service: local | development | production. `development` makes TypeORM synchronise the schema and log SQL;
+# `production` makes cookies Secure by default (see auth.cookie.secure) and is the only value where real email may go to anyone
+# without auth.email.allowed-recipient-domains.
+environment: local
+
+# Where each part of the platform listens. `host` is where the others reach it; `port` is where it binds.
+services:
+  frontend:
+    host: localhost
+    port: 4200
+  auth:
+    host: localhost
+    port: 3000
+  order:
+    host: localhost
+    port: 8081
+  executor:
+    host: localhost
+    port: 8082
+  # A local mail catcher for email mode "dev" (run MailHog on your machine). The e2e tests read codes from its web UI.
+  mailhog:
+    host: localhost
+    smtp-port: 1025
+    web-port: 8025
+
+# PostgreSQL. The order and executor services share the trading database; the auth-service has its own.
+database:
+  trading:
+    host: localhost
+    port: 5432
+    name: trading_db
+    user: postgres
+    password: ""
+  auth:
+    host: localhost
+    port: 5432
+    name: auth_db
+    user: postgres
+    password: ""
+
+# Only docker compose (services/docker-compose.yml) builds the order-service image from these.
+docker:
+  core-java-repo-url: ""
+  core-java-ref: core-java
+
+# Kafka. Start it yourself (Linux); the services only need the address.
+kafka:
+  # Where the services reach Kafka FROM THIS MACHINE: the host and port of its advertised listener (for example your Linux VM's IP:9092).
+  # Not kafka:29092: that name only exists inside the docker network.
+  bootstrap-servers: localhost:9092
+  # The host and port Kafka advertises to clients outside docker (a VM's IP). Only docker compose uses them.
+  external-host: localhost
+  external-port: 9092
+
+# Shared HS256 signing secret: the auth-service signs, the order and executor services verify. 32 characters or more.
+jwt:
+  secret: ""
+  issuer: auth-service
+  access-token-expires-in: 900
+  refresh-token-expires-in: 604800
+
+# Third-party APIs. The browser never calls them.
+external:
+  # Market data (candles, quotes) provided by the programme.
+  fauxnance:
+    base-url: ""
+    api-key: ""
+  # Currency conversion for orders. https://www.exchangerate-api.com. base-url is WITHOUT the key.
+  exchange-rate:
+    base-url: https://v6.exchangerate-api.com/v6
+    api-key: ""
+  # The assistant explains a trade signal. Without a key the platform's own wording is used. https://aistudio.google.com/apikey
+  # model: a name can be retired for new keys (gemini-2.5-flash answers 404 now), so the -latest alias is used. rate-limit-rpm: set it to the
+  # requests per minute your key is allowed (AI Studio > usage); above it the chat answers "busy" instead of calling Google.
+  gemini:
+    api-key: ""
+    model: gemini-flash-lite-latest
+    rate-limit-rpm: 10
+
+signals:
+  candle-cache-ttl-minutes: 10
+  signal-cache-ttl-minutes: 5
+
+# Auth-service
+auth:
+  log-level: debug
+  # Registering emails a code to the address typed first. Needs email mode other than off.
+  verification-enabled: true
+  # Whether each user may switch on two-step sign-in in Settings.
+  two-factor-enabled: true
+  otp:
+    # Key the stored code hashes are made with; empty means jwt.secret.
+    secret: ""
+    ttl-seconds: 300
+    reset-ttl-seconds: 600
+    max-attempts: 5
+    resend-cooldown-seconds: 30
+    max-sends: 3
+  cookie:
+    # true | false | "" (default: true in production, false in development)
+    secure: ""
+    # strict | lax | none
+    samesite: strict
+  cors:
+    # Origins besides the frontend (services.frontend) that may call the auth-service from a browser.
+    extra-origins: []
+  # Email: off | dev | prod. dev = MailHog (services.mailhog), prod = a real SMTP account over TLS (docs: documentation/readme/EMAIL.md).
+  email:
+    mode: prod
+    smtp:
+      host: ""
+      port: ""
+      tls: starttls
+      user: ""
+      password: ""
+    from: ""
+    from-domains: ""
+    # Outside production, real mail needs this: a comma list of domains, or * for anyone.
+    allowed-recipient-domains: ""
+    reply-to: ""
+
+# Payload encryption between the browser and the auth-service. off | optional | required.
+# optional: the browser always encrypts and the service also accepts plain bodies (Bruno, curl). required: plain bodies are refused.
+# Generate the key with:  node config/cli.js enc-key   (it prints the two lines; paste them here)
+encryption:
+  mode: optional
+  kid: ""
+  private-key-pem: ""
+  max-age-seconds: 60
+  # Development only: logs decrypted bodies. Refused when environment is production.
+  log-plaintext: false
+
+# Order-service
+order:
+  # Notification email: off | dev | prod. run-app.ps1 turns this into the Spring profile of the same name.
+  email:
+    mode: prod
+    smtp:
+      host: ""
+      port: 587
+      tls: starttls
+      username: ""
+      password: ""
+    from: ""
+    from-domains: ""
+    allowed-recipient-domains: ""
+    reply-to: ""
+    max-per-minute: 60
+
+# Executor-service
+executor:
+  poll-interval-seconds: 60
+  # Comma list of symbols to poll for market data; empty means the instruments people hold or watch.
+  watch-symbols: ""
+  strategy-execution-enabled: true
+  strategy-demo-delay-millis: 0
+
+# End-to-end tests (frontend/e2e, Playwright) run against the live stack. Real accounts, real credentials: keep them in the git-ignored file.
+e2e:
+  # A user with a LINKED, ACTIVE trading account and enough cash to buy one share of `symbol`.
+  username: ""
+  password: ""
+  # A user whose linked account is NOT active (SUSPENDED or CLOSED), so it cannot place orders.
+  readonly-username: ""
+  readonly-password: ""
+  # A symbol that appears on the dashboard market board and has a live price.
+  symbol: AAPL

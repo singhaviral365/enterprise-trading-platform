@@ -89,7 +89,7 @@ info:
     name: Instructional use only
 
 servers:
-  - url: http://localhost:8080
+  - url: http://localhost:8081
     description: Local development.
   - url: http://trade-api:8080
     description: Service name inside the Docker Compose network.

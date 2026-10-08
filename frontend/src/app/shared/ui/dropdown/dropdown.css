@@ -2,6 +2,14 @@
   display: inline-block;
 }
 
+:host(.is-block) {
+  display: block;
+}
+
+:host(.is-block) .form-select {
+  width: 100%;
+}
+
 /* Compact variant: same control, just smaller. Picker options shrink with it. */
 .form-select.is-compact {
   height: 32px;

@@ -1,4 +1,4 @@
-import { Component, model } from '@angular/core';
+import { Component, input, model } from '@angular/core';
 import { OrderSide } from '../../../api/generated/trade';
 
 /**
@@ -12,6 +12,8 @@ import { OrderSide } from '../../../api/generated/trade';
 })
 export class SideToggle {
   readonly side = model<OrderSide>(OrderSide.Buy);
+  /** Same height as a form input (40px), for a toggle that sits in a row of fields. */
+  readonly compact = input(false);
 
   protected readonly OrderSide = OrderSide;
 }

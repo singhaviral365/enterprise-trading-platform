@@ -53,8 +53,8 @@ export class StrategiesPage {
   protected readonly canSwitchOn = canSwitchOn;
   protected readonly canCancel = canCancel;
 
-  /** Open on a wide screen, closed on a phone, where it would push the list off the first screen. Either way it is one tap away. */
-  protected readonly safetyOpen = typeof matchMedia === 'function' ? matchMedia('(min-width: 720px)').matches : true;
+  /** Closed until the customer opens it: it is reassurance, not something to read on every visit. */
+  protected readonly safetyOpen = false;
 
   protected readonly formOpen = signal(false);
   /** The strategy whose activity is open. */

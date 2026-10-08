@@ -9,7 +9,6 @@ target/
 *.jar
 *.war
 .mvn/wrapper/maven-wrapper.jar
-
 # Node, TypeScript and Angular
 node_modules/
 dist/
@@ -23,7 +22,6 @@ playwright-report/
 test-results/
 blob-report/
 .playwright/
-
 # Python
 .venv/
 venv/
@@ -34,24 +32,27 @@ __pycache__/
 .mypy_cache/
 .ipynb_checkpoints/
 *.egg-info/
-
 # Databases and local data dumps
 *.duckdb
 *.sqlite
 *.sqlite3
 *.db
-
 # IDEs and editors
 .idea/
 *.iml
 .vscode/
 *.swp
-
 # Operating system
 .DS_Store
 Thumbs.db
-
 # Analytics DB, Cache and Dumps
 analytics/cache/
 analytics/output/
-*.duckdb
+# Central configuration: the real file holds secrets. application.example.yml is the committed template.
+config/application.yml
+config/node_modules/
+# Generated from it (config/cli.js)
+frontend/src/app/config/platform.config.ts
+frontend/proxy.conf.json
+services/.env
+frontend/e2e/support/e2e-config.generated.json

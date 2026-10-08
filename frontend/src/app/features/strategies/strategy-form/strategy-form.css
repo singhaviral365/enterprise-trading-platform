@@ -21,7 +21,8 @@
 
 @media (min-width: 900px) {
   .rule-row {
-    grid-template-columns: minmax(200px, 1.6fr) auto minmax(170px, 1.2fr) minmax(120px, 1fr) minmax(100px, 0.7fr);
+    /* The Buy / Sell switch keeps the width of its two labels; the rest share what is left. */
+    grid-template-columns: minmax(200px, 1.6fr) 168px minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(100px, 0.7fr);
     align-items: start;
   }
 }
@@ -61,6 +62,7 @@
 .summary {
   padding: 12px 14px;
   border: 1px solid var(--surface-line-subtle);
+  border-inline-start: 3px solid var(--accent-primary-background);
   border-radius: 12px;
   background: var(--surface-container-background);
 }
@@ -70,15 +72,51 @@
 }
 
 .summary-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   font-size: 14px;
   line-height: 1.5;
 }
 
+.summary-text i {
+  color: var(--accent-primary-background);
+}
+
 .more-options summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
   cursor: pointer;
+  list-style: none;
   font-size: 14px;
   font-weight: 600;
   color: var(--surface-foreground-subtle);
+}
+
+.more-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-options summary .chevron {
+  font-size: 11px;
+  transition: transform 0.2s ease-out;
+}
+
+.more-options[open] summary .chevron {
+  transform: rotate(90deg);
+}
+
+.more-hint {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-options summary .chevron {
+    transition: none;
+  }
 }
 
 .options-grid {

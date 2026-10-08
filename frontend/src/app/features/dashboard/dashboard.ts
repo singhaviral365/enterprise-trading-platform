@@ -13,7 +13,7 @@ import { InstrumentLabel } from '../../shared/ui/instrument-label/instrument-lab
 import { OrderStatusBadge } from '../../shared/ui/order-status/order-status';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 import { WatchlistPanel } from './watchlist/watchlist';
-import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../shared/formatting/preference-pipes';
+import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../shared/formatting/preference-pipes';
 
 /** How many orders the Recent orders panel shows; the full list lives on the Order history page. */
 const RECENT_ORDER_LIMIT = 5;
@@ -38,6 +38,7 @@ export const OTHER_SLICE = 'Other';
 @Component({
   selector: 'app-dashboard',
   imports: [
+    CompactMoneyPipe,
     PreferenceCurrencyPipe,
     PreferenceDatePipe,
     PreferenceDecimalPipe,

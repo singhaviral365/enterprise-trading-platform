@@ -7,18 +7,17 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --------------------------------------------------
-# Load .env
+# Load config/application.yml (the one place for every host, port and credential)
 # --------------------------------------------------
 
-if [ -f "$PROJECT_ROOT/.env" ]; then
-    set -a
-    source "$PROJECT_ROOT/.env"
-    set +a
-else
-    echo "ERROR: .env file not found:"
-    echo "$PROJECT_ROOT/.env"
-    exit 1
-fi
+set -a
+eval "$(node "$PROJECT_ROOT/config/cli.js" env)"
+set +a
+POSTGRES_HOST="$DATABASE_TRADING_HOST"
+POSTGRES_PORT="$DATABASE_TRADING_PORT"
+POSTGRES_DB="$DATABASE_TRADING_NAME"
+POSTGRES_USER="$DATABASE_TRADING_USER"
+POSTGRES_PASSWORD="$DATABASE_TRADING_PASSWORD"
 
 export PGPASSWORD="$POSTGRES_PASSWORD"
 

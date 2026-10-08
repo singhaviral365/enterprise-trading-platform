@@ -42,7 +42,7 @@ public class NotificationsKafkaConfiguration {
 
     @Bean
     public ConsumerFactory<String, String> notificationsConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${notifications.kafka.consumer-group:customer-notifications}") String groupId,
             @Value("${notifications.kafka.consumer.start-from:latest}") String startFrom) {
 
@@ -63,7 +63,7 @@ public class NotificationsKafkaConfiguration {
 
     @Bean
     public ProducerFactory<String, String> notificationsDeadLetterProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
 
         Map<String, Object> properties = new HashMap<>();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);

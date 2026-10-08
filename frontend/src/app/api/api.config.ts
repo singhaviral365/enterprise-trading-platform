@@ -1,5 +1,6 @@
 import { EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
 
+import { PLATFORM } from '../config/platform.config';
 import { provideApi as provideAuthApi } from './generated/auth';
 import { provideApi as providePortfolioApi } from './generated/portfolio';
 import { provideApi as providePerformanceApi } from './generated/portfolio-performance';
@@ -10,12 +11,12 @@ import { provideApi as provideNotificationsApi } from './generated/notifications
 import { provideApi as provideTradeApi } from './generated/trade';
 import { provideApi as provideWatchlistApi } from './generated/watchlist';
 
-/** Auth service (NestJS). It enables CORS for the dev server, so the browser calls it directly. */
-export const AUTH_API_BASE_URL = 'http://localhost:3000';
+/** Auth service (NestJS). It enables CORS for the dev server, so the browser calls it directly. Its address is services.auth in config/application.yml. */
+export const AUTH_API_BASE_URL: string = PLATFORM.authUrl;
 
 /**
  * Trade API (order-service). Empty on purpose: calls stay same-origin (`/api/v1/...`) and `ng serve`
- * proxies them to http://localhost:8081 (see proxy.conf.json), because the order-service has no CORS
+ * proxies them to the order-service, services.order in config/application.yml (see proxy.conf.json, generated), because the order-service has no CORS
  * configuration. Behind a real gateway, set this to the gateway's origin. The watchlist module is part of
  * the same service, so it shares this base URL (as do the preferences, notifications, portfolio, strategies and signals modules).
  */

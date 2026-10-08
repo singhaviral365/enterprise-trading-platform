@@ -3,7 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { PortfolioStore } from '../../../core/portfolio.store';
-import { PreferenceCurrencyPipe, PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
+import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
 import { PnlValue } from '../../../shared/ui/pnl-value/pnl-value';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { HoldingsRows } from '../holdings-rows';
@@ -33,6 +33,7 @@ export const PORTFOLIO_TABS = [
   selector: 'app-portfolio',
   imports: [
     PnlValue,
+    CompactMoneyPipe,
     PreferenceCurrencyPipe,
     PreferenceDatePipe,
     RouterLink,

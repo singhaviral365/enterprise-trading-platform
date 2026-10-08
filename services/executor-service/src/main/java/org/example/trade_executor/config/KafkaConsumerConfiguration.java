@@ -40,7 +40,7 @@ public class KafkaConsumerConfiguration {
 
     @Bean
     public ConsumerFactory<String, String> ordersConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${trading.kafka.orders-consumer-group:trade-executor}") String consumerGroupId) {
 
         Map<String, Object> properties = new HashMap<>();

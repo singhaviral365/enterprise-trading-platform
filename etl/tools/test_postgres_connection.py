@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import psycopg2
 from psycopg2 import OperationalError
-from dotenv import load_dotenv
 import os
 
 def test_connection(host, port, db, user, password):
@@ -31,22 +30,23 @@ def test_connection(host, port, db, user, password):
 def main():
     """Test various connection configurations."""
     
-    # Load from .env first
-    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-    
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = int(os.getenv("POSTGRES_PORT", "5432"))
-    db = os.getenv("POSTGRES_DB", "trading_db")
-    user = os.getenv("POSTGRES_USER", "postgres")
-    env_password = os.getenv("POSTGRES_PASSWORD", "")
-    
+    # Every value comes from config/application.yml, through the ETL's own config module.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from src import config
+
+    host = config.POSTGRES_HOST
+    port = int(config.POSTGRES_PORT)
+    db = config.POSTGRES_DB
+    user = config.POSTGRES_USER
+    env_password = config.POSTGRES_PASSWORD
+
     # Try different passwords
-    passwords = [env_password, "", "postgres", "postgres123", "root", "password", "n3u3d4!"]
+    passwords = [env_password, "", "postgres", "postgres123", "root", "password"]
     # Remove duplicates
     passwords = list(dict.fromkeys(p for p in passwords if p))
     
     print(f"\nTesting Postgres connection to {user}@{host}:{port}/{db}\n")
-    print("Trying passwords (from .env first, then common ones):")
+    print("Trying passwords (from config/application.yml first, then common ones):")
     print("-" * 60)
     
     for pwd in passwords:

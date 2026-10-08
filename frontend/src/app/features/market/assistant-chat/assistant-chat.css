@@ -3,6 +3,8 @@
 }
 
 :host(.is-pane) {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
@@ -130,7 +132,9 @@
 /* Pane: fills the aside. The header and the quick questions keep their height, the conversation takes the rest and scrolls,
    and the input stays at the bottom. The panel around it (the split view's aside) already has the border. */
 .chat.is-pane {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   margin-top: 0;
   padding: 16px;
   border: 0;

@@ -24,6 +24,8 @@ export class MultiDropdown {
   readonly placeholder = input('All');
   /** When true the last ticked option cannot be unticked (a choice that must not be empty); there is no clear button. */
   readonly atLeastOne = input(false);
+  /** Greys the button out and keeps the panel shut. */
+  readonly disabled = input(false);
 
   private readonly id = nextMultiDropdownId++;
   protected readonly labelId = `multi-dropdown-label-${this.id}`;

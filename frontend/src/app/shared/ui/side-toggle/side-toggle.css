@@ -46,6 +46,8 @@ input[type='radio'] {
 
 .segment {
   position: relative;
+  padding-inline: 14px;
+  white-space: nowrap;
   z-index: 1;
   display: flex;
   align-items: center;
@@ -67,6 +69,26 @@ input[type='radio'] {
 .segment:has(input:focus-visible) {
   outline: 2px solid var(--accent-primary-background);
   outline-offset: 2px;
+}
+
+/* In a row of 40px fields: the same height, a little tighter. */
+.side-toggle.is-compact {
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.side-toggle.is-compact .segment-thumb {
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border-radius: 8px;
+}
+
+.side-toggle.is-compact .segment {
+  height: 32px;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -21,7 +21,7 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public ProducerFactory<String, KafkaEventEnvelope<OrderPlacedMessage>> orderPlacedProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${spring.kafka.producer.acks:all}") String acks,
             @Value("${spring.kafka.producer.retries:2147483647}") int retries,
             @Value("${spring.kafka.producer.properties.enable.idempotence:true}") boolean idempotence,
@@ -37,7 +37,7 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public ProducerFactory<String, KafkaEventEnvelope<OrderResolvedMessage>> orderResolvedProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${spring.kafka.producer.acks:all}") String acks,
             @Value("${spring.kafka.producer.retries:2147483647}") int retries,
             @Value("${spring.kafka.producer.properties.enable.idempotence:true}") boolean idempotence,
@@ -53,7 +53,7 @@ public class KafkaProducerConfiguration {
 
     @Bean
     public ProducerFactory<String, String> deadLetterProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${spring.kafka.producer.acks:all}") String acks,
             @Value("${spring.kafka.producer.retries:2147483647}") int retries,
             @Value("${spring.kafka.producer.properties.enable.idempotence:true}") boolean idempotence,

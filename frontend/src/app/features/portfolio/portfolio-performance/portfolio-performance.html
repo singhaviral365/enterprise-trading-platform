@@ -67,7 +67,7 @@
         </div>
         <div class="stat">
           <dt>Profit</dt>
-          <dd data-testid="performance-pnl"><app-pnl-value [amount]="s.pnl" [currency]="currency()" /></dd>
+          <dd data-testid="performance-pnl"><app-pnl-value [compact]="true" [amount]="s.pnl" [currency]="currency()" /></dd>
         </div>
         @if (s.annualisedPct !== null) {
           <div class="stat">

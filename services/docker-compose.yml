@@ -1,3 +1,6 @@
+# Every value comes from config/application.yml. `node config/cli.js compose-env` writes services/.env (ports, database login, kafka) for the
+# ${VARIABLES} below, and the two application services mount the file itself (CONFIG_FILE), so they read their own settings from it.
+# Only what differs inside the docker network (host names of the database and Kafka) is set here.
 services:
   postgres:
     image: postgres:16-alpine
@@ -7,7 +10,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${TRADING_DB_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -23,7 +26,7 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${KAFKA_EXTERNAL_HOST:-localhost}:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${KAFKA_EXTERNAL_HOST}:${KAFKA_PORT}
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -37,7 +40,7 @@ services:
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       CLUSTER_ID: MkQrQXtsTmyQ1mLvSstIngQ
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT}:9092"
     networks:
       - trading-net
     volumes:
@@ -61,13 +64,13 @@ services:
     profiles: [platform]
     container_name: auth-db
     environment:
-      POSTGRES_DB: auth_db
+      POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5433:5432"
+      - "${AUTH_DB_PORT}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d auth_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${AUTH_DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -84,56 +87,19 @@ services:
     profiles: [platform]
     container_name: auth-service
     environment:
-      # Set AUTH_NODE_ENV=development to send the sign-in code through a local SMTP catcher (MailHog, run on the host, not
-      # in this compose file); production refuses to send mail.
-      NODE_ENV: ${AUTH_NODE_ENV:-production}
-      PORT: 3000
+      # Everything else (port, secrets, email, encryption, cookies) is read from the mounted application.yml.
+      CONFIG_FILE: /config/application.yml
       DATABASE_HOST: auth-db
       DATABASE_PORT: 5432
-      DATABASE_NAME: auth_db
-      DATABASE_USER: ${POSTGRES_USER}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ISSUER: auth-service
-      # Session cookies. NODE_ENV=production makes them Secure by default, which a plain-http compose setup cannot
-      # use (browsers only exempt http://localhost); set AUTH_COOKIE_SECURE=true once you serve over https.
-      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
-      # Registration, two-step sign-in and forgot password email a code. Email has three modes (AUTH_EMAIL_MODE): off (the default,
-      # nothing is sent), dev (a local MailHog, refused under NODE_ENV=production) and prod (a real provider over TLS with a login,
-      # from a verified domain; see documentation/readme/EMAIL.md). So this stack, which is production-like by default, runs with the
-      # registration email check and two-step sign-in OFF unless you choose a mode:
-      #   development:  AUTH_NODE_ENV=development  AUTH_EMAIL_MODE=dev  AUTH_EMAIL_VERIFICATION_ENABLED=true  (and MailHog on your machine)
-      #   real mail:    AUTH_EMAIL_MODE=prod  AUTH_EMAIL_SMTP_HOST/_USER/_PASSWORD  AUTH_EMAIL_FROM  AUTH_EMAIL_FROM_DOMAINS
-      # (AUTH_EMAIL_ENABLED=true still works for one release and means dev.) The credentials come from the environment only.
-      AUTH_EMAIL_VERIFICATION_ENABLED: ${AUTH_EMAIL_VERIFICATION_ENABLED:-false}
-      AUTH_TWO_FACTOR_ENABLED: ${AUTH_TWO_FACTOR_ENABLED:-false}
-      AUTH_EMAIL_MODE: ${AUTH_EMAIL_MODE:-off}
-      AUTH_EMAIL_ENABLED: ${AUTH_EMAIL_ENABLED:-false}
-      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-localhost}
-      AUTH_EMAIL_SMTP_PORT: ${AUTH_EMAIL_SMTP_PORT:-}
-      AUTH_EMAIL_SMTP_TLS: ${AUTH_EMAIL_SMTP_TLS:-}
-      AUTH_EMAIL_SMTP_USER: ${AUTH_EMAIL_SMTP_USER:-}
-      AUTH_EMAIL_SMTP_PASSWORD: ${AUTH_EMAIL_SMTP_PASSWORD:-}
-      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-}
-      AUTH_EMAIL_FROM_DOMAINS: ${AUTH_EMAIL_FROM_DOMAINS:-}
-      AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS: ${AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS:-}
-      AUTH_EMAIL_REPLY_TO: ${AUTH_EMAIL_REPLY_TO:-}
-      # Payload encryption (documentation/todo/02-payload-encryption.md): off by default. optional/required need the private key, from the
-      # environment only (generate one with `npm run enc:keygen` in services/auth-service).
-      ENC_MODE: ${ENC_MODE:-off}
-      ENC_KID: ${ENC_KID:-}
-      ENC_PRIVATE_KEY_PEM: ${ENC_PRIVATE_KEY_PEM:-}
-      AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
-      JWT_ACCESS_TOKEN_EXPIRES_IN: 900
-      JWT_REFRESH_TOKEN_EXPIRES_IN: 604800
-      LOG_LEVEL: info
+    volumes:
+      - ../config/application.yml:/config/application.yml:ro
     ports:
-      - "3000:3000"
+      - "${AUTH_PORT}:${AUTH_PORT}"
     depends_on:
       auth-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${AUTH_PORT}/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -150,39 +116,15 @@ services:
         CORE_JAVA_REF: ${CORE_JAVA_REF:-core-java}
     profiles: [platform]
     environment:
-      JWT_SECRET: ${JWT_SECRET}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      EXCHANGE_RATE_API_URL: ${EXCHANGE_RATE_API_URL:-https://v6.exchangerate-api.com/v6}
-      EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY:-}
-      # The signals module explains a signal with Gemini when a key is set (documentation/readme/SIGNALS.md); without one the
-      # platform's own wording is used and nothing is sent anywhere.
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
-      GEMINI_RATE_LIMIT_RPM: ${GEMINI_RATE_LIMIT_RPM:-60}
-      CANDLE_CACHE_TTL_MINUTES: ${CANDLE_CACHE_TTL_MINUTES:-10}
-      SIGNAL_CACHE_TTL_MINUTES: ${SIGNAL_CACHE_TTL_MINUTES:-5}
-      # The Portfolio module prices holdings with its own batched Fauxnance client (the browser never calls Fauxnance).
-      # Without these the portfolio routes answer MKT-503 and nothing else is affected.
-      FAUXNANCE_BASE_URL: ${FAUXNANCE_BASE_URL:-}
-      FAUXNANCE_API_KEY: ${FAUXNANCE_API_KEY:-}
+      CONFIG_FILE: /config/application.yml
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # Email is off unless the profile chooses a mode (documentation/readme/EMAIL.md, NOTIFICATIONS.md):
-      #   BACKEND_SPRING_PROFILES_ACTIVE=dev    a local MailHog (NOTIFICATIONS_EMAIL_SMTP_HOST=localhost)
-      #   BACKEND_SPRING_PROFILES_ACTIVE=prod   a real provider over TLS: the host, login and sending domain below are required, and
-      #                                         the service refuses to start without them. They come from the environment only.
-      #   The port (587) and TLS (starttls) come from the prod profile; for another provider add NOTIFICATIONS_EMAIL_SMTP_PORT/_TLS here.
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      # Email is off unless config/application.yml sets order.email.mode (dev or prod); the profile of that name is activated here.
       SPRING_PROFILES_ACTIVE: ${BACKEND_SPRING_PROFILES_ACTIVE:-}
-      NOTIFICATIONS_EMAIL_SMTP_HOST: ${NOTIFICATIONS_EMAIL_SMTP_HOST:-localhost}
-      NOTIFICATIONS_EMAIL_SMTP_USERNAME: ${NOTIFICATIONS_EMAIL_SMTP_USERNAME:-}
-      NOTIFICATIONS_EMAIL_SMTP_PASSWORD: ${NOTIFICATIONS_EMAIL_SMTP_PASSWORD:-}
-      NOTIFICATIONS_EMAIL_FROM: ${NOTIFICATIONS_EMAIL_FROM:-noreply@etpteamriya.com}
-      NOTIFICATIONS_EMAIL_FROM_DOMAINS: ${NOTIFICATIONS_EMAIL_FROM_DOMAINS:-}
-      NOTIFICATIONS_EMAIL_ALLOWED_RECIPIENT_DOMAINS: ${NOTIFICATIONS_EMAIL_ALLOWED_RECIPIENT_DOMAINS:-}
-      NOTIFICATIONS_EMAIL_REPLY_TO: ${NOTIFICATIONS_EMAIL_REPLY_TO:-}
+    volumes:
+      - ../config/application.yml:/config/application.yml:ro
     ports:
-      - "8080:8080"
+      - "${ORDER_PORT}:${ORDER_PORT}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,7 +135,7 @@ services:
       kafka-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${ORDER_PORT}/actuator/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15

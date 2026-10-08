@@ -194,3 +194,12 @@
   background: transparent;
   border: 1px solid var(--accent-primary-foreground);
 }
+
+/* The aside wrapper is the one flex child of the split view's panel: it must take the panel's height (and be allowed to shrink), or a
+   growing conversation pushes the question box out of view instead of scrolling inside its own log. */
+div[aside] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}

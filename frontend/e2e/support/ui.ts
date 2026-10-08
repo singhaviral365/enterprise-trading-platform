@@ -12,7 +12,7 @@ export const SIGN_IN_TIMEOUT = 60_000;
  * Where MailHog's web interface is (it catches the sign-in code the Auth service emails in development). Override with
  * `E2E_MAILHOG_URL`. Only needed for a user who switched two-step sign-in on (it is off by default); otherwise it is never called.
  */
-const mailhogUrl = (): string => (process.env['E2E_MAILHOG_URL']?.trim() || 'http://localhost:8025').replace(/\/$/, '');
+const mailhogUrl = (): string => (process.env['E2E_MAILHOG_URL']?.trim() ?? '').replace(/\/$/, '');
 
 /** How many messages MailHog holds, so a test can tell which one arrived after it. Null when MailHog cannot be reached. */
 async function mailCount(page: Page): Promise<number | null> {
