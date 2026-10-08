@@ -3,7 +3,7 @@ import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthDialogService } from '../../../core/auth-dialog.service';
 import { ProfileStore } from '../../../core/profile.store';
 import { SessionService } from '../../../core/session.service';
-import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
+import { CompactMoneyPipe, PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { Tooltip } from '../../../shared/ui/tooltip/tooltip';
 import { ChangePasswordForm } from './change-password-form/change-password-form';
@@ -15,7 +15,7 @@ import { ChangePasswordForm } from './change-password-form/change-password-form'
  */
 @Component({
   selector: 'app-profile-menu',
-  imports: [ChangePasswordForm, CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDatePipe, Spinner, Tooltip],
+  imports: [ChangePasswordForm, CompactMoneyPipe, PreferenceDatePipe, Spinner, Tooltip],
   templateUrl: './profile-menu.html',
   styleUrl: './profile-menu.css',
   host: {
