@@ -1,10 +1,11 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 
-import { provideApiClients } from '../../api/api.config';
-import { SessionService } from '../../core/session.service';
+import { provideApiClients } from '../../../api/api.config';
+import { SessionService } from '../../../core/session.service';
 import {
   PORTFOLIO_PERFORMANCE_URL,
   PORTFOLIO_PNL_URL,
@@ -14,12 +15,14 @@ import {
   answerPortfolio,
   answerPortfolioUnavailable,
   held,
+  navPoint,
+  performanceBody,
   pnlBody,
   pricedPosition,
   realisedBody,
   summaryBody,
   unpricedPosition,
-} from '../../testing/portfolio-http';
+} from '../../../testing/portfolio-http';
 import {
   QUOTES_URL,
   SAMPLE_QUOTES,
@@ -27,8 +30,11 @@ import {
   answerLinkedAccount,
   answerUnlinkedAccount,
   orderEntry,
-} from '../../testing/trade-http';
-import { POSITIONS_VIEW_KEY, Portfolio } from './portfolio';
+} from '../../../testing/trade-http';
+import { provideFakeHighcharts } from '../../../testing/highcharts';
+import { stubCandles } from '../../../testing/market-http';
+import { PORTFOLIO_ROUTES } from '../portfolio.routes';
+import { POSITIONS_VIEW_KEY } from '../portfolio-holdings/portfolio-holdings';
 
 const HELD = [held('AAPL', 10, 228.4), held('GOOGL', 5, 340)];
 
@@ -40,8 +46,12 @@ const AAPL_ORDERS = [
   { ...orderEntry('4', 'MSFT', 'FILLED', '2026-09-02T10:00:00Z'), quantity: 10, executedPrice: 400 },
 ];
 
+/** The tab each group of tests starts on; a nested describe sets it for its tests. */
+let entry = '/portfolio';
+
 describe('Portfolio', () => {
-  let fixture: ComponentFixture<Portfolio>;
+  let fixture: ComponentFixture<unknown>;
+  let harness: RouterTestingHarness;
   let http: HttpTestingController;
   let root: HTMLElement;
 
@@ -83,20 +93,36 @@ describe('Portfolio', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  function create(): void {
-    fixture = TestBed.createComponent(Portfolio);
+  async function create(): Promise<void> {
+    harness = await RouterTestingHarness.create(entry);
+    fixture = harness.fixture;
     root = fixture.nativeElement as HTMLElement;
+  }
+
+  /** Runs a group of tests on one of the portfolio's tabs. */
+  function onTab(path: string): void {
+    beforeAll(() => {
+      entry = path;
+    });
+    afterAll(() => {
+      entry = '/portfolio';
+    });
   }
 
   beforeEach(async () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
-      imports: [Portfolio],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients(), provideRouter([])],
+      providers: [
+        provideHttpClient(withInterceptors([stubCandles])),
+        provideHttpClientTesting(),
+        provideApiClients(),
+        provideRouter([{ path: 'portfolio', loadChildren: () => PORTFOLIO_ROUTES }]),
+        ...provideFakeHighcharts(),
+      ],
     }).compileComponents();
     TestBed.inject(SessionService).start('alice.trader', TEST_TOKENS);
     http = TestBed.inject(HttpTestingController);
-    create();
+    await create();
   });
 
   afterEach(() => {
@@ -134,7 +160,6 @@ describe('Portfolio', () => {
 
       expect(text('portfolio-asof')).toContain('Prices as of');
       expect(byTestId('portfolio-delayed')).toBeNull();
-      expect(text('holding-status-AAPL')).toBe('Live');
     });
 
     it('shows a missing day figure as unavailable, never as zero', async () => {
@@ -154,15 +179,36 @@ describe('Portfolio', () => {
       expect(unrealised.querySelector('.is-loss')).not.toBeNull();
     });
 
-    it('puts the performance graph straight under the tiles, then the holdings, then profit and loss', async () => {
+    it('puts the tab bar straight under the tiles, with the overview open, and no other tab loaded', async () => {
       await start();
 
       const follows = (a: Element | null, b: Element | null) =>
         !!a && !!b && !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const tiles = root.querySelector('.tiles');
-      expect(follows(tiles, byTestId('portfolio-performance'))).toBe(true);
-      expect(follows(byTestId('portfolio-performance'), byTestId('portfolio-holdings-section'))).toBe(true);
-      expect(follows(byTestId('portfolio-holdings-section'), byTestId('portfolio-pnl-section'))).toBe(true);
+      expect(follows(root.querySelector('.tiles'), byTestId('portfolio-tabs'))).toBe(true);
+      expect(follows(byTestId('portfolio-tabs'), byTestId('portfolio-performance'))).toBe(true);
+      expect(byTestId('portfolio-holdings-section')).toBeNull();
+      expect(byTestId('portfolio-pnl-section')).toBeNull();
+    });
+
+    it('has four tabs, each a link, with the open one marked as the current page', async () => {
+      await start();
+
+      const tabs = [...root.querySelectorAll<HTMLAnchorElement>('[data-testid="portfolio-tabs"] a')];
+      expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Overview', 'Holdings', 'Performance', 'Profit and loss']);
+      expect(tabs.map((tab) => tab.getAttribute('href'))).toEqual(['/portfolio', '/portfolio/holdings', '/portfolio/performance', '/portfolio/pnl']);
+      expect(tabs.map((tab) => tab.getAttribute('aria-current'))).toEqual(['page', null, null, null]);
+      expect(root.querySelector('nav[data-testid="portfolio-tabs"]')?.getAttribute('aria-label')).toBe('Portfolio sections');
+    });
+
+    it('keeps the tiles on every tab', async () => {
+      await start();
+      const total = text('portfolio-total');
+
+      for (const tab of ['holdings', 'performance', 'pnl']) {
+        root.querySelector<HTMLAnchorElement>(`[data-testid="portfolio-tab-${tab}"]`)!.click();
+        await render();
+        expect(text('portfolio-total')).toBe(total);
+      }
     });
 
     it('refreshes the account and every section on request', async () => {
@@ -183,7 +229,105 @@ describe('Portfolio', () => {
     });
   });
 
+  describe('overview', () => {
+    it('is the first tab and shows the NAV chart in its compact form, then the allocation, who made the money and what moved', async () => {
+      await start();
+
+      expect(byTestId('portfolio-tab-overview')?.getAttribute('aria-current')).toBe('page');
+      expect(byTestId('performance-stats')).not.toBeNull();
+      expect(byTestId('performance-analysis')).toBeNull();
+      const follows = (a: Element | null, b: Element | null) =>
+        !!a && !!b && !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(follows(byTestId('portfolio-performance'), byTestId('allocation-card'))).toBe(true);
+      expect(byTestId('contribution-card')).not.toBeNull();
+      expect(follows(byTestId('contribution-card'), byTestId('movers-card'))).toBe(true);
+    });
+
+    it('states the allocation takeaway, and regroups by currency', async () => {
+      await start();
+
+      expect(text('allocation-takeaway')).toBe('Your top 2 holdings are 100% of your portfolio.');
+      expect(root.querySelector('[data-testid="allocation-card"] app-donut-chart')).not.toBeNull();
+
+      byTestId<HTMLButtonElement>('allocation-by-currency')!.click();
+      await render();
+
+      expect(text('allocation-takeaway')).toBe('100% of your holdings are in USD.');
+      expect(byTestId('allocation-by-currency')?.getAttribute('aria-pressed')).toBe('true');
+      expect(byTestId('allocation-by-instrument')?.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('names who made the most money', async () => {
+      await start();
+
+      expect(text('contribution-takeaway')).toContain('AAPL made the most');
+      expect(text('contribution-takeaway')).toContain('+$143.10');
+      expect(root.querySelector('[data-testid="contribution-card"] app-bar-chart')).not.toBeNull();
+    });
+
+    it('names the best and the worst when one lost money', async () => {
+      await start({
+        pnl: pnlBody({
+          bySymbol: [
+            { symbol: 'AAPL', realisedPnl: 0, unrealisedPnl: 80, totalPnl: 80 },
+            { symbol: 'GOOGL', realisedPnl: 0, unrealisedPnl: -25, totalPnl: -25 },
+          ],
+        }),
+      });
+
+      expect(text('contribution-takeaway')).toContain('AAPL made the most');
+      expect(text('contribution-takeaway')).toContain('GOOGL lost the most');
+      expect(text('contribution-takeaway')).toContain('-$25.00');
+    });
+
+    it('names the biggest mover of the day in money and percent, over a treemap', async () => {
+      await start();
+
+      expect(text('movers-takeaway')).toContain('Biggest mover: AAPL');
+      expect(text('movers-takeaway')).toContain('+$27.10');
+      expect(text('movers-takeaway')).toContain('(+1.18%)');
+      expect(root.querySelector('[data-testid="movers-card"] app-treemap-chart')).not.toBeNull();
+    });
+
+    it('says so, instead of drawing an empty chart, when nothing is priced or earned yet', async () => {
+      await start(
+        {
+          summary: summaryBody({ marketValue: 0, costBasis: 0, positionCount: 0, totalValue: 1000 }),
+          positions: [],
+          pnl: pnlBody({ bySymbol: [] }),
+        },
+        [],
+      );
+
+      expect(byTestId('allocation-empty')).not.toBeNull();
+      expect(byTestId('contribution-empty')).not.toBeNull();
+      expect(byTestId('movers-empty')).not.toBeNull();
+    });
+
+    it('is the only tab loaded: no holdings, no profit and loss table', async () => {
+      await start();
+
+      expect(byTestId('portfolio-holdings-section')).toBeNull();
+      expect(byTestId('portfolio-pnl-section')).toBeNull();
+    });
+  });
+
+  describe('performance tab', () => {
+    onTab('/portfolio/performance');
+
+    it('opens the full analysis under the tiles', async () => {
+      await start();
+
+      expect(byTestId('portfolio-tab-performance')?.getAttribute('aria-current')).toBe('page');
+      expect(byTestId('performance-analysis')).not.toBeNull();
+      expect(byTestId('performance-statements')).not.toBeNull();
+      expect(byTestId('allocation-card')).toBeNull();
+    });
+  });
+
   describe('when prices are not all there', () => {
+    onTab('/portfolio/holdings');
+
     it('marks a stale price Delayed, on the holding and at the top, and still shows the number', async () => {
       await start({
         positions: [pricedPosition('AAPL', { stale: true, priceAsOf: '2026-10-07T09:00:00Z' }), pricedPosition('GOOGL')],
@@ -222,7 +366,6 @@ describe('Portfolio', () => {
       expect(text('portfolio-cost')).toBe('$3,984.00');
       expect(text('holding-status-AAPL')).toBe('Unavailable');
       expect(text('holding-status-GOOGL')).toBe('Unavailable');
-      expect(text('portfolio-pnl-unavailable')).toContain('needs prices');
       expect(byTestId('portfolio-total')).toBeNull();
       expect(byTestId('portfolio-error')).toBeNull();
     });
@@ -284,6 +427,8 @@ describe('Portfolio', () => {
   });
 
   describe('holdings', () => {
+    onTab('/portfolio/holdings');
+
     it('defaults to cards, sorted by symbol, priced, with the name from the positions the app already has', async () => {
       await start();
 
@@ -343,8 +488,11 @@ describe('Portfolio', () => {
       await showTable();
       expect(localStorage.getItem(POSITIONS_VIEW_KEY)).toBe('table');
 
-      fixture.destroy();
-      create();
+      // Leave the tab and come back: a new Holdings component reads the choice that was kept.
+      await harness.navigateByUrl('/portfolio');
+      await render();
+      expect(byTestId('positions-table-view')).toBeNull();
+      await harness.navigateByUrl('/portfolio/holdings');
       await render();
 
       expect(byTestId('positions-table-view')).toBeTruthy();
@@ -402,11 +550,35 @@ describe('Portfolio', () => {
       expect(byTestId('positions-view-card')).toBeNull();
       expect(text('portfolio-total')).toBe('$1,000.00');
       expect(text('portfolio-day')).toContain('Not available');
-      expect(text('portfolio-breakdown-empty')).toContain('No profit or loss');
+    });
+  });
+
+  describe('holdings: opening one from a link', () => {
+    describe('with a symbol that is held', () => {
+      onTab('/portfolio/holdings?symbol=GOOGL');
+
+      it('opens that holding straight away', async () => {
+        await start();
+
+        expect(root.querySelector('#detail-title')?.textContent).toContain('GOOGL');
+      });
+    });
+
+    describe('with a symbol that is not held', () => {
+      onTab('/portfolio/holdings?symbol=NOPE');
+
+      it('just shows the holdings', async () => {
+        await start();
+
+        expect(root.querySelector('#detail-title')).toBeNull();
+        expect(cardSymbols()).toEqual(['AAPL', 'GOOGL']);
+      });
     });
   });
 
   describe('position detail', () => {
+    onTab('/portfolio/holdings');
+
     const POSITIONS = [held('MSFT', 10, 400), held('AAPL', 50, 175, '/assets/icons/AAPL.svg')];
     const PRICED = [pricedPosition('MSFT', { quantity: 10, averageCost: 400, costBasis: 4000 }), pricedPosition('AAPL', { quantity: 50, averageCost: 175, costBasis: 8750 })];
     const dialog = () => byTestId<HTMLDialogElement>('position-dialog')!;
@@ -549,7 +721,109 @@ describe('Portfolio', () => {
     });
   });
 
+  describe('on a wide screen, with a holding open', () => {
+    onTab('/portfolio/holdings');
+
+    const POSITIONS = [held('MSFT', 10, 400), held('AAPL', 50, 175)];
+    const PRICED = [pricedPosition('MSFT', { quantity: 10, averageCost: 400, costBasis: 4000 }), pricedPosition('AAPL', { quantity: 50, averageCost: 175, costBasis: 8750 })];
+
+    beforeEach(() => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(() => ({ matches: true, addEventListener: () => undefined, removeEventListener: () => undefined })),
+      );
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shrinks the card list to one column of small cards while a detail is open, and restores it on close', async () => {
+      await start({ positions: PRICED }, POSITIONS);
+      expect(root.querySelector('.position-grid')!.classList.contains('is-compact')).toBe(false);
+
+      root.querySelector<HTMLButtonElement>('[data-testid="position-card"]')!.click();
+      await render();
+      expect(root.querySelector('.position-grid')!.classList.contains('is-compact')).toBe(true);
+      expect(root.querySelector('[data-testid="pagination-page-size"]')).toBeNull();
+
+      byTestId<HTMLButtonElement>('position-dialog-close')!.click();
+      await render();
+      expect(root.querySelector('.position-grid')!.classList.contains('is-compact')).toBe(false);
+    });
+
+    it('shrinks the table to the instrument column while a detail is open', async () => {
+      await start({ positions: PRICED }, POSITIONS);
+      await showTable();
+      expect(root.querySelector('[data-testid="positions-table-view"] table')!.classList.contains('is-compact')).toBe(false);
+
+      root.querySelector<HTMLElement>('[data-testid="position-row"]')!.click();
+      await render();
+
+      expect(root.querySelector('[data-testid="positions-table-view"] table')!.classList.contains('is-compact')).toBe(true);
+      expect(root.querySelector('tr.is-selected .label-symbol')?.textContent).toContain('AAPL');
+    });
+  });
+
   describe('profit and loss by instrument', () => {
+    onTab('/portfolio/pnl');
+
+    it('draws what has been banked over time, with a sentence, from the closed-day history', async () => {
+      await start({
+        performance: performanceBody({
+          points: [
+            navPoint('2026-09-01', 1000, 10000, { netFlow: 10000, realisedPnlCumulative: 0 }),
+            navPoint('2026-09-02', 1010, 10100, { realisedPnlCumulative: 25 }),
+            navPoint('2026-09-03', 1020, 10200, { realisedPnlCumulative: 80 }),
+          ],
+        }),
+      });
+
+      expect(text('portfolio-realised-takeaway')).toContain('Banked so far:');
+      expect(text('portfolio-realised-takeaway')).toContain('+$80.00');
+      expect(root.querySelector('[data-testid="portfolio-realised-history"] app-line-chart')).not.toBeNull();
+    });
+
+    it('leaves the banked-over-time chart out until there are two closed days', async () => {
+      await start({ performance: performanceBody({ points: [navPoint('2026-09-01', 1000, 10000)] }) });
+
+      expect(byTestId('portfolio-realised-history')).toBeNull();
+    });
+
+    it('offers the table as a CSV file, as it is shown', async () => {
+      const createObjectURL = vi.fn(() => 'blob:csv');
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal('URL', Object.assign(URL, { createObjectURL, revokeObjectURL }));
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      await start();
+
+      byTestId<HTMLButtonElement>('portfolio-pnl-export')!.click();
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];
+      expect(await blob.text()).toContain('"AAPL",100.00,43.10,143.10');
+      expect(click).toHaveBeenCalled();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:csv');
+      click.mockRestore();
+    });
+
+    it('has no download button when there is nothing to download', async () => {
+      await start({ pnl: pnlBody({ bySymbol: [] }) }, []);
+
+      expect(byTestId('portfolio-pnl-export')).toBeNull();
+    });
+
+    it('says there is nothing to show yet when no instrument has a result', async () => {
+      await start({ pnl: pnlBody({ bySymbol: [] }) }, []);
+
+      expect(text('portfolio-breakdown-empty')).toContain('No profit or loss');
+    });
+
+    it('says the breakdown needs prices when nothing can be priced, and still has the realised history', async () => {
+      await answerLinkedAccount(http, { positions: HELD });
+      await answerPortfolioUnavailable(http);
+      await render();
+
+      expect(text('portfolio-pnl-unavailable')).toContain('needs prices');
+    });
+
     it('breaks the profit and loss down by instrument', async () => {
       await start();
 
@@ -599,9 +873,6 @@ describe('Portfolio', () => {
       expect(byTestId('pnl-AAPL')).toBeNull();
       expect(byTestId('portfolio-loading')).toBeNull();
       expect(text('portfolio-total')).toBe('$5,059.45');
-      expect(cardSymbols()).toEqual(['AAPL', 'GOOGL']);
-      expect(byTestId('portfolio-performance')?.getAttribute('aria-busy')).toBe('false');
-      expect(byTestId('portfolio-performance')?.querySelector('app-spinner')).toBeNull();
       http.expectNone((r) => r.url !== PORTFOLIO_PNL_URL && r.url.startsWith('/api/v1/portfolio'));
 
       pnl.flush(pnlBody({ bySymbol: [{ symbol: 'AAPL', realisedPnl: 10, unrealisedPnl: 43.1, totalPnl: 53.1 }] }));

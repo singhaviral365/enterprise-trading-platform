@@ -23,5 +23,7 @@ export class PositionsCard {
   readonly currency = input<string | null>(null);
   /** The symbol whose detail is open, if any: its card is highlighted. */
   readonly selectedSymbol = input<string | null>(null);
+  /** A detail is open beside the list: one column of compact cards (logo, symbol, name). */
+  readonly compact = input(false);
   readonly selected = output<PositionRow>();
 }

@@ -87,7 +87,15 @@ export async function signInFromHome(page: Page, credentials: Credentials): Prom
   }
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: SIGN_IN_TIMEOUT });
   // The header shows who is signed in (the dashboard itself no longer greets by name).
-  await expect(page.getByTestId('header-username')).toContainText(credentials.username);
+  await expect(page.getByTestId('open-profile')).toHaveAttribute('aria-label', `Account menu for ${credentials.username}`);
+}
+
+/** Opens the profile pane from the header's person icon and returns it. */
+export async function openProfile(page: Page): Promise<Locator> {
+  await page.getByTestId('open-profile').click();
+  const pane = page.getByTestId('profile-menu-pane');
+  await expect(pane).toBeVisible();
+  return pane;
 }
 
 /** Opens the quote dialog for a symbol on the Market data page, widening the table if needed. */

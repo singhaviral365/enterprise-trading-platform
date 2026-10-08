@@ -22,9 +22,9 @@ describe('guestGuard and the landing page', () => {
 
   it('sends a signed-in user to the page they chose to open on', () => {
     TestBed.inject(SessionService).start('alice', { expiresIn: 900 });
-    landingRoute.set('/positions');
+    landingRoute.set('/portfolio/holdings');
 
-    expect(TestBed.inject(Router).serializeUrl(run() as UrlTree)).toBe('/positions');
+    expect(TestBed.inject(Router).serializeUrl(run() as UrlTree)).toBe('/portfolio/holdings');
   });
 
   it('sends a signed-in user who chose nothing to the dashboard', () => {

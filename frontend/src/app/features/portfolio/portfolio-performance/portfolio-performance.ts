@@ -1,15 +1,27 @@
-import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, signal } from '@angular/core';
 
 import { NavPoint, PerformanceResponse } from '../../../api/generated/portfolio-performance';
+import { FormatPreferences } from '../../../core/format-preferences';
 import { PortfolioStore } from '../../../core/portfolio.store';
 import {
   PreferenceCurrencyPipe,
   PreferenceDatePipe,
   PreferenceDecimalPipe,
 } from '../../../shared/formatting/preference-pipes';
+import { AreaChart, AreaSeries } from '../../../shared/ui/area-chart/area-chart';
+import { BarChart } from '../../../shared/ui/bar-chart/bar-chart';
 import { LineChart, LinePoint } from '../../../shared/ui/line-chart/line-chart';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { PnlValue } from '../../../shared/ui/pnl-value/pnl-value';
+import { MonthlyReturns } from '../monthly-returns/monthly-returns';
+import {
+  dailyPnlBars,
+  drawdownSeries,
+  hasValueSplit,
+  investedShare,
+  realisedCumulative,
+  valueLayers,
+} from '../portfolio-analytics';
 import { percentFromStart, rangeStats, timeOf } from './performance-stats';
 
 export type PerformanceRange = '1M' | '3M' | '6M' | '1Y' | 'All';
@@ -35,15 +47,34 @@ export const STATEMENT_ROWS = 30;
  * It measures with the NAV (unit price), so money put in or taken out does not look like a gain or a loss. Changing the range
  * re-bases what is already loaded and needs no request; the benchmark toggle reloads only this section, with its own spinner.
  * The chart is the shared line chart, labelled for assistive technology; the figures and statements carry the numbers.
+ *
+ * The `full` layout (the Performance tab) adds four analyses over the same days: cash against holdings, the day-by-day profit and loss with
+ * the realised total, how far below its peak the account has been, and the month-by-month returns. Each states its takeaway in a sentence.
  */
 @Component({
   selector: 'app-portfolio-performance',
-  imports: [LineChart, PnlValue, PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe, Spinner],
+  imports: [
+    AreaChart,
+    BarChart,
+    LineChart,
+    MonthlyReturns,
+    PnlValue,
+    PreferenceCurrencyPipe,
+    PreferenceDatePipe,
+    PreferenceDecimalPipe,
+    Spinner,
+  ],
   templateUrl: './portfolio-performance.html',
   styleUrl: './portfolio-performance.css',
 })
 export class PortfolioPerformance {
   protected readonly store = inject(PortfolioStore);
+
+  /**
+   * `compact` is the Overview's version: the range buttons, the benchmark toggle, the figures and the chart. `full` (the Performance
+   * tab) adds the analysis charts and the daily statements.
+   */
+  readonly layout = input<'compact' | 'full'>('full');
 
   protected readonly ranges = PERFORMANCE_RANGES;
   protected readonly benchmarkSymbol = BENCHMARK_SYMBOL;
@@ -107,6 +138,62 @@ export class PortfolioPerformance {
   });
 
   protected readonly formatPercent = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+
+  private readonly formats = inject(FormatPreferences);
+  protected readonly formatMoney = computed(() => {
+    const formatter = new Intl.NumberFormat(this.formats.locale(), { style: 'currency', currency: this.currency() });
+    return (value: number) => formatter.format(value);
+  });
+  protected readonly formatAxisMoney = computed(() => {
+    const formatter = new Intl.NumberFormat(this.formats.locale(), {
+      style: 'currency',
+      currency: this.currency(),
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    });
+    return (value: number) => formatter.format(value);
+  });
+
+  // ---- The analyses of the Performance tab (all over the range chosen above) ----------------------------------------
+
+  /** Cash and holdings as two stacked layers; only when the server sent the split. */
+  protected readonly hasSplit = computed(() => hasValueSplit(this.visible()));
+  protected readonly valueSeries = computed<readonly AreaSeries[]>(() => {
+    if (!this.hasSplit()) {
+      return [];
+    }
+    const layers = valueLayers(this.visible());
+    return [
+      { name: 'Holdings', points: layers.holdings, tone: 'primary' },
+      { name: 'Cash', points: layers.cash, tone: 'neutral' },
+    ];
+  });
+  protected readonly investedPct = computed(() => investedShare(this.visible()));
+  protected readonly valueLabel = computed(() => {
+    const share = this.investedPct();
+    return share === null
+      ? 'Cash and holdings over time'
+      : `Cash and holdings over time. ${Math.round(share)} percent of your account is invested now.`;
+  });
+
+  protected readonly dailyBars = computed(() => dailyPnlBars(this.visible()));
+  protected readonly realisedLine = computed<readonly LinePoint[]>(() => realisedCumulative(this.visible()));
+  protected readonly daysUp = computed(() => this.visible().filter((point) => point.dayPnl > 0).length);
+  protected readonly dailyLabel = computed(
+    () => `Profit or loss for each day, ${this.daysUp()} of ${this.visible().length} days made money, with the realised total as a line`,
+  );
+
+  protected readonly drawdown = computed<readonly AreaSeries[]>(() => [
+    { name: 'Below peak', points: drawdownSeries(this.visible()), tone: 'loss' },
+  ]);
+  /** How far below the highest value the account is on the last day of the range, in percent (zero or negative). */
+  protected readonly currentDrawdown = computed(() => {
+    const series = this.drawdown()[0].points;
+    return series.length ? series[series.length - 1].value : 0;
+  });
+  protected readonly drawdownLabel = computed(
+    () => `How far below its peak the account has been. The deepest fall was ${Math.abs(this.stats()?.maxDrawdownPct ?? 0).toFixed(2)} percent.`,
+  );
 
   protected pick(range: PerformanceRange): void {
     this.range.set(range);

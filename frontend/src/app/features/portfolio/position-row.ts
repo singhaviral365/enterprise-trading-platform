@@ -25,6 +25,8 @@ export interface PositionRow {
   readonly symbol: string;
   readonly name: string;
   readonly iconUrl: string | null;
+  /** The currency the instrument is quoted in, when the portfolio said; null for a holding shown without prices. */
+  readonly quoteCurrency: string | null;
   readonly quantity: number;
   /** Weighted average cost per unit, in the account currency. */
   readonly averageCost: number;
@@ -50,6 +52,7 @@ export function toPositionRow(position: PositionResponse, pricing: PositionPrici
     symbol: position.symbol,
     name: position.instrumentName,
     iconUrl: position.iconUrl ?? null,
+    quoteCurrency: null,
     quantity: position.quantity,
     averageCost: position.averageCost,
     costBasis: position.quantity * position.averageCost,
@@ -79,6 +82,7 @@ export function toPricedRows(priced: readonly PricedPosition[], held: readonly P
         symbol: position.symbol,
         name: identity?.instrumentName ?? '',
         iconUrl: identity?.iconUrl ?? null,
+        quoteCurrency: position.currency ?? null,
         quantity: position.quantity,
         averageCost: position.averageCost,
         costBasis: position.costBasis,
