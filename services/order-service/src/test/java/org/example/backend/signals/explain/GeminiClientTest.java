@@ -198,7 +198,7 @@ class GeminiClientTest {
         GenerationException ex =
                 assertThrows(GenerationException.class, () -> client(KEY).generate("rules", List.of(Turn.user("hi"))));
 
-        assertEquals("Gemini could not be reached", ex.getMessage());
+        assertEquals("Gemini could not be reached (IOException)", ex.getMessage());
         assertFalse(ex.getMessage().contains(KEY));
     }
 }

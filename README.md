@@ -46,6 +46,8 @@ Angular app (4200) ──► auth-service (3000)        sign-in, sessions       
 
 Orders are asynchronous: the order-service stores a `NEW` order and publishes it; the executor prices it against a live quote, settles cash and holdings, and the order becomes `FILLED` or `REJECTED`.
 
+**Start with [architecture](documentation/readme/ARCHITECTURE.md)** (the diagrams, the session and encryption flow, the extensions), then the [decision log](documentation/readme/decision_log.md) and the [security review of the whole app](documentation/readme/SECURITY_REVIEW_APP.md).
+
 More detail lives in [`documentation/readme`](documentation/readme): [design system](documentation/readme/DESIGN_SYSTEM.md), [currency](documentation/readme/CURRENCY.md), [auth cookies](documentation/readme/AUTH-COOKIES.md), [Kafka flow](documentation/readme/KAFKA-FLOW.md), [automated strategies](documentation/readme/STRATEGIES.md), [trade signals](documentation/readme/SIGNALS.md), [portfolio history plan](documentation/readme/PORTFOLIO-HISTORY-PLAN.md).
 
 ---

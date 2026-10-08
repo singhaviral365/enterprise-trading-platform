@@ -48,6 +48,12 @@ public class GeminiClient implements TextGenerator {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
         this.properties = properties;
+        // One line at start-up, so "the assistant is not set up" can be told apart from "Gemini refused the key". The key is never logged.
+        if (properties.geminiConfigured()) {
+            LOGGER.info("Gemini assistant: key configured, model {}", properties.geminiModel());
+        } else {
+            LOGGER.warn("Gemini assistant: NOT configured. Set external.gemini.api-key in config/application.yml and restart the order-service.");
+        }
     }
 
     @Override
@@ -79,11 +85,17 @@ public class GeminiClient implements TextGenerator {
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
-        final HttpResponse<String> response;
+        HttpResponse<String> response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 503) {
+                // "High demand" is brief and says nothing about the key or the model: one more try before the platform's own wording is used.
+                Thread.sleep(500);
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            }
         } catch (IOException ex) {
-            throw new GenerationException("Gemini could not be reached", ex);
+            // The class says why (a timeout, a refused or reset connection, a TLS or proxy problem) without echoing anything from the request.
+            throw new GenerationException("Gemini could not be reached (" + ex.getClass().getSimpleName() + ")", ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new GenerationException("The call to Gemini was interrupted", ex);

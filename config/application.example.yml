@@ -89,7 +89,7 @@ external:
   # The assistant explains a trade signal. Without a key the platform's own wording is used. https://aistudio.google.com/apikey
   gemini:
     api-key: ""
-    model: gemini-2.5-flash
+    model: gemini-flash-latest
     rate-limit-rpm: 60
 
 signals:
