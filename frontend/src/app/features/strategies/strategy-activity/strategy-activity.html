@@ -1,0 +1,67 @@
+<section class="activity" [attr.aria-labelledby]="'activity-title-' + strategy().strategyId" data-testid="strategy-activity">
+  <h3 class="activity-title" [id]="'activity-title-' + strategy().strategyId">Activity</h3>
+
+  @if (runs.isLoading() && !runs.hasValue()) {
+    <p class="activity-note" aria-live="polite">
+      <app-spinner [inline]="true" label="Loading activity" />
+      Loading activity…
+    </p>
+  } @else if (errorMessage()) {
+    <p class="form-error-text" role="alert">{{ errorMessage() }}</p>
+  } @else if (rows().length === 0) {
+    <p class="activity-note" data-testid="strategy-activity-empty">
+      Nothing yet. This strategy has not been triggered. When the price reaches your trigger, what happens is listed here.
+    </p>
+  } @else {
+    <div class="table-container">
+      <table class="data-table is-compact">
+        <caption class="visually-hidden">
+          What strategy {{ strategy().strategyId }} did
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">When</th>
+            <th scope="col">What happened</th>
+            <th scope="col" class="is-numeric">Price</th>
+            <th scope="col">Order</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (run of rows(); track run.runId) {
+            <tr>
+              <td>{{ run.createdAt | date: 'medium' }}</td>
+              <td>
+                <span class="outcome is-{{ outcomeLook(run.outcome).tone }}" [attr.title]="outcomeLook(run.outcome).hint">
+                  <i [class]="outcomeLook(run.outcome).icon" aria-hidden="true"></i>
+                  {{ outcomeLook(run.outcome).label }}
+                </span>
+                @if (run.detail) {
+                  <span class="detail">{{ run.detail }}</span>
+                }
+              </td>
+              <td class="is-numeric">
+                @if (run.quotePrice !== null && run.quotePrice !== undefined) {
+                  {{ run.quotePrice | number: '1.2-4' }} {{ strategy().currency }}
+                } @else {
+                  —
+                }
+              </td>
+              <td>
+                @if (run.orderId) {
+                  <span>#{{ run.orderId }}</span>
+                  @if (run.settledStatus) {
+                    <span class="settled">{{ run.settledStatus === 'FILLED' ? 'Filled' : run.settledStatus === 'REJECTED' ? 'Rejected' : 'Cancelled' }}</span>
+                  } @else {
+                    <span class="settled">Working</span>
+                  }
+                } @else {
+                  —
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

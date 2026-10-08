@@ -1,0 +1,584 @@
+openapi: 3.1.0
+
+info:
+  title: Automated Strategy Execution API (Trade REST API module, served by order-service)
+  version: 1.0.0
+  summary: Rules a customer sets once, which the platform trades for them when the market meets them.
+  description: |
+    A **strategy** is a rule such as "buy 50 AAPL when the price falls to 150 or below" or "sell 20 MSFT when it rises to
+    450 or above". The customer sets it once; the executor-service watches prices and, when the rule is met, places the
+    order **through `POST /api/v1/orders`**, the same route a customer's own order uses, so every check on that route applies.
+    Nobody has to be logged in and nobody confirms the order. That is the point of the feature and the reason for every
+    control below: a defect here spends a customer's money.
+
+    This API is the customer's side of it: create, list, switch off and on, cancel, and read the trail of what a strategy did.
+    **It never places an order.** The executor-service does, and the order route refuses any order that is not exactly what
+    an active strategy may place.
+
+    ## Authorisation
+
+    Every route requires a valid signed JWT (`AUTH-401` otherwise). Every route also checks the token's user owns the account:
+
+    * the account is unknown: `ACC-404`, 404
+    * the account belongs to someone else: `ACC-403`, 403
+    * a strategy id that does not exist, or belongs to another account, is `STR-404`, 404, the same answer for both, so ids in
+      use are not revealed
+
+    ## Life of a strategy
+
+    | Status | Meaning |
+    |---|---|
+    | `ACTIVE` | Armed: the executor may act on it |
+    | `EXECUTING` | The executor has claimed it for one run, for a few seconds |
+    | `DISABLED` | Switched off by the customer; can be switched back on |
+    | `EXECUTED` | Ran as many times as it was allowed to. Final |
+    | `CANCELLED` | Withdrawn by the customer. Final |
+    | `EXPIRED` | Its end date passed before it finished. Final |
+    | `FAILED` | Stopped by the platform after `maxFailures` failures in a row. Final |
+
+    ## What "falls through a level" means
+
+    `BELOW` fires on a price at or under the trigger, `ABOVE` on a price at or over it. A strategy only fires on a price that
+    **crossed** its trigger: creating one whose trigger the latest known price has already reached is refused (`STR-409`), and
+    one created when no recent price is known stays un-armed (`armed: false`) until the executor sees a price on the safe side.
+    Switching a strategy back on re-arms it the same way. So a strategy never trades the moment it is created or re-enabled.
+
+    ## Limits that bound the damage
+
+    Every strategy carries the customer's own limits, and the executor checks them **before every order**, at the point of
+    decision, with fresh data:
+
+    | Limit | Meaning |
+    |---|---|
+    | `maxOrderValue` | The most one order may cost, in the account's currency |
+    | `maxPositionQty` | The largest holding a buy may build, in units |
+    | `maxExecutions` | How many orders the strategy may place in all (default 1) |
+    | `maxFailures` | How many failures in a row stop it (default 3) |
+
+    The platform also has ceilings the customer's limits cannot exceed, and a cap on open strategies per account (`STR-422`).
+    The order route checks funds only when an order settles, so these limits, not the route, are what cap what an unattended
+    strategy can spend.
+
+    ## Switching off is immediate
+
+    `PATCH` with `enabled: false` is one update on the strategy's row. The executor claims a strategy with an update on the same
+    row, and the order route holds a lock on it while it places the order, so a switch-off either lands before the claim (no
+    order), before the order route looks (no order), or waits for an order already being placed. There is no cycle to wait for.
+    An order already accepted by the route cannot be recalled.
+
+    ## Notifications
+
+    An order a strategy placed, and a strategy that was stopped or expired, are notified under the category
+    `STRATEGY_EXECUTION` (see the notifications and preferences contracts), in wording that names the strategy. An ordinary
+    order keeps its ordinary notification.
+  contact:
+    name: Team 3
+
+servers:
+  - url: http://localhost:8081
+    description: Local development (order-service)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Strategies
+    description: Create, list, switch off and on, and cancel a strategy.
+  - name: Strategy trail
+    description: What a strategy did and why.
+
+paths:
+
+  /api/v1/strategies:
+    post:
+      operationId: createStrategy
+      tags: [Strategies]
+      summary: Create a strategy
+      description: |
+        Creates an `ACTIVE` strategy on an account the token owns. The instrument must exist and be tradable, the account must
+        be `ACTIVE`, the limits must be within the platform's ceilings, and the price must not already have reached the trigger.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStrategyRequest'
+      responses:
+        '201':
+          description: The new strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Strategy'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/InvalidOrOverLimit'
+
+  /api/v1/accounts/{accountId}/strategies:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+
+    get:
+      operationId: listStrategies
+      tags: [Strategies]
+      summary: List an account's strategies
+      description: Every strategy of the account, newest first, whatever its status.
+      responses:
+        '200':
+          description: The account's strategies. An empty array if there are none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Strategy'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/strategies/{strategyId}:
+    parameters:
+      - $ref: '#/components/parameters/StrategyId'
+
+    get:
+      operationId: getStrategy
+      tags: [Strategies]
+      summary: Get one strategy
+      responses:
+        '200':
+          description: The strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Strategy'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      operationId: updateStrategy
+      tags: [Strategies]
+      summary: Switch a strategy off or back on
+      description: |
+        `enabled: false` switches an `ACTIVE` or `EXECUTING` strategy to `DISABLED`; `enabled: true` switches a `DISABLED` one
+        back to `ACTIVE`, un-armed, with its failure count cleared, if its window has not closed. Asking for the state it is
+        already in succeeds and changes nothing. A strategy in a final status cannot be changed (`STR-409`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStrategyRequest'
+      responses:
+        '200':
+          description: The strategy as it is now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Strategy'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+    delete:
+      operationId: cancelStrategy
+      tags: [Strategies]
+      summary: Cancel a strategy
+      description: |
+        Withdraws a strategy for good (`CANCELLED`, final). Cancelling an already cancelled strategy succeeds; any other final
+        status is `STR-409`. Like a switch-off, it stops any order not yet accepted by the order route.
+      responses:
+        '200':
+          description: The strategy as it is now.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Strategy'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/strategies/{strategyId}/runs:
+    parameters:
+      - $ref: '#/components/parameters/StrategyId'
+
+    get:
+      operationId: listStrategyRuns
+      tags: [Strategy trail]
+      summary: What a strategy did
+      description: |
+        The strategy's trail, newest first, at most 50 rows: every attempt to run it, with the price that triggered it, what
+        came of it, and the order it placed. This is what answers "why did it (not) trade?".
+      responses:
+        '200':
+          description: The strategy's runs. An empty array if it has not been triggered yet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategyRun'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric account key. Must be the account the token belongs to.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 1001
+    StrategyId:
+      name: strategyId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 5001
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or wrongly signed token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorised:
+              value:
+                errorCode: AUTH-401
+                message: Unauthorised
+    AccountNotReachable:
+      description: The token is valid but its user does not own the account.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notReachable:
+              value:
+                errorCode: ACC-403
+                message: Account not reachable with this token
+    NotFound:
+      description: The account, instrument or strategy does not exist (or the strategy belongs to another account).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            strategy:
+              value:
+                errorCode: STR-404
+                message: Strategy not found
+    Conflict:
+      description: |
+        The strategy cannot be created or changed that way: the trigger has already been reached, or it is in a status that
+        does not allow the change.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            reached:
+              value:
+                errorCode: STR-409
+                message: The trigger price has already been reached
+    InvalidOrOverLimit:
+      description: The input is invalid, outside the platform's ceilings, or the account holds too many open strategies.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid:
+              value:
+                errorCode: VAL-422
+                message: Maximum order value cannot exceed 10000000
+
+  schemas:
+
+    OrderSide:
+      type: string
+      enum: [BUY, SELL]
+
+    TriggerDirection:
+      type: string
+      enum: [BELOW, ABOVE]
+      description: |
+        `BELOW` fires on a price at or under the trigger, `ABOVE` on a price at or over it. The price is in the
+        instrument's currency.
+
+    StrategyStatus:
+      type: string
+      enum: [ACTIVE, EXECUTING, DISABLED, EXECUTED, CANCELLED, EXPIRED, FAILED]
+
+    RunOutcome:
+      type: string
+      enum: [ORDERED, DUPLICATE, BLOCKED_LIMIT, REJECTED, API_ERROR, STALE, DISABLED]
+      description: |
+        | Value | Meaning |
+        |---|---|
+        | `ORDERED` | The order was placed |
+        | `DUPLICATE` | The order had already been placed by an earlier attempt of the same run |
+        | `BLOCKED_LIMIT` | One of the strategy's own limits stopped the order before it was placed |
+        | `REJECTED` | The order route refused the order |
+        | `API_ERROR` | The order route could not be reached, or answered with a server error |
+        | `STALE` | The trigger was met but the price was too old to act on |
+        | `DISABLED` | The strategy was switched off before the order was sent |
+
+    CreateStrategyRequest:
+      type: object
+      additionalProperties: false
+      required: [accountId, symbol, side, quantity, direction, triggerPrice, maxOrderValue, maxPositionQty]
+      description: |
+        The limits are required, not defaulted: a strategy that trades unattended must have had its damage bounded by a
+        decision somebody made. `maxExecutions` and `maxFailures` may be left out.
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          minimum: 1
+        symbol:
+          type: string
+          minLength: 1
+          maxLength: 20
+          example: AAPL
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Units to buy or sell on each run. A market order.
+          example: 50
+        direction:
+          $ref: '#/components/schemas/TriggerDirection'
+        triggerPrice:
+          type: number
+          exclusiveMinimum: 0
+          description: In the instrument's currency, at most 4 decimal places.
+          example: 150
+        validFrom:
+          type: [string, 'null']
+          format: date-time
+          description: Not acted on before this time. Omit for "from now".
+        validUntil:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            Expires if it has not finished by this time. Must be in the future and within the platform's maximum window.
+            Omit for no end.
+        maxOrderValue:
+          type: number
+          exclusiveMinimum: 0
+          description: The most one order may cost, in the account's currency, at most 2 decimal places.
+          example: 10000
+        maxPositionQty:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            The largest holding of the instrument a buy may build, in units. For a buy it must be at least `quantity`.
+          example: 200
+        maxExecutions:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
+        maxFailures:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+
+    UpdateStrategyRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+          description: "`false` switches the strategy off; `true` switches a switched-off one back on."
+
+    Strategy:
+      type: object
+      additionalProperties: false
+      required:
+        - strategyId
+        - accountId
+        - symbol
+        - instrumentName
+        - currency
+        - side
+        - quantity
+        - direction
+        - triggerPrice
+        - armed
+        - maxOrderValue
+        - maxPositionQty
+        - maxExecutions
+        - maxFailures
+        - executions
+        - consecutiveFailures
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        strategyId:
+          type: integer
+          format: int64
+        accountId:
+          type: integer
+          format: int64
+        symbol:
+          type: string
+        instrumentName:
+          type: string
+        currency:
+          type: string
+          description: The instrument's currency, which `triggerPrice` is in.
+        side:
+          $ref: '#/components/schemas/OrderSide'
+        quantity:
+          type: integer
+          format: int64
+        direction:
+          $ref: '#/components/schemas/TriggerDirection'
+        triggerPrice:
+          type: number
+        armed:
+          type: boolean
+          description: |
+            Whether a price has been seen on the safe side of the trigger. A strategy never fires while this is false.
+        validFrom:
+          type: [string, 'null']
+          format: date-time
+        validUntil:
+          type: [string, 'null']
+          format: date-time
+        maxOrderValue:
+          type: number
+        maxPositionQty:
+          type: integer
+          format: int64
+        maxExecutions:
+          type: integer
+        maxFailures:
+          type: integer
+        executions:
+          type: integer
+          description: Orders placed so far.
+        consecutiveFailures:
+          type: integer
+          description: Failures since the last order was placed. At `maxFailures` the strategy is stopped.
+        status:
+          $ref: '#/components/schemas/StrategyStatus'
+        statusReason:
+          type: [string, 'null']
+          description: |
+            A short plain-text reason: why it was switched off, stopped or expired, or the last problem that held it back.
+        lastOrderId:
+          type: [integer, 'null']
+          format: int64
+          description: The last order the strategy placed, to look up in the order history.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        executedAt:
+          type: [string, 'null']
+          format: date-time
+
+    StrategyRun:
+      type: object
+      additionalProperties: false
+      required: [runId, runNumber, outcome, createdAt]
+      properties:
+        runId:
+          type: integer
+          format: int64
+        runNumber:
+          type: integer
+          description: |
+            Which order this attempt was for. Retries of the same order share a number, and the order's idempotency key,
+            `strat-{strategyId}-{runNumber}`, so a retry can never place a second order.
+        outcome:
+          $ref: '#/components/schemas/RunOutcome'
+        quotePrice:
+          type: [number, 'null']
+          description: The price that triggered the attempt, in the instrument's currency.
+        quoteAt:
+          type: [string, 'null']
+          format: date-time
+        orderId:
+          type: [integer, 'null']
+          format: int64
+        detail:
+          type: [string, 'null']
+          description: A short plain-text account of what happened.
+        settledStatus:
+          type: [string, 'null']
+          enum: [FILLED, REJECTED, CANCELLED, null]
+          description: How the order ended, once it has.
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      description: |
+        The platform's single error envelope. Clients branch on `errorCode`, never on `message`.
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, ACC-403, ACC-404, INS-404, VAL-422, STR-404, STR-409, STR-422]
+          description: |
+            | Code | HTTP | Meaning |
+            |---|---|---|
+            | `AUTH-401` | 401 | Unauthorised or invalid token |
+            | `ACC-403` | 403 | Account not reachable with this token, or not active |
+            | `ACC-404` | 404 | Account not found |
+            | `INS-404` | 404 | Instrument not found or not tradable |
+            | `VAL-422` | 422 | Invalid input, or a limit above the platform's ceiling |
+            | `STR-404` | 404 | Strategy not found |
+            | `STR-409` | 409 | The trigger has already been reached, or the strategy's status does not allow the change |
+            | `STR-422` | 422 | The account already holds the largest number of open strategies |
+        message:
+          type: string

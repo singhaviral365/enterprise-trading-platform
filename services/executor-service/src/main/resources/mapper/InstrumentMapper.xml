@@ -114,6 +114,25 @@
           above) so that if the watchlist tables do not exist yet, only this lookup fails and the
           poller still prices held and open-order symbols.
         -->
+        <!-- Symbols a strategy is waiting on. Looked up separately, like the watchlist symbols, so a database without the strategy
+             table only loses this one lookup. -->
+        <select id="selectStrategySymbolsForMarketPolling"
+                        resultType="String">
+
+                SELECT DISTINCT i.instrument_ticker
+
+                FROM instrument i
+
+                JOIN strategy s
+                        ON s.instrument_id = i.instrument_id
+
+                WHERE i.instrument_status = 'TRADING'
+                  AND s.status IN ('ACTIVE', 'EXECUTING')
+
+                ORDER BY i.instrument_ticker
+
+        </select>
+
         <select id="selectWatchlistSymbolsForMarketPolling"
                         resultType="String">
 

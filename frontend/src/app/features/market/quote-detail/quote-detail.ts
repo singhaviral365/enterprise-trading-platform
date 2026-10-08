@@ -4,17 +4,18 @@ import { FormatPreferences } from '../../../core/format-preferences';
 import { MarketError, MarketService } from '../../../core/market.service';
 import type { MarketRow } from '../../../core/market-row';
 import { LineChart, LinePoint } from '../../../shared/ui/line-chart/line-chart';
+import { SignalAdvisor } from '../signal-advisor/signal-advisor';
 import { QuoteSummary } from '../../../shared/ui/quote-summary/quote-summary';
 import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
 
 /**
  * What the market page shows for the selected instrument (in the side pane on a wide screen, in a dialog on a narrow
- * one): the price card, a one-year chart of daily closes, and Buy / Sell. Buy / Sell switch to the shared
+ * one): the price card, a one-year chart of daily closes, the trade signal with its assistant, and Buy / Sell. Buy / Sell switch to the shared
  * `TradePanel`, the same buy / sell screen the positions page uses.
  */
 @Component({
   selector: 'app-quote-detail',
-  imports: [QuoteSummary, TradePanel, LineChart],
+  imports: [QuoteSummary, TradePanel, LineChart, SignalAdvisor],
   templateUrl: './quote-detail.html',
   styleUrl: './quote-detail.css',
 })
@@ -41,7 +42,7 @@ export class QuoteDetail {
    * Its own computed so a new row for the same instrument (every price tick) leaves it unchanged; `resource` would
    * otherwise reload whenever `row` changes, even with equal params.
    */
-  private readonly symbol = computed(() => this.row().quote.symbol);
+  protected readonly symbol = computed(() => this.row().quote.symbol);
 
   /** A year of daily candles; refetched only when the symbol changes, not on every price tick. */
   protected readonly history = resource({

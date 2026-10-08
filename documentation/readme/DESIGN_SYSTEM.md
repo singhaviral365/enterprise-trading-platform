@@ -796,6 +796,44 @@ and loss came from. It is one page of independent sections, in this order:
 `<input type="password" appNoClipboard (clipboardBlocked)="explain()">` blocks copy / cut / paste /
 drag on password fields (autofill still works) and emits so the form can say why.
 
+### 4.21 Strategies page (`features/strategies`)
+
+`/strategies` (sidebar item **Strategies**, icon `fa-robot`) is where a customer sets rules the platform trades for them. See
+[STRATEGIES.md](STRATEGIES.md) for what it does and why.
+
+- **Header and safety card.** A title, a plain sentence on what a strategy is, **Refresh** and **New strategy** (hidden while the form is
+  open), then a card "How your money is protected" saying the limits are theirs, a switch-off takes effect at once, a strategy only trades
+  when the price moves *through* its level, and they are notified.
+- **`app-strategy-form`** (`strategy-form/`, Signal Forms). Section 1 is the rule (an `app-dropdown` of instruments that have a price, the
+  shared `app-side-toggle`, "When the price" falls to or below / rises to or above, the price, the quantity); section 2 is the limits (most
+  one order may cost, largest holding, orders it may place, failures that stop it, optional end date). The limits are **required and never
+  defaulted**; the form shows what the order would cost at the trigger and offers a one-click suggestion ("Use 8,250"). A trigger the
+  price has already reached is explained and keeps **Create** disabled; server errors (`STR-409`, `STR-422`) show as sentences.
+- **The list** is a `.data-table` in a `.table-container`: the rule (instrument label plus "Buy 50 when the price is at or below $150.00"),
+  a **status chip** (an icon and a word, never colour alone: Watching, Running, Switched off, Done, Cancelled, Expired, Stopped), runs
+  against the allowance, the limits, the end date, and the actions that make sense for that status: **Switch off**, **Switch on**,
+  **Cancel** (after a confirmation dialog) and **Activity**.
+- **`app-strategy-activity`** opens under a row and lists every time the strategy was triggered: when, what happened (*Order placed*,
+  *Held back by your limit*, *Switched off first*, *Order refused*, *Price too old* ...), the price, and the order with how it ended.
+- Chips use the status container tokens (`--status-*-container-bg/-fg`); neutral ones use `--surface-container-background` with a border. No
+  shadows, no hardcoded colours.
+
+### 4.22 Signal advisor (`features/market/signal-advisor`)
+
+`app-signal-advisor` sits in the quote detail between the price chart and Buy / Sell (input `symbol`, a computed in the parent so it does not
+change on every price tick). See [SIGNALS.md](SIGNALS.md).
+
+- **Header:** "Trade signal" and a **badge**: BUY (success fill), SELL (error fill) or HOLD (outlined), each with an icon and the word.
+- **Strength:** a `role="meter"` bar labelled "Signal strength" ("Balance of the indicators" for a HOLD), with `aria-valuenow` and a
+  `aria-valuetext`, filled with the status background token.
+- **The numbers:** the two averages, the RSI with its zone in words, the latest close; then the explanation with where it came from
+  ("Written by the AI assistant" / "Standard explanation") and a **Copy** button; the date it is as of, a warning when the history is stale.
+- **Chat** (only when the assistant is on in Settings): four suggested questions, a `role="log"` conversation (`aria-live="polite"`) with
+  a copy button on each answer, and an input. A refusal such as `AST-429` appears in the conversation as a sentence. The conversation resets
+  for another instrument. When the assistant is off the card says so and links to Settings; nothing about the customer is sent.
+- **Always shown:** "How is this worked out?" (a `<details>`) and the disclaimer. Loading, "not enough history" and error-with-retry states
+  are all handled.
+
 ### 4.17 Settings, preferences and the formatting pipes
 
 `/settings` (`features/settings`) is one form with one Save. It edits a **draft**: nothing changes elsewhere until Save,
@@ -807,7 +845,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
 | Notification categories | `app-multiselect` | Stored, same as above |
 | Account currency | `app-dropdown` | Converts the real account on save (after a confirmation); the whole UI then follows the account |
 | Date, time, number format | `app-dropdown` | The formatting pipes, `Intl` in the charts and the chart tooltip |
-| AI assistant | `app-dropdown` | `app-chat-assistant` (the icon) in the app shell |
+| AI assistant | `app-dropdown` | `app-signal-advisor` (4.22): the chat under each quote's signal, and whether the platform may send the signal and the holding to the language model |
 | Theme, landing page, order ticket type | `app-dropdown` | `ThemeService.apply`, `AuthDialog` / `guestGuard`, `OrderTicket` |
 
 - **`PreferencesStore`** (`core/preferences.store.ts`) loads once per sign-in (one `GET`), saves with one `PUT`, never polls and
@@ -818,7 +856,8 @@ and the preview under "Display" is drawn from the draft. The whole document goes
   names (`date`, `number`, `currency`), so templates do not change. `mediumDate`, `mediumTime` and `medium` follow the
   customer's formats; any other pattern passes through untouched. They are impure on purpose (see the file comment).
   Do not import Angular's own three pipes in new UI, or that screen ignores the customer's formats.
-- **`app-chat-assistant`** is shown only when the customer switched it on. There is no assistant service yet, so its panel says so.
+- The assistant is not a separate chatbot any more: the earlier floating `app-chat-assistant` icon was removed, and the assistant lives inside the quote detail (4.22).
+- **Notification categories** are three: order status, watchlist alerts and **strategy executions** (4.21). Existing customers get the new one on.
 
 ## 5. Services the UI relies on
 
@@ -827,6 +866,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
 | `ThemeService` | `isDark()`, `toggle()` |
 | `NotificationService` | Toasts |
 | `PortfolioStore` | The signed-in customer's portfolio in three independent resources: `data` (summary and priced positions: `snapshot()`, `unavailable()` for `MKT-503`), `pnl` (by instrument, reloaded alone when the realised date range changes) and `performance` (the closed-day history, reloaded alone by the benchmark toggle; polled while it is being built), plus `autoRefresh()` (started by the page while it is open) |
+| `StrategiesStore` | The signed-in customer's automated strategies (`core/strategies.store.ts`): the list for the linked account, `create`, `setEnabled` (switch off and on), `cancel` and `runs`, with each answer written into the list at once. The page reloads it every 15 s because the executor also moves strategies |
 | `NotificationInboxStore` | The customer's notification inbox: the page being viewed (query, categories, page, size), `items()`, `unreadCount()` (the bell badge), `markRead()`, refreshed every 30 s. Not to be confused with `NotificationService` (toasts) |
 | `DialogService` | Promise-based confirmations |
 | `AuthDialogService` | Open the sign-in / register dialog |

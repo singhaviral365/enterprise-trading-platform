@@ -20,5 +20,11 @@ public interface InstrumentMapper {
      * when nobody holds them or has an open order on them. Read-only.
      */
     List<String> selectWatchlistSymbolsForMarketPolling();
+
+    /**
+     * Tradable symbols that have a strategy waiting on them (ACTIVE, or EXECUTING), so a strategy on an instrument nobody
+     * holds is still priced. Read-only.
+     */
+    List<String> selectStrategySymbolsForMarketPolling();
 }
 

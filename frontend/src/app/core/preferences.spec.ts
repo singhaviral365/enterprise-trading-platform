@@ -25,7 +25,11 @@ describe('preferences', () => {
       expect(defaultPreferences('EUR')).toEqual({
         preferredCurrency: Currency.Eur,
         channels: [NotificationChannel.InApp],
-        categories: [NotificationCategory.OrderStatus, NotificationCategory.WatchlistAlerts],
+        categories: [
+          NotificationCategory.OrderStatus,
+          NotificationCategory.WatchlistAlerts,
+          NotificationCategory.StrategyExecution,
+        ],
         dateFormat: DateFormat.MonDdYyyy,
         timeFormat: TimeFormat.H12,
         numberFormat: NumberFormat.Us,

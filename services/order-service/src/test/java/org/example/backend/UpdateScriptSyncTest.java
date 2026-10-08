@@ -32,6 +32,7 @@ class UpdateScriptSyncTest {
                 RESOURCES.resolve("notifications-schema.sql"),
                 RESOURCES.resolve("portfolio-schema.sql"),
                 RESOURCES.resolve("portfolio-performance-schema.sql"),
+                RESOURCES.resolve("strategy-schema.sql"),
                 MIGRATIONS.resolve("sample_data.sql"));
 
         for (Path source : sources) {

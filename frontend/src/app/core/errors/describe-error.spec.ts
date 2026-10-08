@@ -2,6 +2,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 
 import { ErrorResponseErrorCodeEnum as AuthErrorCode } from '../../api/generated/auth';
+import { ErrorResponseErrorCodeEnum as SignalsErrorCode } from '../../api/generated/signals';
+import { ErrorResponseErrorCodeEnum as StrategiesErrorCode } from '../../api/generated/strategies';
 import { ErrorResponseErrorCodeEnum as TradeErrorCode } from '../../api/generated/trade';
 import { NotificationService } from '../notification.service';
 import { ApiErrorNotifier } from './api-error-notifier';
@@ -24,11 +26,15 @@ describe('error catalogue messages', () => {
   const contractCodes: string[] = [
     ...Object.values(AuthErrorCode),
     ...Object.values(TradeErrorCode),
+    ...Object.values(StrategiesErrorCode),
+    ...Object.values(SignalsErrorCode),
   ];
 
-  it('reads codes from both contracts', () => {
+  it('reads codes from every contract', () => {
     expect(contractCodes).toContain('AUTH-409');
     expect(contractCodes).toContain('ORD-409');
+    expect(contractCodes).toContain('STR-409');
+    expect(contractCodes).toContain('AST-429');
   });
 
   it('maps every code in both catalogues to a readable message', () => {
@@ -40,7 +46,7 @@ describe('error catalogue messages', () => {
     }
   });
 
-  it('has no entry for a code that is in neither contract', () => {
+  it('has no entry for a code that is in no contract', () => {
     for (const code of Object.keys(ERROR_MESSAGES)) {
       expect(contractCodes, code).toContain(code);
     }

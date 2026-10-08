@@ -16,6 +16,7 @@ public record PreferenceRow(
         boolean channelInApp,
         boolean notifyOrderStatus,
         boolean notifyWatchlistAlerts,
+        boolean notifyStrategyExecution,
         DateFormatOption dateFormat,
         TimeFormatOption timeFormat,
         NumberFormatOption numberFormat,
@@ -34,6 +35,7 @@ public record PreferenceRow(
                 preferences.channels().contains(NotificationChannel.IN_APP),
                 preferences.categories().contains(NotificationCategory.ORDER_STATUS),
                 preferences.categories().contains(NotificationCategory.WATCHLIST_ALERTS),
+                preferences.categories().contains(NotificationCategory.STRATEGY_EXECUTION),
                 preferences.dateFormat(),
                 preferences.timeFormat(),
                 preferences.numberFormat(),
@@ -61,6 +63,9 @@ public record PreferenceRow(
         }
         if (notifyWatchlistAlerts) {
             categories.add(NotificationCategory.WATCHLIST_ALERTS);
+        }
+        if (notifyStrategyExecution) {
+            categories.add(NotificationCategory.STRATEGY_EXECUTION);
         }
         return new CustomerPreferences(
                 preferredCurrency,

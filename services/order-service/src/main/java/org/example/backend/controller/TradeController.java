@@ -10,8 +10,11 @@ import org.example.backend.dto.OrderResponse;
 import org.example.backend.dto.PlaceOrderRequest;
 import org.example.backend.dto.PositionResponse;
 import org.example.backend.enums.OrderStatus;
+import org.example.backend.exceptions.UnauthorisedException;
 import org.example.backend.security.AuthContext;
+import org.example.backend.service.StrategyOrderService;
 import org.example.backend.service.TradeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.OptionalLong;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -32,9 +36,16 @@ import java.util.List;
 public class TradeController {
 
     private final TradeService tradeService;
+    private final StrategyOrderService strategyOrderService;
 
     public TradeController(TradeService tradeService) {
+        this(tradeService, null);
+    }
+
+    @Autowired
+    public TradeController(TradeService tradeService, StrategyOrderService strategyOrderService) {
         this.tradeService = tradeService;
+        this.strategyOrderService = strategyOrderService;
     }
 
     // =========================================================
@@ -48,6 +59,16 @@ public class TradeController {
 
         long authenticatedUserId =
                 AuthContext.requiredUserId(httpServletRequest);
+
+        // A strategy executor's token (the filter only lets one through to this route) is bound to one strategy: the order
+        // must be the one that strategy may place right now, checked in the transaction that places it.
+        OptionalLong strategyId = AuthContext.strategyId(httpServletRequest);
+        if (strategyId.isPresent()) {
+            if (strategyOrderService == null) {
+                throw new UnauthorisedException();
+            }
+            return strategyOrderService.place(authenticatedUserId, strategyId.getAsLong(), request);
+        }
 
         tradeService.assertUserCanAccessAccount(
                 authenticatedUserId,

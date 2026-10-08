@@ -47,7 +47,7 @@ const SAMPLE_AMOUNT = 1234567.891;
 
 /**
  * Settings: where a customer sets how they are alerted, which currency estimates are shown in, how dates, times and
- * numbers are written, whether the chatbot icon appears, and a few display choices. One form, one Save: the whole
+ * numbers are written, whether the signal assistant appears on each quote, and a few display choices. One form, one Save: the whole
  * document goes to the Trade API in a single `PUT`, and the rest of the app follows it as soon as it is stored.
  *
  * The form edits a draft; nothing changes anywhere else until Save. The preview under "Display" is drawn from the
@@ -139,8 +139,8 @@ export class Settings {
   protected readonly landingPageOptions: readonly DropdownOption[] = LANDING_PAGE_OPTIONS;
   protected readonly orderTypeOptions: readonly DropdownOption[] = ORDER_TYPE_OPTIONS;
   protected readonly assistantOptions: readonly DropdownOption[] = [
-    { value: 'yes', label: 'Yes, show the chatbot icon' },
-    { value: 'no', label: 'No chatbot' },
+    { value: 'yes', label: 'Yes, turn on the signal assistant' },
+    { value: 'no', label: 'No assistant' },
   ];
   /** Each date format with an example in it, drawn once from the fixed sample date. */
   protected readonly dateFormatOptions: readonly DropdownOption[] = DATE_FORMAT_VALUES.map((value) => ({

@@ -137,6 +137,13 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       EXCHANGE_RATE_API_URL: ${EXCHANGE_RATE_API_URL:-https://v6.exchangerate-api.com/v6}
       EXCHANGE_RATE_API_KEY: ${EXCHANGE_RATE_API_KEY:-}
+      # The signals module explains a signal with Gemini when a key is set (documentation/readme/SIGNALS.md); without one the
+      # platform's own wording is used and nothing is sent anywhere.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_RATE_LIMIT_RPM: ${GEMINI_RATE_LIMIT_RPM:-60}
+      CANDLE_CACHE_TTL_MINUTES: ${CANDLE_CACHE_TTL_MINUTES:-10}
+      SIGNAL_CACHE_TTL_MINUTES: ${SIGNAL_CACHE_TTL_MINUTES:-5}
       # The Portfolio module prices holdings with its own batched Fauxnance client (the browser never calls Fauxnance).
       # Without these the portfolio routes answer MKT-503 and nothing else is affected.
       FAUXNANCE_BASE_URL: ${FAUXNANCE_BASE_URL:-}

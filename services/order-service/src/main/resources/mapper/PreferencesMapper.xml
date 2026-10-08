@@ -14,6 +14,7 @@
             <arg column="channel_in_app" javaType="_boolean" name="channelInApp"/>
             <arg column="notify_order_status" javaType="_boolean" name="notifyOrderStatus"/>
             <arg column="notify_watchlist_alerts" javaType="_boolean" name="notifyWatchlistAlerts"/>
+            <arg column="notify_strategy_execution" javaType="_boolean" name="notifyStrategyExecution"/>
             <arg column="date_format" javaType="org.example.backend.preferences.model.DateFormatOption" name="dateFormat"/>
             <arg column="time_format" javaType="org.example.backend.preferences.model.TimeFormatOption" name="timeFormat"/>
             <arg column="number_format" javaType="org.example.backend.preferences.model.NumberFormatOption" name="numberFormat"/>
@@ -44,6 +45,7 @@
             channel_in_app,
             notify_order_status,
             notify_watchlist_alerts,
+            notify_strategy_execution,
             date_format,
             time_format,
             number_format,
@@ -66,6 +68,7 @@
             channel_in_app,
             notify_order_status,
             notify_watchlist_alerts,
+            notify_strategy_execution,
             date_format,
             time_format,
             number_format,
@@ -83,6 +86,7 @@
             #{row.channelInApp},
             #{row.notifyOrderStatus},
             #{row.notifyWatchlistAlerts},
+            #{row.notifyStrategyExecution},
             #{row.dateFormat},
             #{row.timeFormat},
             #{row.numberFormat},
@@ -100,6 +104,7 @@
             channel_in_app = EXCLUDED.channel_in_app,
             notify_order_status = EXCLUDED.notify_order_status,
             notify_watchlist_alerts = EXCLUDED.notify_watchlist_alerts,
+            notify_strategy_execution = EXCLUDED.notify_strategy_execution,
             date_format = EXCLUDED.date_format,
             time_format = EXCLUDED.time_format,
             number_format = EXCLUDED.number_format,

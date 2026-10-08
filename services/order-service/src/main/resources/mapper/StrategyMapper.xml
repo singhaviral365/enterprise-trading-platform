@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  Every external value is a bind parameter (the hash-brace form); nothing is spliced into the SQL text, and there is no dynamic column or sort.
+  The statuses written here are literals, so a caller cannot pick one.
+-->
+<mapper namespace="org.example.backend.strategy.mapper.StrategyMapper">
+
+    <resultMap id="StrategyResultMap" type="org.example.backend.strategy.model.Strategy">
+        <constructor>
+            <idArg column="strategy_id" javaType="_long" name="strategyId"/>
+            <arg column="account_id" javaType="_long" name="accountId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
+            <arg column="instrument_ticker" javaType="String" name="tickerSymbol"/>
+            <arg column="instrument_name" javaType="String" name="instrumentName"/>
+            <arg column="currency" javaType="String" name="currency"/>
+            <arg column="side" javaType="org.example.backend.enums.OrderSide" name="side"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="trigger_direction" javaType="org.example.backend.strategy.model.TriggerDirection" name="direction"/>
+            <arg column="trigger_price" javaType="java.math.BigDecimal" name="triggerPrice"/>
+            <arg column="armed" javaType="_boolean" name="armed"/>
+            <arg column="valid_from" javaType="java.time.OffsetDateTime" name="validFrom"/>
+            <arg column="valid_until" javaType="java.time.OffsetDateTime" name="validUntil"/>
+            <arg column="max_order_value" javaType="java.math.BigDecimal" name="maxOrderValue"/>
+            <arg column="max_position_qty" javaType="_long" name="maxPositionQty"/>
+            <arg column="max_executions" javaType="_int" name="maxExecutions"/>
+            <arg column="max_failures" javaType="_int" name="maxFailures"/>
+            <arg column="executions" javaType="_int" name="executions"/>
+            <arg column="consecutive_failures" javaType="_int" name="consecutiveFailures"/>
+            <arg column="status" javaType="org.example.backend.strategy.model.StrategyStatus" name="status"/>
+            <arg column="status_reason" javaType="String" name="statusReason"/>
+            <arg column="last_order_id" javaType="java.lang.Long" name="lastOrderId"/>
+            <arg column="version" javaType="_long" name="version"/>
+            <arg column="created_at" javaType="java.time.OffsetDateTime" name="createdAt"/>
+            <arg column="updated_at" javaType="java.time.OffsetDateTime" name="updatedAt"/>
+            <arg column="executed_at" javaType="java.time.OffsetDateTime" name="executedAt"/>
+            <arg column="cancelled_at" javaType="java.time.OffsetDateTime" name="cancelledAt"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="StrategyRunResultMap" type="org.example.backend.strategy.model.StrategyRun">
+        <constructor>
+            <idArg column="run_id" javaType="_long" name="runId"/>
+            <arg column="strategy_id" javaType="_long" name="strategyId"/>
+            <arg column="run_number" javaType="_int" name="runNumber"/>
+            <arg column="quote_price" javaType="java.math.BigDecimal" name="quotePrice"/>
+            <arg column="quote_at" javaType="java.time.OffsetDateTime" name="quoteAt"/>
+            <arg column="outcome" javaType="org.example.backend.strategy.model.RunOutcome" name="outcome"/>
+            <arg column="order_id" javaType="java.lang.Long" name="orderId"/>
+            <arg column="detail" javaType="String" name="detail"/>
+            <arg column="settled_status" javaType="String" name="settledStatus"/>
+            <arg column="settled_at" javaType="java.time.OffsetDateTime" name="settledAt"/>
+            <arg column="created_at" javaType="java.time.OffsetDateTime" name="createdAt"/>
+        </constructor>
+    </resultMap>
+
+    <sql id="strategyColumns">
+        s.strategy_id,
+        s.account_id,
+        s.instrument_id,
+        i.instrument_ticker,
+        i.instrument_name,
+        i.currency,
+        s.side,
+        s.quantity,
+        s.trigger_direction,
+        s.trigger_price,
+        s.armed,
+        s.valid_from,
+        s.valid_until,
+        s.max_order_value,
+        s.max_position_qty,
+        s.max_executions,
+        s.max_failures,
+        s.executions,
+        s.consecutive_failures,
+        s.status,
+        s.status_reason,
+        s.last_order_id,
+        s.version,
+        s.created_at,
+        s.updated_at,
+        s.executed_at,
+        s.cancelled_at
+    </sql>
+
+    <select id="lockAccountForStrategies" resultType="int">
+        SELECT 1 FROM (SELECT pg_advisory_xact_lock(CAST(#{accountId} AS INTEGER), 2)) AS locked
+    </select>
+
+    <!--
+      The count and the insert are one statement. Parameters in a SELECT list have no type of their own, so each is cast
+      to the column's type. A strategy is created un-armed unless the caller saw the price on the safe side of its level.
+    -->
+    <select id="insertIfUnderLimit" resultType="long" flushCache="true">
+        INSERT INTO strategy (
+            account_id, instrument_id, side, quantity, trigger_direction, trigger_price, armed,
+            valid_from, valid_until, max_order_value, max_position_qty, max_executions, max_failures)
+        SELECT
+            CAST(#{s.accountId} AS INTEGER),
+            CAST(#{s.instrumentId} AS INTEGER),
+            CAST(#{s.side} AS VARCHAR),
+            CAST(#{s.quantity} AS BIGINT),
+            CAST(#{s.direction} AS VARCHAR),
+            CAST(#{s.triggerPrice} AS NUMERIC(19, 4)),
+            CAST(#{s.armed} AS BOOLEAN),
+            CAST(#{s.validFrom,jdbcType=TIMESTAMP_WITH_TIMEZONE} AS TIMESTAMPTZ),
+            CAST(#{s.validUntil,jdbcType=TIMESTAMP_WITH_TIMEZONE} AS TIMESTAMPTZ),
+            CAST(#{s.maxOrderValue} AS NUMERIC(19, 2)),
+            CAST(#{s.maxPositionQty} AS BIGINT),
+            CAST(#{s.maxExecutions} AS INTEGER),
+            CAST(#{s.maxFailures} AS INTEGER)
+        WHERE (
+            SELECT COUNT(*)
+            FROM strategy
+            WHERE account_id = #{s.accountId}
+              AND status IN ('ACTIVE', 'EXECUTING', 'DISABLED')
+        ) &lt; #{limit}
+        RETURNING strategy_id
+    </select>
+
+    <select id="selectById" resultMap="StrategyResultMap">
+        SELECT <include refid="strategyColumns"/>
+        FROM strategy s
+        JOIN instrument i ON i.instrument_id = s.instrument_id
+        WHERE s.strategy_id = #{strategyId}
+    </select>
+
+    <!-- FOR SHARE OF s locks the strategy row only, not the instrument row it is joined to. -->
+    <select id="selectByIdForShare" resultMap="StrategyResultMap">
+        SELECT <include refid="strategyColumns"/>
+        FROM strategy s
+        JOIN instrument i ON i.instrument_id = s.instrument_id
+        WHERE s.strategy_id = #{strategyId}
+        FOR SHARE OF s
+    </select>
+
+    <select id="selectByAccountId" resultMap="StrategyResultMap">
+        SELECT <include refid="strategyColumns"/>
+        FROM strategy s
+        JOIN instrument i ON i.instrument_id = s.instrument_id
+        WHERE s.account_id = #{accountId}
+        ORDER BY s.created_at DESC, s.strategy_id DESC
+    </select>
+
+    <update id="disable">
+        UPDATE strategy
+        SET status = 'DISABLED',
+            status_reason = #{reason},
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status IN ('ACTIVE', 'EXECUTING')
+    </update>
+
+    <update id="enable">
+        UPDATE strategy
+        SET status = 'ACTIVE',
+            armed = FALSE,
+            consecutive_failures = 0,
+            status_reason = NULL,
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status = 'DISABLED'
+          AND (valid_until IS NULL OR valid_until &gt; CURRENT_TIMESTAMP)
+    </update>
+
+    <update id="cancel">
+        UPDATE strategy
+        SET status = 'CANCELLED',
+            status_reason = #{reason},
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status IN ('ACTIVE', 'EXECUTING', 'DISABLED')
+    </update>
+
+    <select id="selectRuns" resultMap="StrategyRunResultMap">
+        SELECT run_id, strategy_id, run_number, quote_price, quote_at, outcome, order_id, detail,
+               settled_status, settled_at, created_at
+        FROM strategy_run
+        WHERE strategy_id = #{strategyId}
+        ORDER BY run_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectNeedingAnnouncement" resultMap="StrategyResultMap">
+        SELECT <include refid="strategyColumns"/>
+        FROM strategy s
+        JOIN instrument i ON i.instrument_id = s.instrument_id
+        WHERE s.status IN ('FAILED', 'EXPIRED')
+          AND s.notified_status IS DISTINCT FROM s.status
+        ORDER BY s.strategy_id
+        LIMIT #{limit}
+    </select>
+
+    <update id="markAnnounced">
+        UPDATE strategy
+        SET notified_status = status
+        WHERE strategy_id = #{strategyId}
+          AND status IN ('FAILED', 'EXPIRED')
+    </update>
+
+    <update id="settleRun">
+        UPDATE strategy_run
+        SET settled_status = #{settledStatus},
+            settled_at = CURRENT_TIMESTAMP
+        WHERE strategy_id = #{strategyId}
+          AND run_number = #{runNumber}
+          AND outcome IN ('ORDERED', 'DUPLICATE')
+          AND settled_status IS NULL
+    </update>
+
+</mapper>

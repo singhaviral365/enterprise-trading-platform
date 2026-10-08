@@ -20,11 +20,11 @@ info:
     |---|---|---|
     | `preferredCurrency` | one of the supported currencies; this **is the account's currency** | the account's own currency |
     | `channels` | any of `SMS`, `EMAIL`, `IN_APP`; an empty array means "No notifications" | `IN_APP` |
-    | `categories` | any of `ORDER_STATUS`, `WATCHLIST_ALERTS` | both |
+    | `categories` | any of `ORDER_STATUS`, `WATCHLIST_ALERTS`, `STRATEGY_EXECUTION` | all three |
     | `dateFormat` | see the schema | `MON_DD_YYYY` (Oct 6, 2026) |
     | `timeFormat` | `H12`, `H24` | `H12` |
     | `numberFormat` | `US` (100,000,000), `IN` (10,00,00,000) | `US` |
-    | `aiAssistantEnabled` | true shows the chatbot icon | false |
+    | `aiAssistantEnabled` | true turns on the trade-signal assistant on each instrument's quote screen, and allows the platform to send the signal and the customer's holding in that instrument to the language model (see the signals contract) | false |
     | `theme` | `LIGHT`, `DARK`, `SYSTEM` | `SYSTEM` |
     | `landingPage` | `DASHBOARD`, `MARKET`, `POSITIONS`, `ORDERS` | `DASHBOARD` |
     | `defaultOrderType` | `MARKET`, `LIMIT` | `MARKET` |
@@ -234,8 +234,9 @@ components:
     NotificationCategory:
       type: string
       description: |
-        What to alert about. `ORDER_STATUS` covers an order being FILLED or REJECTED.
-      enum: [ORDER_STATUS, WATCHLIST_ALERTS]
+        What to alert about. `ORDER_STATUS` covers an order the customer placed being FILLED or REJECTED. `STRATEGY_EXECUTION`
+        covers orders placed by the customer's automated strategies, and a strategy that was stopped or expired.
+      enum: [ORDER_STATUS, WATCHLIST_ALERTS, STRATEGY_EXECUTION]
 
     DateFormat:
       type: string
@@ -308,7 +309,7 @@ components:
           $ref: '#/components/schemas/NumberFormat'
         aiAssistantEnabled:
           type: boolean
-          description: true shows the chatbot icon.
+          description: true turns on the trade-signal assistant on each instrument's quote screen (see the signals contract).
         theme:
           $ref: '#/components/schemas/Theme'
         landingPage:
