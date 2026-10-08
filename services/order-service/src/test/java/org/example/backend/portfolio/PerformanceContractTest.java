@@ -54,7 +54,7 @@ class PerformanceContractTest {
 
     @Test
     void theResponseHasExactlyTheContractsFields() throws IOException {
-        var point = new NavPoint(D, N, N, N, N, N, N, false);
+        var point = new NavPoint(D, N, N, N, N, N, N, N, N, N, false);
         var summary = new PerformanceSummary(N, N, N, N, N, N);
         var benchmark = new BenchmarkSeries("SPY", List.of(new BenchmarkPoint(D, N)));
         var response = new PerformanceResponse(1, "USD", false, D, summary, List.of(point), benchmark);

@@ -1,7 +1,36 @@
 # 02 · Encrypting payloads between the frontend and the services
 
-Status: **plan**. Nothing is implemented. This touches every service and the frontend HTTP layer, so it is split into
-phases that each leave the application working.
+Status: **phase 1 implemented** (auth-service + frontend), off by default. Phases 2-5 are not started. The decisions D1-D5 were taken
+as recommended in section 10 (whole-body envelope, ids and filters stay in URLs, the executor's public market data is not encrypted,
+one algorithm set, stopping after phase 1 is acceptable).
+
+## 0. What is built (phase 1)
+
+| Piece | Where |
+|---|---|
+| Envelope (RSA-OAEP-256 + A256GCM in, ECDH-ES + A256GCM out, `iat`/`jti`/`htm`/`htu` bound, replay cache) | `services/auth-service/src/encryption/envelope.ts` |
+| Express middleware: JWKS at `/.well-known/jwks.json`, opens the request, seals the answer (errors included), `ENC_MODE` | `src/encryption/encryption.middleware.ts`, wired in `main.ts` |
+| Key script | `npm run enc:keygen` (`scripts/enc-keygen.js`) |
+| Browser: key fetch, request sealing, answer opening, non-extractable ECDH response key | `frontend/src/app/core/encryption/payload-envelope.ts` |
+| `HttpInterceptorFn` (innermost, after `authInterceptor`; retries once on `ENCRYPTION_INVALID/EXPIRED/REQUIRED`) | `core/encryption/payload-encryption.interceptor.ts`, registered in `app.config.ts` |
+| Tests | `src/encryption/encryption.spec.ts` (19, real HTTP round trips), `payload-encryption.interceptor.spec.ts` (10) |
+
+How to switch it on (auth-service environment):
+
+```
+npm run enc:keygen            # prints ENC_KID and ENC_PRIVATE_KEY_PEM; keep the key out of git
+ENC_MODE=optional             # accepts both; the browser encrypts as soon as the key is published
+ENC_MODE=required             # plaintext bodies are refused with 400 ENCRYPTION_REQUIRED (health and the key excepted)
+ENC_MAX_AGE_SECONDS=60        # the allowed distance of the request's iat from the server clock
+ENC_LOG_PLAINTEXT=true        # development only, refused when NODE_ENV is production, prod or staging
+```
+
+With `ENC_MODE` unset or `off` the service publishes no key (`404 ENCRYPTION_OFF`) and the browser sends plain JSON as before. A request
+with no body (a GET, a cookie-only POST) carries its envelope in the `X-Envelope` header. `optional` mode keeps Bruno and curl working;
+`required` needs a pre-request script for them. The response key pair is per page load (not rotated on login/logout yet).
+Not done: phase 2 (order-service, Nimbus JOSE), the shared Node/Java test vectors, key-fingerprint pinning, a Redis `jti` cache for more
+than one instance of the service.
+
 
 ## 1. Honest starting point (read this first)
 

@@ -2,7 +2,7 @@
 
 Registration, two-step sign-in and forgot password send a six-digit code by email. Registration sends it to the address **typed on the
 form** (nothing exists yet); the other two send it to the address on the user's own record (`users.email`). Change password sends no
-code (it asks for the current password) but mails a notice. Email is **development only** (MailHog); see "Running it" below.
+code (it asks for the current password) but mails a notice. Email has three modes (off, dev with MailHog, prod with a real provider; see [EMAIL.md](EMAIL.md)); "Running it" below covers dev.
 
 ## Registration verifies the email first
 
@@ -162,4 +162,4 @@ running for any journey that registers or signs in with two-step on; the seeded 
 | Settings and start-up guards | `src/otp/otp.config.ts`, `src/mail/mail.config.ts` |
 | Email | `src/mail/` (`EmailSender`, `SmtpEmailSender`, `DisabledEmailSender`, `otp-messages.ts`) |
 | Contract | `contracts/auth-api.yaml` |
-| Angular | `features/auth/login-form` and `register-form` (code steps), `features/auth/forgot-password-form`, `layout/header/profile-dialog`, `features/settings` (two-step switch), `core/auth.service.ts` |
+| Angular | `features/auth/login-form` and `register-form` (code steps), `features/auth/forgot-password-form`, `layout/header/profile-menu`, `features/settings` (two-step switch), `core/auth.service.ts` |

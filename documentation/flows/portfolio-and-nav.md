@@ -11,12 +11,22 @@ a fund does, so that adding or removing money cannot make you look better or wor
 
 ## 2. What you see
 
+The page is a header and four tabs. The header is the same on every tab:
+
 1. **Summary tiles** at the top: **Total value**, **Cash**, **Market value**, **Unrealised P&L**, **Realised P&L**, **Today's P&L**.
 2. A line "**Prices as of 14:05**", a **Delayed** marker if prices are not fresh, and a notice if some holdings could not be priced.
-3. The **performance curve** (NAV) with range buttons (1M, 3M, 6M, 1Y, All), an optional **benchmark** to compare against, and small tiles for return, profit, drawdown, best and worst day.
-4. **Holdings**: cards or a table of each instrument with quantity, average cost, price, market value, unrealised and today's change; click one for its buys and to trade it.
-5. **Profit and loss breakdown** by instrument, with a date filter for realised results.
-6. **Daily statements**: one row per closed day.
+
+Then the tabs, each answering one kind of question:
+
+| Tab | The question | What is on it |
+|---|---|---|
+| **Overview** | "How am I doing, in ten seconds?" | The **performance curve** (NAV) with range buttons (1M, 3M, 6M, 1Y, All), an optional **benchmark** and the figures; the **allocation** donut (by instrument or by currency); **who made the money** (bars, best first); **what moved today** (a treemap: big block = a lot of money, colour = how it moved) |
+| **Holdings** | "What do I own, and what do I do about it?" | Cards or a table of each instrument with quantity, average cost, price, market value, unrealised and today's change, and a small **52-week range** bar (is the price near its high or its low?). Click one for its buys, a **candlestick chart with your average cost as a dashed line and your buys and sells marked on it**, and to trade it |
+| **Performance** | "How did I do over time?" | The curve in full; **cash against holdings** over time (how much of the account was working); **profit and loss for each day** with what you have banked as a line; **how far below its peak** the account has been; **month by month** returns; and the **daily statements**, one row per closed day |
+| **Profit and loss** | "Where did the money come from?" | The breakdown by instrument, with a date filter for realised results and a **Download CSV** button, and what you have **banked over time** |
+
+Each chart has the answer in a sentence above it ("Your top 3 holdings are 68% of your portfolio"), a text description for screen readers, and a **View as table**
+that lists the same numbers.
 
 ## 3. The holdings maths in plain words
 
@@ -81,7 +91,10 @@ A plain "value went from 10,000 to 16,400" would say +64%. The NAV says **+10.8%
 | **Return** | How much the NAV changed over the range |
 | **Profit (P&L)** | How much your account's value changed over the range, **excluding money you put in or took out** |
 | **Annualised return** | The return scaled to a year, shown only for ranges longer than a year (shorter ranges would give misleading numbers) |
-| **Max drawdown** | The worst fall from a peak: if the NAV went 1,100 -> 990 before recovering, the drawdown is -10%. A feel for how rough the ride was |
+| **Max drawdown** | The worst fall from a peak: if the NAV went 1,100 -> 990 before recovering, the drawdown is -10%. A feel for how rough the ride was. The **underwater chart** shows it every day: 0 at a new high, below zero while the account is under its last peak |
+| **Cash against holdings** | Each day's value split into the part invested in the market and the part sitting in cash, so you can see how much of the account was working |
+| **Profit and loss for each day** | One column per day (green for a gain, red for a loss) and a line for what you have banked in total, so you can see whether the result is steady or driven by a few days |
+| **Monthly returns** | The NAV change of each calendar month, as coloured cells with the number in each. With under a year of history only the months that exist are shown; the first month and an unfinished one are marked as part of a month |
 | **Best / worst day** | The biggest daily rise and fall |
 | **Benchmark** | An optional comparison (for example SPY, a broad-market tracker), rebased to 1,000 on your first day so the two lines start together |
 | **Daily statements** | One stored row per closed day: value, the day's P&L, cumulative realised, unrealised |

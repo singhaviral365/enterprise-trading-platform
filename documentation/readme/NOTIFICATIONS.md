@@ -7,7 +7,7 @@ alerts, development-only email) and one is planned (SMS, at the end).
 |---|---|
 | In-app notifications (the bell) | Built |
 | Watchlist price alerts | Built |
-| Email, through MailHog, development only | Built |
+| Email: MailHog in `dev`, a real provider in `prod` (see [EMAIL.md](EMAIL.md)) | Built |
 | SMS | **Plan only**, see [SMS plan](#sms-plan-not-built) |
 
 Contracts (written before the code): [`contracts/notifications-api.yaml`](../../contracts/notifications-api.yaml) and
@@ -49,11 +49,17 @@ scrollable card with:
 
 - a **search** box (case-insensitive substring over title and message; `%` and `_` are literal; debounced 300 ms)
 - a **category** filter (Order updates, Watchlist alerts, Strategy executions)
+- a **status** filter (Unread, Read; **Unread only by default**, never empty) and a **date range** (From / To, with Today,
+  Last 7 days and Last 30 days presets) on the notification's created time, whole days in the user's time zone, at most 366 days
+- a **reset** button that returns to: no search, no category, Unread, any date
 - **pagination** with a page-size selector (5, 10, 25), newest first
-- **only unread** notifications, plus ones **read within the last hour** (shown dimmed, with the word "Read"). Clicking an
-  unread one marks it read. An hour later it drops out of the list.
 
-Nothing is deleted: a read notification stays in the database with its `read_at`; it just stops being listed.
+The API behind it (`GET /accounts/{id}/notifications`) takes `status` (repeatable), `from` and `to` as well as `q` and
+`category`. **Without `status`** the list is the original one (unread plus read within the last hour); **with `status`** the
+one-hour retention no longer applies, so `READ` returns every read notification. `unreadCount` is always the account's total,
+so the bell never changes with the page's filters.
+
+Nothing is deleted: a read notification stays in the database with its `read_at`.
 
 **Where it comes from.** Order outcomes from `trade-events` (filled, rejected, cancelled) and fired price alerts handed
 over by the watchlist module. Rejections are as newsworthy as fills and say why, in words from a fixed list (an unknown
@@ -163,7 +169,7 @@ UPDATE account SET email = 'alice@example.com', phone_no = '+353 1 555 0100' WHE
 | Layer | What it does |
 |---|---|
 | Off by default | `notifications.email.enabled=false` in `application.properties`. Only `application-dev.properties` turns it on |
-| Different bean | When off, `DisabledEmailSender` is wired and email deliveries are recorded `SKIPPED` with the reason. `MailHogEmailSender` is not even created |
+| Different bean | When off, `DisabledEmailSender` is wired and email deliveries are recorded `SKIPPED` with the reason. `SmtpEmailSender` is not even created |
 | Start-up guard | `DevOnlyEmailGuard` stops the application if email is enabled without a `dev`/`local` profile, alongside a `prod`/`production`/`staging` profile, or with an SMTP host other than `localhost`/`127.0.0.1`/`::1`/`mailhog` |
 | Compose | MailHog is not in `docker-compose.yml`; run it on your machine |
 
@@ -235,7 +241,7 @@ which regions we send to (affects sender registration and opt-out rules); whethe
 | `notifications.kafka.consumer-group` | `customer-notifications` | This module's own group |
 | `notifications.kafka.consumer.enabled` | `true` | Start the consumer |
 | `notifications.kafka.consumer.start-from` | `latest` | Where a brand-new group starts. `latest` so last month's fills are not announced; after its first start it resumes from committed offsets |
-| `notifications.inbox.read-retention-minutes` | `60` | How long a read notification stays listed |
+| `notifications.inbox.read-retention-minutes` | `60` | How long a read notification stays listed when the caller sends no `status` filter |
 | `notifications.email.enabled` | `false` | Development only; the dev profile sets it |
 | `notifications.email.from` | `noreply@etpteamriya.com` | Sender |
 | `notifications.email.smtp.host` / `.port` | `localhost` / `1025` | MailHog. Must be a local host |
