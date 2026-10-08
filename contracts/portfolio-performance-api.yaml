@@ -180,6 +180,18 @@ components:
           type: number
           format: double
           description: Cash plus holdings at that day's close.
+        cash:
+          type: number
+          format: double
+          description: "The cash part of `value`. Optional: absent from responses of services older than this field."
+        holdingsValue:
+          type: number
+          format: double
+          description: "The holdings part of `value`, at that day's close. Optional, as `cash`."
+        costBasis:
+          type: number
+          format: double
+          description: "What the holdings cost (quantity times average cost) at that day's close; `unrealisedPnl` is `holdingsValue` less this. Optional, as `cash`."
         netFlow:
           type: number
           format: double
