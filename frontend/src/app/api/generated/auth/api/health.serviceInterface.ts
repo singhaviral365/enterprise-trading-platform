@@ -11,6 +11,8 @@ import { HttpHeaders }                                       from '@angular/comm
 
 import { Observable }                                        from 'rxjs';
 
+import { ErrorResponse } from '../model/models';
+import { GetJwks200Response } from '../model/models';
 import { HealthResponse } from '../model/models';
 
 
@@ -28,5 +30,12 @@ export interface HealthServiceInterface {
      * @endpoint get /health
      */
     getHealth(extraHttpRequestParams?: any): Observable<HealthResponse>;
+
+    /**
+     * The public key for payload encryption
+     * Unauthenticated. Publishes the service\&#39;s RSA public key (JWK, &#x60;kid&#x60;, &#x60;alg&#x60; RSA-OAEP-256) when &#x60;ENC_MODE&#x60; is &#x60;optional&#x60; or &#x60;required&#x60;; &#x60;404 ENCRYPTION_OFF&#x60; while encryption is off, which is how a browser learns not to encrypt. When encryption is on, a request and its answer travel as a JWE (&#x60;Content-Type: application/jose&#x60;, or the &#x60;X-Envelope&#x60; header when the request has no body) around the plain JSON bodies described in this file; see documentation/todo/02-payload-encryption.md. Refusals that come before decryption are plaintext &#x60;ErrorResponse&#x60;s with &#x60;ENCRYPTION_INVALID&#x60;, &#x60;ENCRYPTION_EXPIRED&#x60;, &#x60;ENCRYPTION_REPLAY&#x60; (409) or &#x60;ENCRYPTION_REQUIRED&#x60;. 
+     * @endpoint get /.well-known/jwks.json
+     */
+    getJwks(extraHttpRequestParams?: any): Observable<GetJwks200Response>;
 
 }

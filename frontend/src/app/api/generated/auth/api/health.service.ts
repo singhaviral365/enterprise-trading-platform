@@ -17,6 +17,10 @@ import { Observable }                                        from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { ErrorResponse } from '../model/errorResponse';
+// @ts-ignore
+import { GetJwks200Response } from '../model/getJwks200Response';
+// @ts-ignore
 import { HealthResponse } from '../model/healthResponse';
 
 // @ts-ignore
@@ -79,6 +83,59 @@ export class HealthService extends BaseService implements HealthServiceInterface
         let localVarPath = `/health`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<HealthResponse>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * The public key for payload encryption
+     * Unauthenticated. Publishes the service\&#39;s RSA public key (JWK, &#x60;kid&#x60;, &#x60;alg&#x60; RSA-OAEP-256) when &#x60;ENC_MODE&#x60; is &#x60;optional&#x60; or &#x60;required&#x60;; &#x60;404 ENCRYPTION_OFF&#x60; while encryption is off, which is how a browser learns not to encrypt. When encryption is on, a request and its answer travel as a JWE (&#x60;Content-Type: application/jose&#x60;, or the &#x60;X-Envelope&#x60; header when the request has no body) around the plain JSON bodies described in this file; see documentation/todo/02-payload-encryption.md. Refusals that come before decryption are plaintext &#x60;ErrorResponse&#x60;s with &#x60;ENCRYPTION_INVALID&#x60;, &#x60;ENCRYPTION_EXPIRED&#x60;, &#x60;ENCRYPTION_REPLAY&#x60; (409) or &#x60;ENCRYPTION_REQUIRED&#x60;. 
+     * @endpoint get /.well-known/jwks.json
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public getJwks(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<GetJwks200Response>;
+    public getJwks(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<GetJwks200Response>>;
+    public getJwks(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<GetJwks200Response>>;
+    public getJwks(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/.well-known/jwks.json`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<GetJwks200Response>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

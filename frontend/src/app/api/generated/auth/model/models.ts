@@ -2,6 +2,7 @@ export * from './changePasswordRequest';
 export * from './errorResponse';
 export * from './forgotPasswordRequest';
 export * from './forgotPasswordResponse';
+export * from './getJwks200Response';
 export * from './healthResponse';
 export * from './loginRequest';
 export * from './loginResponse';
