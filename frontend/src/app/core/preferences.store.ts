@@ -62,8 +62,8 @@ export class PreferencesStore {
   readonly defaultOrderType = computed(() => this.current().defaultOrderType);
   readonly landingRoute = computed(() => landingRoute(this.current().landingPage));
   /**
-   * The customer's currency, which is the account's own: choosing another in Settings converts the account. Read from
-   * the account while it is loaded, so it is right even before the preferences arrive.
+   * The customer's currency, which is the account's own, chosen once when the account was opened and never changed.
+   * Read from the account while it is loaded, so it is right even before the preferences arrive.
    */
   readonly preferredCurrency = computed<string>(
     () => this.accountCurrency() ?? this.current().preferredCurrency,
@@ -155,22 +155,18 @@ export class PreferencesStore {
   }
 
   /**
-   * Saves the whole document. A different currency converts the account on the server, and the account is then read
-   * again. Rejects with the client's `HttpErrorResponse`; the caller words it.
+   * Saves the whole document. The currency is not part of what is saved: it belongs to the account and is read-only, so
+   * it is left out of the request. Rejects with the client's `HttpErrorResponse`; the caller words it.
    */
   async save(values: PreferenceValues): Promise<Preferences> {
     const accountId = this.accountId();
     if (accountId === null) {
       throw new Error('There is no linked account to save preferences for.');
     }
-    const currencyChanged = values.preferredCurrency !== this.preferredCurrency();
-    const stored = await firstValueFrom(this.api.replace(accountId, values));
+    const { preferredCurrency: _fixedByTheAccount, ...request } = values;
+    const stored = await firstValueFrom(this.api.replace(accountId, request));
     this.saved.set(stored);
     this.loadState.set('ready');
-    if (currencyChanged) {
-      // The server converted the account (balance, prices), so every screen showing it has to read it again.
-      this.overview.refresh();
-    }
     return stored;
   }
 
