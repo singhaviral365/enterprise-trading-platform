@@ -47,7 +47,8 @@ public class SmtpEmailSender implements EmailSender {
     @Autowired
     public SmtpEmailSender(
             @Value("${notifications.email.smtp.host:localhost}") String host,
-            @Value("${notifications.email.smtp.port:1025}") int port,
+            // A blank port (the key present but empty in config/application.yml) means the usual port for the TLS setting.
+            @Value("#{'${notifications.email.smtp.port:}'.isBlank() ? ('${notifications.email.smtp.tls:none}' == 'implicit' ? 465 : ('${notifications.email.smtp.tls:none}' == 'starttls' ? 587 : 1025)) : '${notifications.email.smtp.port:}'}") int port,
             @Value("${notifications.email.smtp.tls:none}") String tls,
             @Value("${notifications.email.smtp.username:}") String username,
             @Value("${notifications.email.smtp.password:}") String password,

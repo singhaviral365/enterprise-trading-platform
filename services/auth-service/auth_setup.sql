@@ -7,7 +7,7 @@
 -- the Sprint 8 Auth Service.
 --
 -- Connection: psql -U postgres -h localhost
--- Password: n3u3d4!
+-- Password: <database password from config/application.yml>
 --
 -- Usage: 
 --   psql -U postgres -h localhost < auth_setup.sql
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     account_id BIGINT NOT NULL,
     roles TEXT[] NOT NULL DEFAULT ARRAY['CUSTOMER'],
-    two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    two_factor_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     client_name VARCHAR(255),
     phone_no VARCHAR(20),
     dob DATE,

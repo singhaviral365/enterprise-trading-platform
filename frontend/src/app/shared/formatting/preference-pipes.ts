@@ -90,3 +90,34 @@ export class PreferenceCurrencyPipe implements PipeTransform {
     return this.delegate.transform(value, currencyCode, display, digitsInfo, locale ?? this.formats.locale());
   }
 }
+
+/**
+ * `compactMoney`: an amount for a tile or card, where a long figure would be cut off or push the layout. Below the threshold (a
+ * million by default) it reads exactly like `currency`; from there it is shortened the way the number format reads best: $12.35M in the
+ * US format, ₹1.24Cr in the Indian one. Put the full amount in a `title` (`value | currency: code`) so nothing is lost.
+ */
+@Pipe({ name: 'compactMoney', pure: false })
+export class CompactMoneyPipe implements PipeTransform {
+  private readonly formats = inject(FormatPreferences);
+  private readonly delegate = new CurrencyPipe(inject(LOCALE_ID));
+
+  transform(value: number | string | null | undefined, currencyCode = 'USD', threshold = 1_000_000): string | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) {
+      return null;
+    }
+    const locale = this.formats.locale();
+    if (Math.abs(amount) < threshold) {
+      return this.delegate.transform(amount, currencyCode, 'symbol', undefined, locale);
+    }
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      notation: 'compact',
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+}

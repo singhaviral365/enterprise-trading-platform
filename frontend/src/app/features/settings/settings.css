@@ -27,18 +27,28 @@
   align-items: start;
 }
 
-/* Two cards per row from 900px. The form adds no box of its own, so its cards are grid items of the layout. */
+/* The cards stack in two columns, so a short card never leaves a hole beside a tall one. */
+.settings-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 @media (min-width: 900px) {
-  .settings-layout {
+  .settings-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.settings-form {
-  display: contents;
-}
-
-.is-full,
+.settings-layout > .is-full,
 .settings-actions {
   grid-column: 1 / -1;
 }

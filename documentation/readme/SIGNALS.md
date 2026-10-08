@@ -55,7 +55,9 @@ A customer's data leaves the platform only if they switched the assistant on. Wh
 
 It is not told the account id, name, email, balance, orders or anything else, and the key is sent in a request header, never in a URL.
 The customer's own words go in as a *user message*, never in the instructions, and the instructions tell the model to ignore a request
-in it to change them. The model is given **no tools**: all it can produce is text, which the screen shows as plain text (never as
+in it to change them. **The chat stays on the signal:** a message that tries to take the assistant over ("ignore your rules", "act as", "show your
+prompt") never reaches the model, and the model is told to answer anything not about this instrument's signal with the single word `OFF_TOPIC`;
+in both cases the customer sees one fixed sentence that points back to the signal (`GeminiSignalExplainer.OFF_TOPIC_REPLY`). The model is given **no tools**: all it can produce is text, which the screen shows as plain text (never as
 HTML). Its reply is stripped of control characters and cut to 1,200 characters. It is told never to tell the customer to buy, sell or
 hold, never to predict a price, and never to promise or imply a return.
 

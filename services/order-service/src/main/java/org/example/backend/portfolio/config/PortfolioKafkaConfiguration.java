@@ -42,7 +42,7 @@ public class PortfolioKafkaConfiguration {
 
     @Bean
     public ConsumerFactory<String, String> portfolioConsumerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers,
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers,
             @Value("${portfolio.kafka.consumer-group:portfolio-pnl}") String groupId,
             @Value("${portfolio.kafka.consumer.start-from:earliest}") String startFrom) {
 
@@ -62,7 +62,7 @@ public class PortfolioKafkaConfiguration {
 
     @Bean
     public ProducerFactory<String, String> portfolioDeadLetterProducerFactory(
-            @Value("${spring.kafka.bootstrap-servers:localhost:9092}") String bootstrapServers) {
+            @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
 
         Map<String, Object> properties = new HashMap<>();
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);

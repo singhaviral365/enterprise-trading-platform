@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { formatCurrency, formatDate, formatNumber } from '@angular/common';
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 
@@ -33,7 +34,7 @@ import {
 } from '../../core/preferences';
 import { PreferencesStore } from '../../core/preferences.store';
 import { Dropdown, DropdownOption } from '../../shared/ui/dropdown/dropdown';
-import { Multiselect, MultiselectOption } from '../../shared/ui/multiselect/multiselect';
+import { MultiDropdown } from '../../shared/ui/multi-dropdown/multi-dropdown';
 import { Spinner } from '../../shared/ui/spinner/spinner';
 
 /** The "No notifications" chip is not a channel: choosing it empties the list, and an empty list shows it chosen. */
@@ -53,7 +54,7 @@ const SAMPLE_AMOUNT = 1234567.891;
  */
 @Component({
   selector: 'app-settings',
-  imports: [Dropdown, Multiselect, Spinner],
+  imports: [Dropdown, MultiDropdown, NgTemplateOutlet, Spinner],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
@@ -69,64 +70,49 @@ export class Settings {
   protected readonly saving = signal(false);
   protected readonly saveError = signal('');
 
-  /** Two-step sign-in belongs to the login, not to the trading account, so it saves on its own and at once. */
+  /** Two-step sign-in belongs to the login, not to the trading account, but it is saved with the rest: the choice waits for Save. */
   protected readonly twoFactorOptions: readonly DropdownOption[] = [
-    { value: 'off', label: 'Off' },
     { value: 'on', label: 'On: ask for an emailed code' },
+    { value: 'off', label: 'Off' },
   ];
+  /** What the server has. Null until it has answered. */
   protected readonly twoFactorEnabled = signal<boolean | null>(null);
-  /** What the control shows: the choice at once, put back if the server refuses it. */
-  protected readonly twoFactorShown = signal<'on' | 'off'>('off');
+  /** The choice made on this screen and not yet saved; null when there is none. */
+  private readonly twoFactorDraft = signal<boolean | null>(null);
+  protected readonly twoFactorShown = computed<'on' | 'off'>(() => ((this.twoFactorDraft() ?? this.twoFactorEnabled()) === true ? 'on' : 'off'));
   protected readonly twoFactorBusy = signal(false);
   protected readonly twoFactorError = signal('');
+  protected readonly twoFactorDirty = computed(() => this.twoFactorDraft() !== null && this.twoFactorDraft() !== this.twoFactorEnabled());
 
   constructor() {
     void this.loadTwoFactor();
   }
 
-  protected async setTwoFactor(value: string): Promise<void> {
-    const enabled = value === 'on';
-    if (this.twoFactorBusy() || enabled === this.twoFactorEnabled()) {
-      return;
-    }
-    this.twoFactorBusy.set(true);
+  protected setTwoFactor(value: string): void {
+    this.twoFactorDraft.set(value === 'on');
     this.twoFactorError.set('');
-    this.twoFactorShown.set(enabled ? 'on' : 'off');
-    try {
-      const user = await this.auth.setTwoFactor(enabled);
-      this.twoFactorEnabled.set(user.twoFactorEnabled);
-      this.twoFactorShown.set(user.twoFactorEnabled ? 'on' : 'off');
-      this.notifications.success(
-        user.twoFactorEnabled ? 'Two-step sign-in is on.' : 'Two-step sign-in is off.',
-      );
-    } catch (error) {
-      this.twoFactorShown.set(this.twoFactorEnabled() ? 'on' : 'off');
-      this.twoFactorError.set(describeError(error));
-    } finally {
-      this.twoFactorBusy.set(false);
-    }
+    this.saveError.set('');
   }
 
   private async loadTwoFactor(): Promise<void> {
     try {
       const enabled = (await this.auth.me()).twoFactorEnabled;
       this.twoFactorEnabled.set(enabled);
-      this.twoFactorShown.set(enabled ? 'on' : 'off');
     } catch (error) {
       this.twoFactorError.set(describeError(error));
     }
   }
 
-  protected readonly dirty = computed(() => !samePreferences(this.draft(), this.store.current()));
+  protected readonly dirty = computed(() => !samePreferences(this.draft(), this.store.current()) || this.twoFactorDirty());
 
   // ---- The options, in the shapes the shared controls take ---------------------------------------------------------
 
-  protected readonly channelOptions: readonly MultiselectOption[] = [
-    ...CHANNEL_OPTIONS.map((option) => ({ id: option.value, label: option.label })),
-    { id: NO_NOTIFICATIONS, label: 'No notifications' },
+  protected readonly channelOptions: readonly DropdownOption[] = [
+    ...CHANNEL_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+    { value: NO_NOTIFICATIONS, label: 'No notifications' },
   ];
-  protected readonly categoryOptions: readonly MultiselectOption[] = CATEGORY_OPTIONS.map((option) => ({
-    id: option.value,
+  protected readonly categoryOptions: readonly DropdownOption[] = CATEGORY_OPTIONS.map((option) => ({
+    value: option.value,
     label: option.label,
   }));
   protected readonly timeFormatOptions: readonly DropdownOption[] = TIME_FORMAT_OPTIONS;
@@ -174,7 +160,7 @@ export class Settings {
     this.saveError.set('');
   }
 
-  protected setChannels(ids: readonly (string | number)[]): void {
+  protected setChannels(ids: readonly string[]): void {
     const wasEmpty = this.draft().channels.length === 0;
     const chosen = ids.map(String);
     // Picking "No notifications" while channels are on clears them; picking a channel while it is on drops it.
@@ -184,7 +170,7 @@ export class Settings {
     this.patch({ channels });
   }
 
-  protected setCategories(ids: readonly (string | number)[]): void {
+  protected setCategories(ids: readonly string[]): void {
     this.patch({ categories: ids.map(String) as NotificationCategory[] });
   }
 
@@ -218,6 +204,8 @@ export class Settings {
 
   protected discard(): void {
     this.draft.set(this.store.current());
+    this.twoFactorDraft.set(null);
+    this.twoFactorError.set('');
     this.saveError.set('');
   }
 
@@ -228,12 +216,33 @@ export class Settings {
     this.saving.set(true);
     this.saveError.set('');
     try {
-      await this.store.save(valuesOf(this.draft()));
+      if (this.twoFactorDirty()) {
+        await this.saveTwoFactor();
+      }
+      if (!samePreferences(this.draft(), this.store.current())) {
+        await this.store.save(valuesOf(this.draft()));
+      }
       this.notifications.success('Settings saved');
     } catch (error) {
       this.saveError.set(describeError(error));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  /** The login's own call. If the server refuses it (no way to email a code), nothing else is saved and the choice stays to be changed. */
+  private async saveTwoFactor(): Promise<void> {
+    const enabled = this.twoFactorDraft() === true;
+    this.twoFactorBusy.set(true);
+    try {
+      const user = await this.auth.setTwoFactor(enabled);
+      this.twoFactorEnabled.set(user.twoFactorEnabled);
+      this.twoFactorDraft.set(null);
+    } catch (error) {
+      this.twoFactorError.set(describeError(error));
+      throw error;
+    } finally {
+      this.twoFactorBusy.set(false);
     }
   }
 

@@ -7,7 +7,7 @@
 -- the Sprint 8 Auth Service.
 --
 -- Connection: psql -U postgres -h localhost
--- Password: n3u3d4!
+-- Password: <database password from config/application.yml>
 --
 -- Usage: 
 --   psql -U postgres -h localhost < auth_setup.sql

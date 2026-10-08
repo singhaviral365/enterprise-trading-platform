@@ -56,7 +56,7 @@
             </span>
           </div>
           <p class="account-balance" data-testid="profile-balance">
-            {{ info.overview.balance.cashBalance | currency: info.overview.balance.currency }}
+            {{ info.overview.balance.cashBalance | compactMoney: info.overview.balance.currency }}
             <span class="account-balance-label">cash</span>
           </p>
           <dl class="pane-facts">

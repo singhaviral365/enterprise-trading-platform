@@ -9,7 +9,7 @@ The executor-service sends none.
 | **dev** | See mail locally (MailHog), nothing leaves the machine | `AUTH_EMAIL_MODE=dev` | profile `dev` (turns email on, MailHog on localhost:1025) |
 | **prod** | Deliver to real addresses through a provider | `AUTH_EMAIL_MODE=prod` | profile `prod` (turns email on) |
 
-`AUTH_EMAIL_ENABLED=true` still works as an alias for `AUTH_EMAIL_MODE=dev` for one release; the service logs a line saying so.
+`AUTH_EMAIL_ENABLED=true` (as a real environment variable) still works as an alias for `AUTH_EMAIL_MODE=dev` for one release.
 
 ## What each mode enforces at start-up
 
@@ -25,6 +25,9 @@ password is never printed.
   allow-list is required, so a test deployment cannot mail real customers.
 
 ## Settings
+
+The environment-variable names in the first columns are what the services read internally; you set them as the keys of `config/application.yml`
+(`auth.email.*`, `order.email.*`): `AUTH_EMAIL_SMTP_HOST` is `auth.email.smtp.host`, `NOTIFICATIONS_EMAIL_FROM` is `order.email.from`, and so on.
 
 | Auth-service | Order-service | Default | Meaning |
 |---|---|---|---|
@@ -54,35 +57,30 @@ Gmail limits a personal account to about 500 recipients a day and rewrites the F
 
 1. Turn on 2-Step Verification for the Google account, then create an **app password** (Google account > Security > App passwords). Use the
    16 characters without spaces. Never use the normal password.
-2. **Auth-service** (codes and security notices). Copy `services/auth-service/.env.example` to `services/auth-service/.env` (git-ignored) and set:
+2. Put the account in `config/application.yml` (git-ignored; the one file every service reads, see [`config/README.md`](../../config/README.md)).
+   The same account serves both services:
 
+   ```yaml
+   auth:
+     email:
+       mode: prod
+       smtp: { host: smtp.gmail.com, port: 587, tls: starttls, user: you@gmail.com, password: "<app password>" }
+       from: you@gmail.com
+       from-domains: gmail.com
+       allowed-recipient-domains: "*"      # outside environment: production this must be said on purpose; a comma list restricts it
+   order:
+     email:
+       mode: prod
+       smtp: { host: smtp.gmail.com, port: 587, tls: starttls, username: you@gmail.com, password: "<app password>" }
+       from: you@gmail.com
+       from-domains: gmail.com
    ```
-   AUTH_EMAIL_MODE=prod
-   AUTH_EMAIL_SMTP_HOST=smtp.gmail.com
-   AUTH_EMAIL_SMTP_USER=you@gmail.com
-   AUTH_EMAIL_SMTP_PASSWORD=<app password>
-   AUTH_EMAIL_FROM=you@gmail.com
-   AUTH_EMAIL_FROM_DOMAINS=gmail.com
-   AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS=*
-   ```
-   Port 587 with `starttls` is the default in prod. `AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS=*` is required because you run outside
-   `NODE_ENV=production` (it says, on purpose, that anyone may receive mail); use a comma list of domains to restrict it instead.
-3. **Order-service** (notification emails). Create `services/order-service/.env` (git-ignored) with:
+3. `.\run-app.ps1` starts everything in these modes (it turns `order.email.mode` into the Spring profile of the same name). By hand, add
+   `-Dspring-boot.run.profiles=prod` to the order-service command.
+4. A wrong or missing value stops the service at start-up with a message naming the key. `node config/cli.js check` finds most of them first.
 
-   ```
-   NOTIFICATIONS_EMAIL_SMTP_HOST=smtp.gmail.com
-   NOTIFICATIONS_EMAIL_SMTP_USERNAME=you@gmail.com
-   NOTIFICATIONS_EMAIL_SMTP_PASSWORD=<app password>
-   NOTIFICATIONS_EMAIL_FROM=you@gmail.com
-   NOTIFICATIONS_EMAIL_FROM_DOMAINS=gmail.com
-   ```
-   and start it with the prod profile: `.un-app.ps1 --windows --real-mail`, or `mvn spring-boot:run -Dspring-boot.run.profiles=prod`.
-   (Under docker compose put the same names in `services/.env` and set `BACKEND_SPRING_PROFILES_ACTIVE=prod`.)
-4. Start the services. A wrong or missing value stops the service at start-up with a message naming the variable.
-
-Which file is which: `services/auth-service/.env(.example)` is read only by the auth-service; `services/.env(.example)` (compose) and
-`services/order-service/.env` serve the order-service and executor-service. The executor sends no email. The same app password may be used
-in both services. If the account is later replaced by a company domain, only these values change.
+`.\run-app.ps1 --dev-mail` sends to MailHog instead for a run, and `--no-email` sends nothing. The executor sends no email. If the account is
+later replaced by a company domain, only these values change.
 
 ## Choosing a provider (a decision for the team, not made in code)
 

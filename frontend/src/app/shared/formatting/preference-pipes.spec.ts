@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { FormatPreferences } from '../../core/format-preferences';
 import { DateFormat, NumberFormat, TimeFormat } from '../../core/preferences';
-import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from './preference-pipes';
+import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from './preference-pipes';
 
 /** 6 October 2026, 15:07:09 local time, so the result does not depend on the machine's time zone. */
 const MOMENT = new Date(2026, 9, 6, 15, 7, 9);
@@ -102,6 +102,28 @@ describe('preference pipes', () => {
       expect(currencyPipe.transform(1234567.891, 'USD')).toBe('$12,34,567.89');
       expect(currencyPipe.transform(1234567.891, 'INR')).toBe('₹12,34,567.89');
       expect(currencyPipe.transform(null, 'USD')).toBeNull();
+    });
+  });
+
+  describe('compactMoney', () => {
+    let compact: CompactMoneyPipe;
+
+    beforeEach(() => {
+      compact = TestBed.runInInjectionContext(() => new CompactMoneyPipe());
+    });
+
+    it('reads like the currency pipe below a million and is shortened from there', () => {
+      expect(compact.transform(999_999.5, 'USD')).toBe('$999,999.50');
+      expect(compact.transform(12_345_678, 'USD')).toBe('$12.35M');
+      expect(compact.transform(-2_500_000_000, 'USD')).toBe('-$2.5B');
+    });
+
+    it('follows the number format, and leaves missing amounts missing', () => {
+      set(DateFormat.MonDdYyyy, TimeFormat.H12, NumberFormat.In);
+
+      expect(plain(compact.transform(12_345_678, 'INR'))).toContain('Cr');
+      expect(compact.transform(null, 'USD')).toBeNull();
+      expect(compact.transform('x', 'USD')).toBeNull();
     });
   });
 });

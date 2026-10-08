@@ -964,6 +964,22 @@ a:hover {
   display: none;
 }
 
+/* With the other cells hidden the first cell is also the last: round all four corners (the row rule only rounds its left side), and keep
+   the table inside its card so a selected row is never cut flat on the right. */
+.row-table.is-compact {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.row-table.is-compact thead th:first-child,
+.row-table.is-compact tbody tr > :first-child {
+  border-radius: 12px;
+}
+
+.row-table.is-compact tbody tr > :first-child {
+  overflow: hidden;
+}
+
 /* Muted text and the "no value" hyphen follow the on-primary colour inside the selected row. */
 .row-table tbody tr.is-selected .muted,
 .row-table tbody tr.is-selected .no-value {
@@ -1366,4 +1382,14 @@ html {
   max-height: 260px;
   margin-top: 8px;
   overflow: auto;
+}
+
+/* A big figure in a tile or card is shortened (compactMoney); if it is still too wide for its card it is cut with an ellipsis instead
+   of running under the next card. The full amount is the tooltip. */
+.stat-value,
+.tile-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

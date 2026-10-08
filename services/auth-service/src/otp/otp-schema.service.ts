@@ -37,8 +37,9 @@ export const OTP_SCHEMA_STATEMENTS: readonly string[] = [
   `ALTER TABLE otp_challenges ADD CONSTRAINT chk_otp_challenges_purpose
      CHECK (purpose IN ('LOGIN', 'PASSWORD_RESET', 'REGISTRATION'))`,
 
-  // Two-step sign-in is each user's own choice, off until they switch it on.
-  'ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE',
+  // Two-step sign-in is on for every new user, and each user may switch it off. Rows that already exist keep their own choice.
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT TRUE',
+  'ALTER TABLE users ALTER COLUMN two_factor_enabled SET DEFAULT TRUE',
 ];
 
 /**

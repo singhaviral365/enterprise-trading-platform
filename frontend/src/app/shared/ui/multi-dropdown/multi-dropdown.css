@@ -19,7 +19,12 @@
   cursor: pointer;
 }
 
-.multi-trigger:hover {
+.multi-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.multi-trigger:hover:not(:disabled) {
   border-color: var(--surface-line);
 }
 

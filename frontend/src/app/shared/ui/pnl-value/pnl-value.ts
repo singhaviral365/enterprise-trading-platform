@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/preference-pipes';
+import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/preference-pipes';
 
 /**
  * A profit or loss figure that never relies on colour alone: a sign, an arrow icon and the amount, with an optional
@@ -7,7 +7,7 @@ import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/
  */
 @Component({
   selector: 'app-pnl-value',
-  imports: [PreferenceCurrencyPipe, PreferenceDecimalPipe],
+  imports: [CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDecimalPipe],
   template: `
     @if (amount() === null || amount() === undefined) {
       <span class="pnl is-unknown">
@@ -27,7 +27,11 @@ import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/
             aria-hidden="true"
           ></i>
         }
-        <span class="pnl-amount">{{ sign() }}{{ absolute() | currency: currency() }}</span>
+        @if (compact()) {
+          <span class="pnl-amount" [attr.title]="sign() + (absolute() | currency: currency())">{{ sign() }}{{ absolute() | compactMoney: currency() }}</span>
+        } @else {
+          <span class="pnl-amount">{{ sign() }}{{ absolute() | currency: currency() }}</span>
+        }
         @if (percent() !== null && percent() !== undefined) {
           <span class="pnl-percent">({{ sign() }}{{ absolutePercent() | number: '1.2-2' }}%)</span>
         }
@@ -41,6 +45,8 @@ export class PnlValue {
   readonly percent = input<number | null | undefined>(null);
   /** ISO code of the account currency. */
   readonly currency = input('USD');
+  /** Shorten a long amount ($12.35M), for a tile; the full amount is the tooltip. */
+  readonly compact = input(false);
 
   /** 1 for a gain, -1 for a loss, 0 for none. */
   protected readonly direction = computed(() => Math.sign(this.amount() ?? 0));

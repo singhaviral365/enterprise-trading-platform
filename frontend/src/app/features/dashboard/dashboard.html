@@ -31,8 +31,8 @@
       <button class="btn is-primary is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-wallet"></i></button>
       <div>
         <h2 class="stat-label">Cash balance</h2>
-        <p class="stat-value" data-testid="dashboard-cash-balance">
-          {{ info.overview.balance.cashBalance | currency: info.overview.balance.currency }}
+        <p class="stat-value" data-testid="dashboard-cash-balance" [attr.title]="info.overview.balance.cashBalance | currency: info.overview.balance.currency">
+          {{ info.overview.balance.cashBalance | compactMoney: info.overview.balance.currency }}
         </p>
       </div>
       <svg class="featured-spark" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden="true">
@@ -43,7 +43,7 @@
       <button class="btn is-inverse is-icon-only is-unclickable" aria-hidden="true"><i class="fas fa-chart-pie"></i></button>
       <div>
         <h2 class="stat-label">Invested (at cost)</h2>
-        <p class="stat-value">{{ investedValue() | currency: info.overview.balance.currency }}</p>
+        <p class="stat-value" [attr.title]="investedValue() | currency: info.overview.balance.currency">{{ investedValue() | compactMoney: info.overview.balance.currency }}</p>
       </div>
     </article>
     <article class="stat is-link card is-lift rise-in" style="--stagger: 2">

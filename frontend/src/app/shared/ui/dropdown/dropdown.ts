@@ -16,6 +16,7 @@ let nextDropdownId = 0;
   selector: 'app-dropdown',
   templateUrl: './dropdown.html',
   styleUrl: './dropdown.css',
+  host: { '[class.is-block]': 'block()' },
 })
 export class Dropdown {
   readonly options = input.required<readonly DropdownOption[]>();
@@ -27,6 +28,8 @@ export class Dropdown {
   readonly invalid = input(false);
   readonly errorText = input('');
   readonly disabled = input(false);
+  /** Fill the width of its container (in a form grid) instead of hugging its content. */
+  readonly block = input(false);
   /** `compact` shrinks the control (height, padding, font) for dense toolbars such as the pagination footer. */
   readonly size = input<'default' | 'compact'>('default');
   readonly inputId = input(`dropdown-${nextDropdownId++}`);

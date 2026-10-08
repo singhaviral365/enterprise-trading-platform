@@ -16,14 +16,15 @@ describe('OtpSchemaService', () => {
     expect(dataSource.query.mock.calls.map((call) => call[0])).toEqual([...OTP_SCHEMA_STATEMENTS]);
     expect(OTP_SCHEMA_STATEMENTS[0]).toContain('CREATE TABLE IF NOT EXISTS otp_challenges');
     // every statement can run again: it creates only what is missing, or sets something to what it already is
-    const idempotent = /IF NOT EXISTS|DROP CONSTRAINT IF EXISTS|DROP NOT NULL|ADD CONSTRAINT chk_otp_challenges_purpose/;
+    const idempotent = /IF NOT EXISTS|DROP CONSTRAINT IF EXISTS|DROP NOT NULL|SET DEFAULT|ADD CONSTRAINT chk_otp_challenges_purpose/;
     expect(OTP_SCHEMA_STATEMENTS.every((statement) => idempotent.test(statement))).toBe(true);
     // the later versions of the table, and the per-user two-step switch
     const all = OTP_SCHEMA_STATEMENTS.join('\n');
     expect(all).toContain('ALTER COLUMN user_id DROP NOT NULL');
     expect(all).toContain('pending_password_hash');
     expect(all).toContain("'REGISTRATION'");
-    expect(all).toContain('ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE');
+    expect(all).toContain('ALTER TABLE users ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT TRUE');
+    expect(all).toContain('ALTER COLUMN two_factor_enabled SET DEFAULT TRUE');
     expect(logger.error).not.toHaveBeenCalled();
   });
 

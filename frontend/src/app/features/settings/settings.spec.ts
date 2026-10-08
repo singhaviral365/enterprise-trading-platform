@@ -30,9 +30,13 @@ describe('Settings', () => {
   let workingOrders: ReturnType<typeof signal<number>>;
 
   const byTestId = <T extends HTMLElement>(id: string) => root.querySelector<T>(`[data-testid="${id}"]`);
-  const button = (label: string) =>
-    [...root.querySelectorAll<HTMLButtonElement>('app-multiselect button')].find((b) => b.textContent?.includes(label))!;
-  const pressed = (label: string) => button(label).getAttribute('aria-pressed');
+  /** One tick box in the channel or category drop-down; the panel is in the DOM even while it is shut. */
+  const box = (group: 'settings-channels' | 'settings-categories', value: string) =>
+    root.querySelector<HTMLInputElement>(`[data-testid="${group}"] input[data-value="${value}"]`)!;
+  const channelBox = (value: string) => box('settings-channels', value);
+  const ticked = (value: string) => channelBox(value).checked;
+  const summary = (group: 'settings-channels' | 'settings-categories') =>
+    root.querySelector(`[data-testid="${group}"] .multi-summary`)?.textContent?.trim();
 
   async function pick(selectId: string, value: string): Promise<void> {
     const select = root.querySelector<HTMLSelectElement>(`#${selectId}`)!;
@@ -85,44 +89,55 @@ describe('Settings', () => {
   it('shows the saved settings in every control', async () => {
     await create();
 
-    expect(pressed('In-application')).toBe('true');
-    expect(pressed('Email')).toBe('false');
-    expect(pressed('No notifications')).toBe('false');
+    expect(ticked(NotificationChannel.InApp)).toBe(true);
+    expect(ticked(NotificationChannel.Email)).toBe(false);
+    expect(ticked('NONE')).toBe(false);
     expect(byTestId('settings-currency-value')?.textContent?.trim()).toBe('USD');
     expect(root.querySelector<HTMLSelectElement>('#settings-date-format')!.value).toBe(DateFormat.MonDdYyyy);
     expect(root.querySelector<HTMLSelectElement>('#settings-assistant')!.value).toBe('no');
     expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(true);
   });
 
-  it('shows two-step sign-in as off by default, and turns it on at once without Save', async () => {
+  it('shows the saved two-step choice, and a change waits for Save like every other setting', async () => {
     await create();
     expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('off');
 
     await pick('settings-two-factor', 'on');
 
-    expect(setTwoFactor).toHaveBeenCalledWith(true);
+    expect(setTwoFactor).not.toHaveBeenCalled();
     expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('on');
-    expect(notifications.success).toHaveBeenCalledWith('Two-step sign-in is on.');
+    expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(false);
+
+    await click(byTestId('settings-save')!);
+
+    expect(setTwoFactor).toHaveBeenCalledWith(true);
+    expect(notifications.success).toHaveBeenCalledWith('Settings saved');
     expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(true);
   });
 
-  it('says why two-step sign-in could not be turned on, and leaves it off', async () => {
+  it('puts the two-step choice back on Discard, without calling the server', async () => {
     await create();
-    // like a real call, the refusal arrives after the screen has shown the choice
-    setTwoFactor.mockImplementationOnce(
-      () =>
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new HttpErrorResponse({ status: 503, error: { errorCode: 'OTP-503', message: 'x' } })), 20),
-        ),
-    );
-
     await pick('settings-two-factor', 'on');
+
+    await click(byTestId('settings-discard')!);
+
+    expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('off');
+    expect(setTwoFactor).not.toHaveBeenCalled();
+  });
+
+  it('says why two-step sign-in could not be turned on, and saves nothing else', async () => {
+    await create();
+    setTwoFactor.mockRejectedValueOnce(new HttpErrorResponse({ status: 503, error: { errorCode: 'OTP-503', message: 'x' } }));
+    await pick('settings-two-factor', 'on');
+    await pick('settings-theme', Theme.Dark);
+
+    await click(byTestId('settings-save')!);
 
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(byTestId('settings-two-factor-error')?.textContent?.trim()).toBeTruthy();
-      expect(root.querySelector<HTMLSelectElement>('#settings-two-factor')!.value).toBe('off');
     });
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('shows two-step sign-in even for a customer with no trading account', async () => {
@@ -144,35 +159,38 @@ describe('Settings', () => {
     it('turns channels on and off, and "No notifications" is what an empty list looks like', async () => {
       await create();
 
-      await click(button('Email'));
-      expect(pressed('Email')).toBe('true');
-      expect(pressed('In-application')).toBe('true');
+      await click(channelBox(NotificationChannel.Email));
+      expect(ticked(NotificationChannel.Email)).toBe(true);
+      expect(ticked(NotificationChannel.InApp)).toBe(true);
+      expect(summary('settings-channels')).toBe('2 selected');
 
-      await click(button('Email'));
-      await click(button('In-application'));
-      expect(pressed('No notifications')).toBe('true');
-      expect(byTestId('settings-channels-hint')?.textContent).toContain("won't be sent any alerts");
+      await click(channelBox(NotificationChannel.Email));
+      await click(channelBox(NotificationChannel.InApp));
+      // the last channel cannot be unticked: pick "No notifications" for none
+      expect(ticked(NotificationChannel.InApp)).toBe(true);
+      await click(channelBox('NONE'));
+      expect(summary('settings-channels')).toBe('No notifications');
     });
 
     it('choosing "No notifications" clears the channels, and choosing a channel again leaves it', async () => {
       await create();
-      await click(button('Email'));
+      await click(channelBox(NotificationChannel.Email));
 
-      await click(button('No notifications'));
-      expect(pressed('Email')).toBe('false');
-      expect(pressed('In-application')).toBe('false');
-      expect(pressed('No notifications')).toBe('true');
+      await click(channelBox('NONE'));
+      expect(ticked(NotificationChannel.Email)).toBe(false);
+      expect(ticked(NotificationChannel.InApp)).toBe(false);
+      expect(ticked('NONE')).toBe(true);
 
-      await click(button('In-application'));
-      expect(pressed('In-application')).toBe('true');
-      expect(pressed('No notifications')).toBe('false');
+      await click(channelBox(NotificationChannel.InApp));
+      expect(ticked(NotificationChannel.InApp)).toBe(true);
+      expect(ticked('NONE')).toBe(false);
     });
 
     it('cannot pick categories while nothing would be sent', async () => {
       await create();
-      await click(button('No notifications'));
+      await click(channelBox('NONE'));
 
-      expect(root.querySelector('app-multiselect[label="Notification categories"] .is-readonly')).toBeTruthy();
+      expect(root.querySelector<HTMLButtonElement>('[data-testid="settings-categories"] button.multi-trigger')!.disabled).toBe(true);
     });
   });
 
@@ -190,7 +208,7 @@ describe('Settings', () => {
 
     it('sends the whole document in one call and says so', async () => {
       await create();
-      await click(button('Email'));
+      await click(channelBox(NotificationChannel.Email));
       await pick('settings-date-format', DateFormat.YyyyMmDd);
       await pick('settings-time-format', TimeFormat.H24);
       await pick('settings-number-format', NumberFormat.In);
@@ -310,11 +328,12 @@ describe('Settings', () => {
     expect(reload).toHaveBeenCalled();
   });
 
-  it('lays the four sections out inside one grid container', async () => {
+  it('stacks the four sections in two columns', async () => {
     await create();
 
-    const layout = byTestId('settings-layout')!;
-    expect(layout.querySelectorAll(':scope > section.card, :scope > form > section.card').length).toBe(4);
+    const columns = [...byTestId('settings-layout')!.querySelectorAll(':scope > form > .settings-col')];
+    expect(columns.length).toBe(2);
+    expect(columns.map((column) => column.querySelectorAll(':scope > section.card').length)).toEqual([2, 2]);
   });
 
   it('explains that settings belong to an account when there is none', async () => {

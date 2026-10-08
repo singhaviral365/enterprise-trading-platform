@@ -17,12 +17,15 @@
 # Usage: 
 #   powershell -ExecutionPolicy Bypass -File test_e2e.ps1
 
-$API_URL = "http://localhost:3000"
-$DB_HOST = "localhost"
-$DB_PORT = "5432"
-$DB_USER = "postgres"
-$DB_NAME = "auth_db"
-$DB_PASSWORD = "n3u3d4!"
+# Every value comes from config/application.yml (see config/README.md).
+$cfg = Join-Path $PSScriptRoot "..\..\config\cli.js"
+function Get-Config($key) { (node $cfg get $key).Trim() }
+$API_URL = Get-Config "services.auth.url"
+$DB_HOST = Get-Config "database.auth.host"
+$DB_PORT = Get-Config "database.auth.port"
+$DB_USER = Get-Config "database.auth.user"
+$DB_NAME = Get-Config "database.auth.name"
+$DB_PASSWORD = Get-Config "database.auth.password"
 
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "Sprint 8 Auth Service - E2E Testing" -ForegroundColor Green
@@ -38,7 +41,7 @@ Write-Host ""
 Write-Host "Run these commands in order:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "1. Open PowerShell and run:" -ForegroundColor Yellow
-Write-Host '   $env:PGPASSWORD = "n3u3d4!"; psql -U postgres -h localhost' -ForegroundColor Gray
+Write-Host "   `$env:PGPASSWORD = <database.auth.password from config/application.yml>; psql -U $DB_USER -h $DB_HOST -p $DB_PORT" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. In psql, execute the auth_setup.sql script:" -ForegroundColor Yellow
 Write-Host "   \i auth_setup.sql" -ForegroundColor Gray

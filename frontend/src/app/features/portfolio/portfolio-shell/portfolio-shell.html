@@ -61,11 +61,11 @@
   <section class="tiles" aria-label="Account summary">
     <article class="card tile">
       <h2 class="tile-label">Cash</h2>
-      <p class="tile-value" data-testid="portfolio-cash">{{ cash() | currency: currency() }}</p>
+      <p class="tile-value" data-testid="portfolio-cash" [attr.title]="cash() | currency: currency()">{{ cash() | compactMoney: currency() }}</p>
     </article>
     <article class="card tile">
       <h2 class="tile-label">Cost of holdings</h2>
-      <p class="tile-value" data-testid="portfolio-cost">{{ unavailableCost() | currency: currency() }}</p>
+      <p class="tile-value" data-testid="portfolio-cost" [attr.title]="unavailableCost() | currency: currency()">{{ unavailableCost() | compactMoney: currency() }}</p>
     </article>
     @if (store.unavailableRealised(); as realised) {
       <article class="card tile">
@@ -91,17 +91,17 @@
   <section class="tiles" aria-label="Portfolio summary">
     <article class="card tile is-featured">
       <h2 class="tile-label">Total value</h2>
-      <p class="tile-value" data-testid="portfolio-total">{{ s.totalValue | currency: currency() }}</p>
+      <p class="tile-value" data-testid="portfolio-total" [attr.title]="s.totalValue | currency: currency()">{{ s.totalValue | compactMoney: currency() }}</p>
       <p class="tile-note">Cash plus market value</p>
     </article>
     <article class="card tile">
       <h2 class="tile-label">Cash</h2>
-      <p class="tile-value" data-testid="portfolio-cash">{{ s.cashBalance | currency: currency() }}</p>
+      <p class="tile-value" data-testid="portfolio-cash" [attr.title]="s.cashBalance | currency: currency()">{{ s.cashBalance | compactMoney: currency() }}</p>
     </article>
     <article class="card tile">
       <h2 class="tile-label">Market value</h2>
-      <p class="tile-value" data-testid="portfolio-market-value">{{ s.marketValue | currency: currency() }}</p>
-      <p class="tile-note">Cost {{ s.costBasis | currency: currency() }}</p>
+      <p class="tile-value" data-testid="portfolio-market-value" [attr.title]="s.marketValue | currency: currency()">{{ s.marketValue | compactMoney: currency() }}</p>
+      <p class="tile-note" [attr.title]="s.costBasis | currency: currency()">Cost {{ s.costBasis | compactMoney: currency() }}</p>
     </article>
     <article class="card tile">
       <h2 class="tile-label">Unrealised P&amp;L</h2>

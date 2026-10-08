@@ -32,13 +32,13 @@
         <span class="position-card-basis">
           @if (row.pricing?.marketValue !== null && row.pricing?.marketValue !== undefined) {
             <span class="position-basis-label">Market value</span>
-            <span class="position-basis-value" [attr.data-testid]="'holding-value-' + row.symbol">{{
-              row.pricing!.marketValue | currency: currency() ?? 'USD'
+            <span class="position-basis-value" [attr.data-testid]="'holding-value-' + row.symbol" [attr.title]="(row.pricing?.marketValue ?? row.costBasis) | currency: currency() ?? 'USD'">{{
+              row.pricing!.marketValue | compactMoney: currency() ?? 'USD'
             }}</span>
           } @else {
             <span class="position-basis-label">Cost basis</span>
-            <span class="position-basis-value" [attr.data-testid]="'holding-value-' + row.symbol">{{
-              row.costBasis | currency: currency() ?? 'USD'
+            <span class="position-basis-value" [attr.data-testid]="'holding-value-' + row.symbol" [attr.title]="(row.pricing?.marketValue ?? row.costBasis) | currency: currency() ?? 'USD'">{{
+              row.costBasis | compactMoney: currency() ?? 'USD'
             }}</span>
           }
         </span>

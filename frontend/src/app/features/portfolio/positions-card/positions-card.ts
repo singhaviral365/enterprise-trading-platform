@@ -3,7 +3,7 @@ import { InstrumentLabel } from '../../../shared/ui/instrument-label/instrument-
 import { PnlValue } from '../../../shared/ui/pnl-value/pnl-value';
 import { PriceStatusBadge } from '../price-status/price-status';
 import { PositionRow } from '../position-row';
-import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
+import { CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
 /**
  * Card view of the holdings: one clickable card per holding with its logo, symbol and name, its price status, its market
@@ -13,7 +13,7 @@ import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../../shared/f
  */
 @Component({
   selector: 'app-positions-card',
-  imports: [PreferenceCurrencyPipe, PreferenceDecimalPipe, InstrumentLabel, PnlValue, PriceStatusBadge],
+  imports: [CompactMoneyPipe, PreferenceCurrencyPipe, PreferenceDecimalPipe, InstrumentLabel, PnlValue, PriceStatusBadge],
   templateUrl: './positions-card.html',
   styleUrl: './positions-card.css',
 })

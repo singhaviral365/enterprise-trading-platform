@@ -5,29 +5,52 @@
   </div>
 </header>
 
+<ng-template #actions>
+  <div class="settings-actions">
+    @if (saveError()) {
+      <p class="form-error-text" role="alert" data-testid="settings-save-error">{{ saveError() }}</p>
+    }
+    <button
+      type="button"
+      class="btn is-secondary"
+      data-testid="settings-discard"
+      [disabled]="!dirty() || saving()"
+      (click)="discard()"
+    >
+      Discard changes
+    </button>
+    <button type="button" class="btn is-primary" data-testid="settings-save" (click)="save()" [disabled]="!dirty() || saving()">
+      @if (saving()) {
+        <app-spinner [inline]="true" label="Saving" />
+      }
+      Save settings
+    </button>
+  </div>
+</ng-template>
+
 <div class="settings-layout" data-testid="settings-layout">
 
-<section class="card rise-in" aria-labelledby="security-title" data-testid="settings-security">
-  <h2 id="security-title" class="card-title">Sign-in security</h2>
-  <app-dropdown
-    class="setting-row"
-    label="Two-step sign-in"
-    inputId="settings-two-factor"
-    [options]="twoFactorOptions"
-    [value]="twoFactorShown()"
-    [disabled]="twoFactorEnabled() === null || twoFactorBusy()"
-    (valueChange)="setTwoFactor($event)"
-  />
-  <p class="form-hint" data-testid="settings-two-factor-hint">
-    When it is on, signing in also asks for a 6-digit code we email to the address on your login. It is off unless you
-    turn it on. This applies at once; there is nothing to save.
-  </p>
-  @if (twoFactorError()) {
-    <p class="form-error-text" role="alert" data-testid="settings-two-factor-error">{{ twoFactorError() }}</p>
-  }
-</section>
+<ng-template #securityCard>
+  <section class="card rise-in" aria-labelledby="security-title" data-testid="settings-security">
+    <h2 id="security-title" class="card-title">Sign-in security</h2>
+    <app-dropdown
+      class="setting-row"
+      label="Two-step sign-in"
+      inputId="settings-two-factor"
+      [options]="twoFactorOptions"
+      [value]="twoFactorShown()"
+      [disabled]="twoFactorEnabled() === null || twoFactorBusy()"
+      (valueChange)="setTwoFactor($event)"
+    />
+    @if (twoFactorError()) {
+      <p class="form-error-text" role="alert" data-testid="settings-two-factor-error">{{ twoFactorError() }}</p>
+    }
+  </section>
+</ng-template>
 
 @if (store.accountId() === null) {
+  <ng-container *ngTemplateOutlet="securityCard" />
+  <ng-container *ngTemplateOutlet="actions" />
   @if (accounts.data.isLoading() && !accounts.data.hasValue()) {
     <div class="card settings-state is-full" aria-live="polite">
       <app-spinner [inline]="true" label="Loading your account" />
@@ -47,6 +70,7 @@
   }
 } @else {
   @if (store.state() === 'loading' && !store.customised()) {
+    <ng-container *ngTemplateOutlet="securityCard" />
     <div class="card settings-state is-full" aria-live="polite">
       <app-spinner [inline]="true" label="Loading your settings" />
       <span>Loading your settings…</span>
@@ -61,43 +85,9 @@
       </div>
     }
 
-    <form class="settings-form" novalidate (submit)="$event.preventDefault(); save()" data-testid="settings-form">
-      <section class="card rise-in" aria-labelledby="notifications-title">
-        <h2 id="notifications-title" class="card-title">Notifications</h2>
-
-        <div class="form-group">
-          <span class="form-label" id="channels-label">Channel of communication</span>
-          <app-multiselect
-            label="Channel of communication"
-            [options]="channelOptions"
-            [selected]="selectedChannels()"
-            (selectedChange)="setChannels($event)"
-          />
-          <p class="form-hint" data-testid="settings-channels-hint">
-            @if (noNotifications()) {
-              You won't be sent any alerts.
-            } @else {
-              We keep your email address with your login, and no phone number is stored here, so these are only
-              switches. SMS cannot be delivered until a phone number is on file.
-            }
-          </p>
-        </div>
-
-        <div class="form-group">
-          <span class="form-label" id="categories-label">Tell me about</span>
-          <app-multiselect
-            label="Notification categories"
-            [options]="categoryOptions"
-            [selected]="draft().categories"
-            [readOnly]="noNotifications()"
-            (selectedChange)="setCategories($event)"
-          />
-          @if (noNotifications()) {
-            <p class="form-hint">Switch a channel on to choose what you hear about.</p>
-          }
-        </div>
-      </section>
-
+    <form class="settings-form" novalidate (submit)="$event.preventDefault()" data-testid="settings-form">
+      <div class="settings-col">
+        <ng-container *ngTemplateOutlet="securityCard" />
       <section class="card rise-in" aria-labelledby="display-title">
         <h2 id="display-title" class="card-title">Display</h2>
 
@@ -148,7 +138,33 @@
           </div>
         </dl>
       </section>
+      </div>
+      <div class="settings-col">
+      <section class="card rise-in" aria-labelledby="notifications-title">
+        <h2 id="notifications-title" class="card-title">Notifications</h2>
 
+        <div class="settings-rows">
+          <app-multi-dropdown
+            class="setting-row"
+            label="Channel of communication"
+            [options]="channelOptions"
+            [selected]="selectedChannels()"
+            [atLeastOne]="true"
+            data-testid="settings-channels"
+            (selectedChange)="setChannels($event)"
+          />
+          <app-multi-dropdown
+            class="setting-row"
+            label="Tell me about"
+            placeholder="Nothing"
+            [options]="categoryOptions"
+            [selected]="draft().categories"
+            [disabled]="noNotifications()"
+            data-testid="settings-categories"
+            (selectedChange)="setCategories($event)"
+          />
+        </div>
+      </section>
       <section class="card rise-in" aria-labelledby="behaviour-title">
         <h2 id="behaviour-title" class="card-title">Appearance and behaviour</h2>
 
@@ -187,27 +203,9 @@
           />
         </div>
       </section>
-
-      <div class="settings-actions">
-        @if (saveError()) {
-          <p class="form-error-text" role="alert" data-testid="settings-save-error">{{ saveError() }}</p>
-        }
-        <button
-          type="button"
-          class="btn is-secondary"
-          data-testid="settings-discard"
-          [disabled]="!dirty() || saving()"
-          (click)="discard()"
-        >
-          Discard changes
-        </button>
-        <button type="submit" class="btn is-primary" data-testid="settings-save" [disabled]="!dirty() || saving()">
-          @if (saving()) {
-            <app-spinner [inline]="true" label="Saving" />
-          }
-          Save settings
-        </button>
       </div>
+
+      <ng-container *ngTemplateOutlet="actions" />
     </form>
   }
 }

@@ -78,7 +78,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 POSTGRES_DB=trading_db
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=n3u3d4!
+POSTGRES_PASSWORD=<database password from config/application.yml>
 ```
 
 ---

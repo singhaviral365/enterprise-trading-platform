@@ -32,22 +32,16 @@ Users are linked to existing trading accounts via application-level relationship
 
 ### Setup
 
-1. Copy environment template:
+1. Create the central configuration (one file for every service, git-ignored) and fill it in; the auth-service reads `database.auth.*`, `jwt.*`,
+   `auth.*`, `encryption.*`, `services.auth.port` and `environment`:
 ```bash
-cp .env.example .env
+cp ../../config/application.example.yml ../../config/application.yml
 ```
+   See [`config/README.md`](../../config/README.md). There is no `.env` file.
 
-2. Update `.env` with your configuration:
-```env
-NODE_ENV=development
-PORT=3000
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=auth_db
-DATABASE_USER=postgres
-DATABASE_PASSWORD=postgres
-JWT_SECRET=your-secret-key-here
-JWT_ISSUER=auth-service
+2. (Optional) Generate the payload-encryption key and paste the two lines under `encryption:`:
+```bash
+node ../../config/cli.js enc-key
 ```
 
 3. Install dependencies:
@@ -158,7 +152,7 @@ npx typeorm migration:run -d dist/database.config.js
 
 ## Configuration
 
-All configuration comes from environment variables. Required variables:
+All configuration comes from `config/application.yml`, which this service turns into the environment variables below at start-up (`src/config/central-config.ts` lists the key for each; a real environment variable still wins). The variables:
 
 | Variable | Description | Default |
 |----------|-------------|---------|

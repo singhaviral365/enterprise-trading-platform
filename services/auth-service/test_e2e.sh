@@ -18,12 +18,14 @@
 
 set -e
 
-API_URL="http://localhost:3000"
-DB_HOST="localhost"
-DB_PORT="5432"
-DB_USER="postgres"
-DB_NAME="auth_db"
-DB_PASSWORD="n3u3d4!"
+# Every value comes from config/application.yml (see config/README.md).
+CFG="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/config/cli.js"
+API_URL="$(node "$CFG" get services.auth.url)"
+DB_HOST="$(node "$CFG" get database.auth.host)"
+DB_PORT="$(node "$CFG" get database.auth.port)"
+DB_USER="$(node "$CFG" get database.auth.user)"
+DB_NAME="$(node "$CFG" get database.auth.name)"
+DB_PASSWORD="$(node "$CFG" get database.auth.password)"
 
 echo "============================================================"
 echo "Sprint 8 Auth Service - E2E Testing"

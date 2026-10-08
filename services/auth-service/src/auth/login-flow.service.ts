@@ -45,8 +45,12 @@ export class LoginFlowService {
   async start(username: string, password: string, callerId: string): Promise<LoginResponseDto> {
     const user = await this.authService.authenticate(username, password, callerId);
 
-    // A code is asked for only when two-step sign-in is offered here AND this user switched it on for themselves.
-    if (!this.settings.twoFactorEnabled || user.two_factor_enabled !== true) {
+    // A code is asked for only when two-step sign-in is offered here, this user has it on (the default), and there is a way to email it:
+    // without one the user would be locked out, so the service says so in its log and signs them in on the password alone.
+    if (this.settings.twoFactorEnabled && user.two_factor_enabled === true && !this.email.enabled()) {
+      this.logger.warn('LoginFlowService', 'Two-step sign-in skipped: email is off, so no code can be sent', { userId: user.id });
+    }
+    if (!this.settings.twoFactorEnabled || user.two_factor_enabled !== true || !this.email.enabled()) {
       return { twoFactorRequired: false, tokens: await this.authService.issueTokens(user) };
     }
 
