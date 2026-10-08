@@ -139,4 +139,15 @@ describe('Pagination', () => {
       expect(fixture.componentInstance.currentPage()).toBe(3);
     });
   });
+
+  it('compact: no page size or range, and "2/5" between the arrows', async () => {
+    fixture.componentRef.setInput('pageSizeOptions', [5, 10]);
+    fixture.componentRef.setInput('totalItems', 23);
+    fixture.componentRef.setInput('compact', true);
+    await render(2, 5);
+
+    expect(root.querySelector('[data-testid="pagination-page-size"]')).toBeNull();
+    expect(root.querySelector('[data-testid="pagination-compact"]')?.textContent?.replace(/\s+/g, '')).toBe('Page2/5');
+    expect(button('Next page')).not.toBeNull();
+  });
 });

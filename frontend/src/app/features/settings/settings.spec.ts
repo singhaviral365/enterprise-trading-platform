@@ -4,7 +4,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { AuthService } from '../../core/auth.service';
-import { DialogService } from '../../core/dialog.service';
 import { NotificationService } from '../../core/notification.service';
 import {
   DateFormat,
@@ -26,7 +25,6 @@ describe('Settings', () => {
   let save: ReturnType<typeof vi.fn>;
   let reload: ReturnType<typeof vi.fn>;
   let notifications: { success: ReturnType<typeof vi.fn> };
-  let confirm: ReturnType<typeof vi.fn>;
   let me: ReturnType<typeof vi.fn>;
   let setTwoFactor: ReturnType<typeof vi.fn>;
   let workingOrders: ReturnType<typeof signal<number>>;
@@ -55,7 +53,6 @@ describe('Settings', () => {
     save = vi.fn(async (values: ReturnType<typeof defaultPreferences>) => current.set(values));
     reload = vi.fn();
     notifications = { success: vi.fn() };
-    confirm = vi.fn(async () => true);
     me = vi.fn(async () => ({ id: 1, twoFactorEnabled: false }));
     setTwoFactor = vi.fn(async (enabled: boolean) => ({ id: 1, twoFactorEnabled: enabled }));
     workingOrders = signal(0);
@@ -77,7 +74,6 @@ describe('Settings', () => {
           },
         },
         { provide: NotificationService, useValue: notifications },
-        { provide: DialogService, useValue: { confirm } },
         { provide: AuthService, useValue: { me, setTwoFactor } },
       ],
     }).compileComponents();
@@ -92,7 +88,7 @@ describe('Settings', () => {
     expect(pressed('In-application')).toBe('true');
     expect(pressed('Email')).toBe('false');
     expect(pressed('No notifications')).toBe('false');
-    expect(root.querySelector<HTMLSelectElement>('#settings-currency')!.value).toBe('USD');
+    expect(byTestId('settings-currency-value')?.textContent?.trim()).toBe('USD');
     expect(root.querySelector<HTMLSelectElement>('#settings-date-format')!.value).toBe(DateFormat.MonDdYyyy);
     expect(root.querySelector<HTMLSelectElement>('#settings-assistant')!.value).toBe('no');
     expect(byTestId<HTMLButtonElement>('settings-save')!.disabled).toBe(true);
@@ -160,15 +156,15 @@ describe('Settings', () => {
 
     it('choosing "No notifications" clears the channels, and choosing a channel again leaves it', async () => {
       await create();
-      await click(button('SMS'));
+      await click(button('Email'));
 
       await click(button('No notifications'));
-      expect(pressed('SMS')).toBe('false');
+      expect(pressed('Email')).toBe('false');
       expect(pressed('In-application')).toBe('false');
       expect(pressed('No notifications')).toBe('true');
 
-      await click(button('Email'));
-      expect(pressed('Email')).toBe('true');
+      await click(button('In-application'));
+      expect(pressed('In-application')).toBe('true');
       expect(pressed('No notifications')).toBe('false');
     });
 
@@ -251,85 +247,54 @@ describe('Settings', () => {
       await pick('settings-date-format', DateFormat.DdMmYyyy);
       await pick('settings-time-format', TimeFormat.H24);
       await pick('settings-number-format', NumberFormat.In);
-      await pick('settings-currency', 'INR');
 
       expect(byTestId('settings-preview-date')?.textContent).toBe('06/10/2026, 15:07:09');
       expect(byTestId('settings-preview-number')?.textContent).toBe('12,34,567.89');
-      expect(byTestId('settings-preview-money')?.textContent).toBe('₹12,34,567.89');
+      expect(byTestId('settings-preview-money')?.textContent).toBe('$12,34,567.89');
       expect(save).not.toHaveBeenCalled();
     });
 
-    it('says the account will be converted when another currency is chosen', async () => {
+    it('draws the preview money in the account currency', async () => {
       await create();
-      expect(byTestId('settings-currency-note')).toBeNull();
+      current.set({ ...current(), preferredCurrency: 'INR' as never });
+      await fixture.whenStable();
 
-      await pick('settings-currency', 'EUR');
-
-      expect(byTestId('settings-currency-note')?.textContent).toContain('from USD to EUR');
-      expect(byTestId('settings-currency-note')?.textContent).toContain("today's rate");
-      expect(byTestId('settings-currency-blocked')).toBeNull();
-    });
-
-    it('warns about open orders, which stop the change', async () => {
-      await create();
-      workingOrders.set(2);
-      await pick('settings-currency', 'EUR');
-
-      expect(byTestId('settings-currency-blocked')?.textContent).toContain('2 open orders');
+      expect(byTestId('settings-preview-money')?.textContent).toBe('₹1,234,567.89');
     });
   });
 
-  describe('changing the account currency', () => {
-    it('asks first, naming both currencies and what is converted, and saves on a yes', async () => {
+  describe('the account currency', () => {
+    it('is a read-only fact with the reason, not a control', async () => {
       await create();
-      await pick('settings-currency', 'EUR');
+
+      expect(root.querySelector('#settings-currency')).toBeNull();
+      expect(root.querySelector('select[id*="currency"]')).toBeNull();
+      expect(byTestId('settings-currency')?.textContent).toContain('Account currency');
+      expect(byTestId('settings-currency-value')?.textContent?.trim()).toBe('USD');
+      expect(byTestId('settings-currency')?.textContent).toContain('Set when your account was opened.');
+    });
+
+    it('has no conversion warning, no open-order block and no confirmation', async () => {
+      await create();
+      workingOrders.set(2);
+      await pick('settings-theme', Theme.Dark);
+
+      expect(byTestId('settings-currency-note')).toBeNull();
+      expect(byTestId('settings-currency-blocked')).toBeNull();
 
       await click(byTestId('settings-save')!);
 
-      expect(confirm).toHaveBeenCalledTimes(1);
-      const asked = confirm.mock.calls[0][0];
-      expect(asked.message).toContain('from USD to EUR');
-      expect(asked.message).toContain('purchasing power');
-      expect(asked.cancelText).toBe('Keep USD');
       expect(save).toHaveBeenCalledTimes(1);
-      expect(save.mock.calls[0][0].preferredCurrency).toBe('EUR');
-      expect(notifications.success).toHaveBeenCalledWith('Settings saved. Your account is now in EUR.');
+      expect(notifications.success).toHaveBeenCalledWith('Settings saved');
     });
 
-    it('saves nothing on a no, and keeps the edit', async () => {
-      await create();
-      confirm.mockResolvedValueOnce(false);
-      await pick('settings-currency', 'EUR');
-
-      await click(byTestId('settings-save')!);
-
-      expect(save).not.toHaveBeenCalled();
-      expect(root.querySelector<HTMLSelectElement>('#settings-currency')!.value).toBe('EUR');
-    });
-
-    it('does not ask when nothing about the currency changed', async () => {
+    it('is still the account currency that is passed along when other settings are saved', async () => {
       await create();
       await pick('settings-theme', Theme.Dark);
 
       await click(byTestId('settings-save')!);
 
-      expect(confirm).not.toHaveBeenCalled();
-      expect(save).toHaveBeenCalledTimes(1);
-    });
-
-    it.each([
-      ['ACC-409', 409, 'open orders'],
-      ['FX-503', 503, 'exchange rate'],
-    ])('explains a %s refusal in plain words', async (errorCode, status, phrase) => {
-      await create();
-      save.mockRejectedValueOnce(
-        new HttpErrorResponse({ status, statusText: 'x', error: { errorCode, message: 'x' } }),
-      );
-      await pick('settings-currency', 'EUR');
-
-      await click(byTestId('settings-save')!);
-
-      expect(byTestId('settings-save-error')?.textContent).toContain(phrase);
+      expect(save.mock.calls[0][0].preferredCurrency).toBe('USD');
     });
   });
 
@@ -343,6 +308,13 @@ describe('Settings', () => {
 
     root.querySelector<HTMLButtonElement>('[data-testid="settings-load-error"] button')!.click();
     expect(reload).toHaveBeenCalled();
+  });
+
+  it('lays the four sections out inside one grid container', async () => {
+    await create();
+
+    const layout = byTestId('settings-layout')!;
+    expect(layout.querySelectorAll(':scope > section.card, :scope > form > section.card').length).toBe(4);
   });
 
   it('explains that settings belong to an account when there is none', async () => {

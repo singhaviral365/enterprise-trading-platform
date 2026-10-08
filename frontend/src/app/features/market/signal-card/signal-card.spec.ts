@@ -8,10 +8,9 @@ import { provideApiClients } from '../../../api/api.config';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { NotificationService } from '../../../core/notification.service';
 import { PreferencesStore } from '../../../core/preferences.store';
-import { SignalAdvisor } from './signal-advisor';
+import { SignalCard } from './signal-card';
 
 const SIGNAL_URL = '/api/v1/accounts/1001/signals/AAPL?format=narrative';
-const CHAT_URL = '/api/v1/signals/chat';
 
 function signalBody(extra: Record<string, unknown> = {}) {
   return {
@@ -36,8 +35,8 @@ function signalBody(extra: Record<string, unknown> = {}) {
   };
 }
 
-describe('SignalAdvisor', () => {
-  let fixture: ComponentFixture<SignalAdvisor>;
+describe('SignalCard', () => {
+  let fixture: ComponentFixture<SignalCard>;
   let http: HttpTestingController;
   let root: HTMLElement;
   let assistant: ReturnType<typeof signal<boolean>>;
@@ -54,7 +53,7 @@ describe('SignalAdvisor', () => {
     assistant = signal(options.assistantOn ?? false);
     notifications = { info: vi.fn(), warning: vi.fn() };
     await TestBed.configureTestingModule({
-      imports: [SignalAdvisor],
+      imports: [SignalCard],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -66,7 +65,7 @@ describe('SignalAdvisor', () => {
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
-    fixture = TestBed.createComponent(SignalAdvisor);
+    fixture = TestBed.createComponent(SignalCard);
     fixture.componentRef.setInput('symbol', 'AAPL');
     root = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
@@ -178,120 +177,12 @@ describe('SignalAdvisor', () => {
   });
 
   describe('when the assistant is on', () => {
-    it('offers suggested questions and a box to type one, and no Settings hint', async () => {
+    it('has no Settings hint and no chat of its own: the chat is a separate component', async () => {
       await create({ assistantOn: true });
 
-      const quick = [...root.querySelectorAll('.quick button')].map((b) => b.textContent?.trim());
-      expect(quick).toEqual(['Why this signal?', 'What does the RSI tell me?', 'How strong is it?', 'What would change it?']);
-      expect(byTestId('signal-question')).toBeTruthy();
       expect(byTestId('signal-assistant-off')).toBeNull();
-    });
-
-    it('sends a suggested question and shows the answer with where it came from', async () => {
-      await create({ assistantOn: true });
-
-      root.querySelector<HTMLButtonElement>('.quick button')!.click();
-      const request = await vi.waitFor(() => http.expectOne(CHAT_URL));
-      expect(request.request.body).toEqual({
-        accountId: 1001,
-        symbol: 'AAPL',
-        message: 'Why this signal?',
-        conversationHistory: [],
-      });
-      request.flush({ response: 'Because the averages agree.', source: 'GEMINI', signal: signalBody(), timestamp: '2026-10-07T10:00:00Z' });
-      await settle();
-
-      const log = text('signal-chat-log');
-      expect(log).toContain('Why this signal?');
-      expect(log).toContain('Because the averages agree.');
-      expect(log).toContain('AI assistant');
-    });
-
-    it('sends what was typed, keeps the conversation, and sends it as history with the next question', async () => {
-      await create({ assistantOn: true });
-      const input = byTestId<HTMLInputElement>('signal-question')!;
-
-      input.value = 'And the RSI?';
-      input.dispatchEvent(new Event('input'));
-      await settle();
-      byTestId<HTMLButtonElement>('signal-send')!.click();
-      (await vi.waitFor(() => http.expectOne(CHAT_URL))).flush({
-        response: 'It is in the middle range.',
-        source: 'FALLBACK',
-        signal: signalBody(),
-        timestamp: '2026-10-07T10:00:00Z',
-      });
-      await settle();
-      expect(input.value).toBe('');
-      expect(text('signal-chat-log')).toContain('Standard answer');
-
-      input.value = 'Thanks, and what could change it?';
-      input.dispatchEvent(new Event('input'));
-      await settle();
-      byTestId<HTMLButtonElement>('signal-send')!.click();
-      const second = await vi.waitFor(() => http.expectOne(CHAT_URL));
-      expect(second.request.body.conversationHistory).toEqual([
-        { role: 'user', content: 'And the RSI?' },
-        { role: 'assistant', content: 'It is in the middle range.' },
-      ]);
-      second.flush({ response: 'A new close.', source: 'GEMINI', signal: signalBody(), timestamp: '2026-10-07T10:00:00Z' });
-      await settle();
-    });
-
-    it('will not send an empty question', async () => {
-      await create({ assistantOn: true });
-
-      expect(byTestId<HTMLButtonElement>('signal-send')!.disabled).toBe(true);
-      http.expectNone(CHAT_URL);
-    });
-
-    it('shows a refusal as a sentence in the conversation, never the servers own words', async () => {
-      await create({ assistantOn: true });
-
-      root.querySelector<HTMLButtonElement>('.quick button')!.click();
-      (await vi.waitFor(() => http.expectOne(CHAT_URL))).flush(
-        { errorCode: 'AST-429', message: 'dev text' },
-        { status: 429, statusText: 'Too Many Requests' },
-      );
-      await settle();
-
-      const log = text('signal-chat-log');
-      expect(log).toContain('The assistant is busy right now');
-      expect(log).not.toContain('dev text');
-      expect(byTestId<HTMLButtonElement>('signal-send')!.disabled).toBe(true);
-    });
-
-    it('does not send a second question while one is being answered', async () => {
-      await create({ assistantOn: true });
-
-      const buttons = root.querySelectorAll<HTMLButtonElement>('.quick button');
-      buttons[0].click();
-      await vi.waitFor(() => http.expectOne(CHAT_URL));
-      fixture.detectChanges();
-
-      expect([...root.querySelectorAll<HTMLButtonElement>('.quick button')].every((b) => b.disabled)).toBe(true);
-    });
-
-    it('starts a fresh conversation for another instrument', async () => {
-      await create({ assistantOn: true });
-      root.querySelector<HTMLButtonElement>('.quick button')!.click();
-      (await vi.waitFor(() => http.expectOne(CHAT_URL))).flush({
-        response: 'Because.',
-        source: 'GEMINI',
-        signal: signalBody(),
-        timestamp: '2026-10-07T10:00:00Z',
-      });
-      await settle();
-      expect(byTestId('signal-chat-log')).toBeTruthy();
-
-      fixture.componentRef.setInput('symbol', 'MSFT');
-      fixture.detectChanges();
-      (await vi.waitFor(() => http.expectOne('/api/v1/accounts/1001/signals/MSFT?format=narrative'))).flush(
-        signalBody({ symbol: 'MSFT' }),
-      );
-      await settle();
-
-      expect(byTestId('signal-chat-log')).toBeNull();
+      expect(byTestId('signal-question')).toBeNull();
+      expect(root.querySelector('.quick')).toBeNull();
     });
   });
 

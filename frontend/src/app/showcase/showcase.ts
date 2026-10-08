@@ -9,6 +9,7 @@ import { DonutChart, DonutSlice } from '../shared/ui/donut-chart/donut-chart';
 import { Dropdown, DropdownOption } from '../shared/ui/dropdown/dropdown';
 import { InstrumentIcon } from '../shared/ui/instrument-icon/instrument-icon';
 import { InstrumentLabel } from '../shared/ui/instrument-label/instrument-label';
+import { DateRange, DateRangeControl, EMPTY_DATE_RANGE } from '../shared/ui/date-range/date-range';
 import { MultiDropdown } from '../shared/ui/multi-dropdown/multi-dropdown';
 import { Multiselect, MultiselectOption } from '../shared/ui/multiselect/multiselect';
 import { Pagination } from '../shared/ui/pagination/pagination';
@@ -37,6 +38,7 @@ const PAGE_SIZE = 3;
   selector: 'app-showcase',
   imports: [
     CurrencyPipe,
+    DateRangeControl,
     DonutChart,
     Dropdown,
     InstrumentIcon,
@@ -65,6 +67,7 @@ export class Showcase {
   ];
   protected readonly sector = signal('');
   protected readonly sectorFilter = signal<readonly string[]>([]);
+  protected readonly dateRange = signal<DateRange>(EMPTY_DATE_RANGE);
   protected readonly sectorInvalid = computed(() => this.submitted() && this.sector() === '');
 
   protected readonly symbols: readonly MultiselectOption[] = [

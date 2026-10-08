@@ -1,11 +1,11 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { SplitView } from './split-view';
+import { SPLIT_ASIDE_MIN_WIDTH, SplitView } from './split-view';
 
 @Component({
   imports: [SplitView],
   template: `
-    <app-split-view [open]="open()" labelledBy="detail-title" testId="pane" (closed)="onClosed()">
+    <app-split-view #split [open]="open()" [aside]="aside()" labelledBy="detail-title" testId="pane" (closed)="onClosed()">
       <ul list data-testid="the-list">
         <li>one</li>
       </ul>
@@ -14,11 +14,17 @@ import { SplitView } from './split-view';
           <h2 id="detail-title" data-testid="the-detail">Detail</h2>
         }
       </div>
+      <div aside>
+        @if (split.asideVisible()) {
+          <p data-testid="the-aside">Aside</p>
+        }
+      </div>
     </app-split-view>
   `,
 })
 class Host {
   readonly open = signal(false);
+  readonly aside = signal(false);
   readonly onClosed = vi.fn();
 }
 
@@ -42,6 +48,29 @@ function mockMatchMedia(matches: boolean) {
       listeners.forEach((listener) => listener({ matches: next }));
     },
     listeners,
+  };
+}
+
+/** A controllable stand-in for ResizeObserver: tests call `widthTo(...)` to resize every observed element. */
+function mockResizeObserver() {
+  const callbacks = new Set<(entries: { contentRect: { width: number } }[]) => void>();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(private readonly callback: (entries: { contentRect: { width: number } }[]) => void) {
+        callbacks.add(callback);
+      }
+      observe(): void {}
+      disconnect(): void {
+        callbacks.delete(this.callback);
+      }
+    },
+  );
+  return {
+    widthTo(width: number) {
+      callbacks.forEach((callback) => callback([{ contentRect: { width } }]));
+    },
+    observers: callbacks,
   };
 }
 
@@ -108,6 +137,93 @@ describe('SplitView', () => {
     });
   });
 
+  describe('compact list and the aside', () => {
+    beforeEach(() => mockMatchMedia(true));
+
+    it('is compact only while a detail is open beside the list', async () => {
+      const { fixture, host } = create();
+      const split = fixture.debugElement.children[0].componentInstance as import('./split-view').SplitView;
+      await fixture.whenStable();
+      expect(split.compact()).toBe(false);
+
+      host.open.set(true);
+      await fixture.whenStable();
+      expect(split.compact()).toBe(true);
+
+      host.open.set(false);
+      await fixture.whenStable();
+      expect(split.compact()).toBe(false);
+    });
+
+    it('shows the aside only when a page wants one, a detail is open and the container is wide enough', async () => {
+      const resize = mockResizeObserver();
+      const { fixture, root, host, byTestId } = create();
+      await fixture.whenStable();
+
+      host.open.set(true);
+      await fixture.whenStable();
+      resize.widthTo(1200);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeNull();
+      expect(root.querySelector('.split')!.classList.contains('has-aside')).toBe(false);
+
+      host.aside.set(true);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeTruthy();
+      expect(root.querySelector('.split')!.classList.contains('has-aside')).toBe(true);
+      expect(byTestId('split-aside')).toBeTruthy();
+
+      host.open.set(false);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeNull();
+    });
+
+    it('drops the aside below the minimum width and brings it back above it', async () => {
+      const resize = mockResizeObserver();
+      const { fixture, host, byTestId } = create();
+      host.open.set(true);
+      host.aside.set(true);
+      await fixture.whenStable();
+
+      resize.widthTo(SPLIT_ASIDE_MIN_WIDTH);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeTruthy();
+
+      resize.widthTo(SPLIT_ASIDE_MIN_WIDTH - 1);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeNull();
+
+      resize.widthTo(1500);
+      await fixture.whenStable();
+      expect(byTestId('the-aside')).toBeTruthy();
+    });
+
+    it('stops observing when destroyed', async () => {
+      const resize = mockResizeObserver();
+      const { fixture } = create();
+      await fixture.whenStable();
+      expect(resize.observers.size).toBe(1);
+
+      fixture.destroy();
+
+      expect(resize.observers.size).toBe(0);
+    });
+
+    it('asks to be closed on Escape inside the aside too', async () => {
+      const resize = mockResizeObserver();
+      const { fixture, host, byTestId } = create();
+      host.open.set(true);
+      host.aside.set(true);
+      await fixture.whenStable();
+      resize.widthTo(1400);
+      await fixture.whenStable();
+
+      byTestId('split-aside')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(host.onClosed).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('on a narrow screen', () => {
     it('opens the same detail in a modal dialog instead, with the list full width', async () => {
       mockMatchMedia(false);
@@ -121,6 +237,21 @@ describe('SplitView', () => {
       expect(dialog.tagName).toBe('DIALOG');
       expect(dialog.open).toBe(true);
       expect(dialog.querySelector('[data-testid="the-detail"]')).toBeTruthy();
+    });
+
+    it('has no aside and no compact list: the list keeps its width and the detail is a dialog', async () => {
+      mockMatchMedia(false);
+      const resize = mockResizeObserver();
+      const { fixture, root, host, byTestId } = create();
+      host.open.set(true);
+      host.aside.set(true);
+      await fixture.whenStable();
+      resize.widthTo(2000);
+      await fixture.whenStable();
+
+      expect(byTestId('the-aside')).toBeNull();
+      expect(root.querySelector('aside')).toBeNull();
+      expect((fixture.debugElement.children[0].componentInstance as import('./split-view').SplitView).compact()).toBe(false);
     });
 
     it('uses a dialog too when the browser has no matchMedia', async () => {

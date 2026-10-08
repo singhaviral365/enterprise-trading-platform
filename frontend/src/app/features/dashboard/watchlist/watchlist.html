@@ -162,13 +162,17 @@
                             [class.is-down]="direction < 0"
                             [attr.data-testid]="'watchlist-change-' + item.tickerSymbol"
                           >
-                            <i
-                              class="fas"
-                              [class.fa-arrow-trend-up]="direction > 0"
-                              [class.fa-arrow-trend-down]="direction < 0"
-                              [class.fa-minus]="direction === 0"
-                              aria-hidden="true"
-                            ></i>
+                            @if (direction === 0) {
+                              <span class="zero-mark" aria-hidden="true">-</span>
+                              <span class="visually-hidden">Unchanged</span>
+                            } @else {
+                              <i
+                                class="fas"
+                                [class.fa-arrow-trend-up]="direction > 0"
+                                [class.fa-arrow-trend-down]="direction < 0"
+                                aria-hidden="true"
+                              ></i>
+                            }
                             @if (move.change !== null) {
                               {{ move.change > 0 ? '+' : '' }}{{ move.change | number: '1.2-2' }}
                             }

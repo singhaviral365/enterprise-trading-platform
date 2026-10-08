@@ -3,7 +3,7 @@ import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/
 
 /**
  * A profit or loss figure that never relies on colour alone: a sign, an arrow icon and the amount, with an optional
- * percentage. A missing figure shows a dash with a screen-reader phrase, never a zero (unknown is not zero).
+ * percentage. A missing figure shows a small hyphen with a screen-reader phrase, never a zero (unknown is not zero).
  */
 @Component({
   selector: 'app-pnl-value',
@@ -11,18 +11,22 @@ import { PreferenceCurrencyPipe, PreferenceDecimalPipe } from '../../formatting/
   template: `
     @if (amount() === null || amount() === undefined) {
       <span class="pnl is-unknown">
-        <span aria-hidden="true">—</span>
+        <span class="no-value" aria-hidden="true">-</span>
         <span class="visually-hidden">Not available</span>
       </span>
     } @else {
       <span class="pnl" [class.is-gain]="direction() > 0" [class.is-loss]="direction() < 0">
-        <i
-          class="fas"
-          [class.fa-arrow-trend-up]="direction() > 0"
-          [class.fa-arrow-trend-down]="direction() < 0"
-          [class.fa-minus]="direction() === 0"
-          aria-hidden="true"
-        ></i>
+        @if (direction() === 0) {
+          <span class="zero-mark" aria-hidden="true">-</span>
+          <span class="visually-hidden">Unchanged</span>
+        } @else {
+          <i
+            class="fas"
+            [class.fa-arrow-trend-up]="direction() > 0"
+            [class.fa-arrow-trend-down]="direction() < 0"
+            aria-hidden="true"
+          ></i>
+        }
         <span class="pnl-amount">{{ sign() }}{{ absolute() | currency: currency() }}</span>
         @if (percent() !== null && percent() !== undefined) {
           <span class="pnl-percent">({{ sign() }}{{ absolutePercent() | number: '1.2-2' }}%)</span>

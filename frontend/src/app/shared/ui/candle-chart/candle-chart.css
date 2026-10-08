@@ -1,0 +1,56 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. The shared chrome is `.hc` in
+   styles.css; this colours the candles (up days are solid success, down days solid error and the body of an up day is hollow-edged
+   so the two differ by more than colour), the volume, the average-cost line and the trade markers, all from tokens. */
+
+.candle-chart .highcharts-candlestick-series .highcharts-point {
+  stroke-width: 1.5px;
+}
+
+.candle-chart .highcharts-candlestick-series .highcharts-point-up {
+  fill: var(--surface-background-bright);
+  stroke: var(--status-success-background);
+}
+
+.candle-chart .highcharts-candlestick-series .highcharts-point-down {
+  fill: var(--status-error-background);
+  stroke: var(--status-error-background);
+}
+
+.candle-chart .highcharts-column-series .highcharts-point {
+  fill: var(--data-mono-neutral-3);
+  fill-opacity: 0.45;
+}
+
+.candle-chart .candle-average-cost {
+  stroke: var(--accent-primary-background);
+  stroke-width: 2px;
+  stroke-dasharray: 6 4;
+}
+
+.candle-chart .highcharts-plot-line-label {
+  fill: var(--accent-primary-background);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.candle-chart .candle-buy {
+  fill: var(--accent-primary-background);
+  stroke: var(--surface-background-bright);
+  stroke-width: 1.5px;
+}
+
+.candle-chart .candle-sell {
+  fill: var(--data-mono-red-3);
+  stroke: var(--surface-background-bright);
+  stroke-width: 1.5px;
+}
+
+.chart-table-heading {
+  margin: 12px 0 4px;
+  font-weight: 600;
+}
+
+.candle-chart .trade-list {
+  margin: 0;
+  padding-left: 18px;
+}

@@ -166,8 +166,7 @@
   line-height: 1.5;
 }
 
-.explanation-foot,
-.message-foot {
+.explanation-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -192,69 +191,6 @@
   display: block;
   margin-top: 4px;
   color: var(--status-warning-container-fg);
-}
-
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.log {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 260px;
-  padding: 8px;
-  overflow-y: auto;
-  border: 1px solid var(--surface-line-subtle);
-  border-radius: 12px;
-  background: var(--surface-background-bright);
-}
-
-.message {
-  max-width: 92%;
-  padding: 8px 12px;
-  border: 1px solid var(--surface-line-subtle);
-  border-radius: 12px;
-  background: var(--surface-container-background);
-}
-
-.message p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.message.is-user {
-  align-self: flex-end;
-  color: var(--accent-primary-foreground);
-  background: var(--accent-primary-background);
-  border-color: var(--accent-primary-background);
-}
-
-.message.is-problem {
-  color: var(--status-error-container-fg);
-  background: var(--status-error-container-bg);
-  border-color: var(--status-error-container-line);
-}
-
-.ask {
-  display: flex;
-  gap: 8px;
-}
-
-.ask .form-input {
-  flex: 1;
-  min-width: 0;
 }
 
 .method {

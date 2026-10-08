@@ -1,0 +1,10 @@
+@if (position() !== null) {
+  <span class="range-bar" role="img" [attr.aria-label]="description()" [attr.title]="description()" data-testid="price-range-bar">
+    <span class="range-track" aria-hidden="true">
+      <span class="range-marker" [style.left.%]="position()"></span>
+    </span>
+  </span>
+} @else {
+  <span class="no-value" aria-hidden="true">-</span>
+  <span class="visually-hidden" data-testid="price-range-none">{{ description() }}</span>
+}

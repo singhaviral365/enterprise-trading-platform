@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.date-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+
+.date-range-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-range-field .form-label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.date-range-field .form-input {
+  width: 150px;
+}
+
+.date-range-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

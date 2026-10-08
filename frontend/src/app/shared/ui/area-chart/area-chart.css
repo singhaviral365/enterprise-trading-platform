@@ -1,0 +1,79 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. The shared chrome is `.hc` in
+   styles.css; this only colours the series, by tone, from the tokens. Tone indexes: 0 primary, 1 neutral, 2 success, 3 loss. */
+
+.area-chart .highcharts-area {
+  fill-opacity: 0.35;
+  stroke: none;
+}
+
+.area-chart .highcharts-graph {
+  fill: none;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.area-chart .highcharts-color-0 {
+  fill: var(--accent-primary-background);
+  stroke: var(--accent-primary-background);
+}
+
+.area-chart .highcharts-color-1 {
+  fill: var(--data-mono-neutral-3);
+  stroke: var(--data-mono-neutral-3);
+}
+
+.area-chart .highcharts-color-2 {
+  fill: var(--status-success-background);
+  stroke: var(--status-success-background);
+}
+
+.area-chart .highcharts-color-3 {
+  fill: var(--status-error-background);
+  stroke: var(--status-error-background);
+}
+
+.area-chart .highcharts-graph.highcharts-color-0,
+.area-chart .highcharts-graph.highcharts-color-1,
+.area-chart .highcharts-graph.highcharts-color-2,
+.area-chart .highcharts-graph.highcharts-color-3 {
+  fill: none;
+}
+
+.area-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.area-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.area-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.area-swatch.is-primary {
+  background: var(--accent-primary-background);
+}
+
+.area-swatch.is-neutral {
+  background: var(--data-mono-neutral-3);
+}
+
+.area-swatch.is-success {
+  background: var(--status-success-background);
+}
+
+.area-swatch.is-loss {
+  background: var(--status-error-background);
+}

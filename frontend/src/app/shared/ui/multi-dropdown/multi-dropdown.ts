@@ -22,6 +22,8 @@ export class MultiDropdown {
   readonly label = input.required<string>();
   /** Shown while nothing is ticked. */
   readonly placeholder = input('All');
+  /** When true the last ticked option cannot be unticked (a choice that must not be empty); there is no clear button. */
+  readonly atLeastOne = input(false);
 
   private readonly id = nextMultiDropdownId++;
   protected readonly labelId = `multi-dropdown-label-${this.id}`;
@@ -42,7 +44,14 @@ export class MultiDropdown {
     return this.selected().includes(value);
   }
 
-  protected toggle(value: string): void {
+  protected toggle(value: string, event?: Event): void {
+    if (this.atLeastOne() && this.selected().length === 1 && this.selected()[0] === value) {
+      // Put the box back: the browser has already unticked it.
+      if (event?.target instanceof HTMLInputElement) {
+        event.target.checked = true;
+      }
+      return;
+    }
     this.selected.update((values) => (values.includes(value) ? values.filter((v) => v !== value) : [...values, value]));
   }
 

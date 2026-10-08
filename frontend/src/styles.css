@@ -894,6 +894,11 @@ a:hover {
   border-radius: 0 12px 12px 0;
 }
 
+/* A row with a single cell is both the first and the last: round all four corners, not just the right pair. */
+.row-table tbody tr > :first-child:last-child {
+  border-radius: 12px;
+}
+
 .row-table tbody tr:hover > *,
 .row-table tbody tr:focus-within > * {
   background: var(--surface-container-background);
@@ -949,6 +954,20 @@ a:hover {
   color: var(--accent-primary-foreground);
   background: var(--accent-primary-background);
   --label-subtle: var(--accent-primary-foreground);
+}
+
+/* Compact: only the first (Instrument) column, used while a detail pane is open beside the list. The other columns and the
+   totals row are hidden; their figures are in the detail. */
+.row-table.is-compact thead th:not(:first-child),
+.row-table.is-compact tbody tr > :not(:first-child),
+.row-table.is-compact tfoot {
+  display: none;
+}
+
+/* Muted text and the "no value" hyphen follow the on-primary colour inside the selected row. */
+.row-table tbody tr.is-selected .muted,
+.row-table tbody tr.is-selected .no-value {
+  color: var(--accent-primary-foreground);
 }
 
 /* Totals row. */
@@ -1166,6 +1185,18 @@ html {
   width: 150px
 }
 
+/* Missing value and zero / unchanged marks: a small hyphen instead of a long dash or icon */
+
+.no-value {
+  color: var(--surface-foreground-subtle);
+  font-weight: 400;
+}
+
+.zero-mark {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
 /* Accessibility */
 
 .visually-hidden {
@@ -1246,3 +1277,93 @@ html {
   }
 }
 
+
+/* Charts (Highcharts, styled mode). Every chart component adds .hc to its host: this is the chrome they share, drawn only from
+   tokens, so each chart's own stylesheet only has to colour its series. The plot sits inside a box with a fixed height and is
+   positioned in it, so Highcharts measuring its own container cannot make the card grow. */
+
+.hc-frame {
+  position: relative;
+  width: 100%;
+  height: var(--hc-height, 260px);
+  min-height: var(--hc-height, 260px);
+}
+
+.hc-frame .hc-plot {
+  position: absolute;
+  inset: 0;
+}
+
+.hc .highcharts-background,
+.hc .highcharts-plot-background,
+.hc .highcharts-plot-border,
+.hc .highcharts-halo {
+  fill: none;
+  stroke: none;
+}
+
+.hc .highcharts-credits,
+.hc .highcharts-title,
+.hc .highcharts-legend {
+  display: none;
+}
+
+.hc .highcharts-tracker-area,
+.hc .highcharts-tracker-line {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.hc .highcharts-grid-line {
+  stroke: var(--surface-line-subtle);
+  stroke-width: 1px;
+}
+
+.hc .highcharts-axis-line,
+.hc .highcharts-tick {
+  stroke: var(--surface-line-subtle);
+}
+
+.hc .highcharts-axis-labels text {
+  fill: var(--surface-foreground-subtle);
+  font-size: 12px;
+}
+
+.hc .highcharts-crosshair {
+  stroke: var(--surface-line);
+  stroke-dasharray: 4 4;
+}
+
+.hc .highcharts-tooltip-box {
+  fill: var(--surface-background-bright);
+  stroke: var(--surface-line);
+  stroke-width: 1px;
+}
+
+.hc .highcharts-tooltip text {
+  fill: var(--surface-foreground);
+  font-size: 13px;
+}
+
+/* "View as table": the same numbers as the chart, reachable with the keyboard and by a screen reader. */
+.chart-table {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.chart-table summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.chart-table summary:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+.chart-table .table-container {
+  max-height: 260px;
+  margin-top: 8px;
+  overflow: auto;
+}

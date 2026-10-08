@@ -46,6 +46,7 @@ Everything lives in `frontend/src`:
   - [4.2 Dropdown (`shared/ui/dropdown/dropdown`)](#42-dropdown-shareduidropdowndropdown)
   - [4.3 Multiselect (`shared/ui/multiselect/multiselect`)](#43-multiselect-shareduimultiselectmultiselect)
   - [4.3b Multi-select dropdown (`shared/ui/multi-dropdown/multi-dropdown`)](#43b-multi-select-dropdown-shareduimulti-dropdownmulti-dropdown)
+  - [4.3c Date range (`shared/ui/date-range/date-range`)](#43c-date-range-shareduidate-rangedate-range)
   - [4.4 Pagination (`shared/ui/pagination/pagination`)](#44-pagination-shareduipaginationpagination)
   - [4.5 Spinner (`shared/ui/spinner/spinner`)](#45-spinner-shareduispinnerspinner)
   - [4.6 Tooltip (`shared/ui/tooltip/tooltip`)](#46-tooltip-shareduitooltiptooltip)
@@ -62,6 +63,7 @@ Everything lives in `frontend/src`:
   - [4.12 Sheet dialog (`shared/ui/sheet-dialog`)](#412-sheet-dialog-shareduisheet-dialog)
   - [4.13 Donut chart (`shared/ui/donut-chart`)](#413-donut-chart-shareduidonut-chart)
   - [4.13b Line chart (`shared/ui/line-chart`)](#413b-line-chart-shareduiline-chart)
+  - [4.13c Charts: bar, area, treemap and candlestick](#413c-charts-bar-area-treemap-and-candlestick)
   - [4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)](#414-order-ticket-confirmation-and-side-toggle-shareduiorder-ticket-order-confirmation-side-toggle)
   - [4.15 Split view (`shared/ui/split-view`)](#415-split-view-shareduisplit-view)
   - [4.16 Quote summary and trade panel (`shared/ui/quote-summary`, `shared/ui/trade-panel`)](#416-quote-summary-and-trade-panel-shareduiquote-summary-shareduitrade-panel)
@@ -362,6 +364,9 @@ One style for every table whose rows open something (Market data and the holding
 - Make rows clickable with `tabindex="0"` plus click / Enter / Space on the `<tr>` (focus ring included), or with a
   `.row-link` button in the first cell whose click area covers the row.
 - `.row-table-scroll` is the container: `.col-extra` columns hide below 620px of table width (half-width pane, phone).
+- `.row-table.is-compact` shows only the first (Instrument) column and hides the totals row: used while a detail pane is open beside
+  the list (see the split view, 4.15; the page binds `[class.is-compact]="split.compact()"`). A single-cell row rounds all four corners
+  (`:first-child:last-child`). Muted text and the `.no-value` hyphen follow the on-primary colour inside the selected row.
   Put `.col-last` on the last always-visible cell of each row so the rounded end stays when the columns after it hide.
 - `<tfoot>` rows get a totals style. Component CSS adds only what is specific (chips, status colours).
 
@@ -369,6 +374,12 @@ One style for every table whose rows open something (Market data and the holding
 
 `.status` plus `.is-success | .is-info | .is-warning | .is-error | .is-neutral` colours text with the
 container-fg token. Include the status word, not just a colour.
+
+Missing data and zero are a small hyphen, never a long dash or `fa-minus`:
+`<span class="no-value" aria-hidden="true">-</span>` (muted, for "no data") and
+`<span class="zero-mark" aria-hidden="true">-</span>` (slightly smaller, bold, for "unchanged" inside a chip). Each is
+followed by `<span class="visually-hidden">` text ("No value", "Unchanged") so the hyphen is never the only content for a
+screen reader. The quantity stepper's minus and the circled minus of Sell are real icons and stay.
 
 ### Empty state and toolbar
 
@@ -397,7 +408,11 @@ Rendered once by `App` (`app.html`). Do not render them per page.
 - **`app-header`** (`layout/header/header`): inputs `sidebarOpen` (bool, for `aria-expanded`),
   output `toggleSidebar`. Shows home / sidebar toggle, logo, theme toggle, and either the account
   menu + logout (signed in) or "Login / Register" (guest). Frosted glass via `--shell-*` tokens.
-- **`app-account-menu`** (`layout/header/account-menu`): signed-in user menu inside the header.
+- **`app-profile-menu`** (`layout/header/profile-menu`): the one person icon in the header and the pane behind it (click-only popover,
+  `role="dialog"`, focus moves in on open, Esc returns it, a bottom sheet under 600px). Shows identity and sign-in security
+  (`ProfileStore`, auth-service) and the trading account (`AccountOverviewStore`, order-service), each with its own loading and error
+  state, and swaps to `app-change-password-form` in place (Back returns). Border and the bright surface, no shadow. Its button is named
+  `Account menu for {username}`; there is no username text in the header.
 - **`app-sidebar`** (`layout/sidebar/sidebar`): inputs `open` (bool) and `items`
   (`SidebarItem[]` = `{ route, label, icon }`). **Rendered only when `session.isLoggedIn()`**.
   Collapsed it shows icons with tooltips; expanded it shows labels. To add a page, add an entry to
@@ -441,8 +456,24 @@ A dropdown with checkboxes, for filters. A button shows the choice ("All", the o
 ```
 
 Inputs: `options` (required, `DropdownOption[]`), `label` (required, also the accessible name),
-`placeholder` (default `All`). Two-way `[(selected)]` (array of values; empty = no filter). Use the chip
-`app-multiselect` for short always-visible sets and this one for filters.
+`placeholder` (default `All`), `atLeastOne` (default false: the last ticked option cannot be unticked and the
+"Clear selection" button is hidden, for a choice that must not be empty, such as a read-state filter). Two-way
+`[(selected)]` (array of values; empty = no filter). Use the chip `app-multiselect` for short always-visible sets and this
+one for filters.
+
+### 4.3c Date range (`shared/ui/date-range/date-range`)
+
+Two native `<input type="date">` (From, To) with preset buttons (Today, Last 7 days, Last 30 days, Any date), grouped as
+`role="group"`.
+
+```html
+<app-date-range label="Created between" [(range)]="range" />
+```
+
+`range` is `{ from, to }` of `YYYY-MM-DD` strings (empty = no limit on that side) and is emitted as typed. A backwards range or
+one longer than 366 days shows an error tied to both inputs (`aria-invalid`, `aria-describedby`); the page decides what to do
+with it (the notifications store ignores an unusable range). Helpers exported next to it: `dateRangeError`, `startOfDayIso` and
+`endOfDayIso` (the first and last instant of a day in the user's time zone, what the API takes), `toDateInput`.
 
 ### 4.4 Pagination (`shared/ui/pagination/pagination`)
 
@@ -554,7 +585,7 @@ Route `/orders`, in the sidebar. It reads from the shared `AccountOverviewStore`
   icon-only `is-error` trash button appears left of Reset; it asks with `DialogService.confirm` (type
   `warning`), then calls `DELETE /api/v1/orders/{id}` for each, reports successes and failures in toasts and
   refreshes the store. Selections are dropped if the order stops being `NEW` or the filters hide it.
-- **Positions:** there is no separate page any more. The holdings are a section of the Portfolio page (4.10d, 4.20); `/positions` redirects to `/portfolio`.
+- **Positions:** there is no separate page any more. The holdings are a section of the Portfolio page (4.10d, 4.20); `/positions` redirects to `/portfolio/holdings`.
   Order history rows show the logo, symbol and company name (`app-instrument-label`). The dashboard's Recent orders
   panel shows the latest 5 with "View more".
 - **Live updates:** while any order is at `NEW` the store re-reads the account on a bounded interval
@@ -564,15 +595,15 @@ Route `/orders`, in the sidebar. It reads from the shared `AccountOverviewStore`
 
 ### 4.10d Holdings on the Portfolio page
 
-The holdings are the **Holdings section of `/portfolio`** (4.20). The old Positions page is gone: `/positions` redirects to `/portfolio`
-and the sidebar has no Positions item. The section is a parent (`Portfolio`) with two presentational children and a detail pane (a split
-view, 4.15), all under `features/portfolio`:
+The holdings are the **Holdings tab of the portfolio** (`/portfolio/holdings`, 4.20). The old Positions page is gone: `/positions` redirects there
+and the sidebar has no Positions item. The tab is a parent (`PortfolioHoldings`) with two presentational children and a detail pane (a split
+view, 4.15), all under `features/portfolio`; `/portfolio/holdings?symbol=AAPL` opens that holding's detail (a link from a notification can use it):
 
 | Component | Role |
 |---|---|
-| `Portfolio` (`portfolio.ts`) | Owns the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is selected. Rows come from `toPricedRows()` (prices up) or `toUnpricedRows()` (prices down), both in `position-row.ts` |
+| `PortfolioHoldings` (`portfolio-holdings/`) | Owns the view switch, paging (`app-pagination` with 10 / 20 / 50 rows) and which position is selected. Rows come from `HoldingsRows` (`holdings-rows.ts`, shared by every tab): `toPricedRows()` (prices up) or `toUnpricedRows()` (prices down), both in `position-row.ts` |
 | `PositionsCard` (`app-positions-card`) | **Default view.** A grid of clickable cards (`auto-fill, minmax(240px, 1fr)`, one per row under 600px): logo, symbol, name, a **price status** badge, the **market value** (the cost basis, labelled, when there is no price), **Unrealised** and **Today** (`app-pnl-value`) and the quantity times the price. Each card is a `<button>` |
-| `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, price, market value, unrealised, today and the price status. No total row: the totals are the summary tiles above. Rows are `clickable-row`s (Tab, Enter, Space) |
+| `PositionsTable` (`app-positions-table`) | Table view: instrument, quantity, average cost, cost basis, price, market value, unrealised, today, a **52-week range** bar (`app-price-range-bar`: where the price sits between the year's low and high, with the same in words; read lazily once per symbol by `PriceRanges`) and the price status. No total row: the totals are the summary tiles above. Rows are `clickable-row`s (Tab, Enter, Space) |
 | `app-price-status` | The **Live / Delayed / Unavailable** badge, words plus an icon, with the "as of" time when delayed |
 | `PositionDetail` (`app-position-detail`) | Opens from either view, in the right-hand pane on wide screens and in a dialog on narrow ones. Symbol, name and cost basis on one line, then quantity and average cost, then **"How your cost basis adds up"**: the filled BUY orders for that symbol (date, quantity, price, cost), a total row and the sum written out (`$8,760.00 ÷ 50 = $175.20`). A sentence covers sells ("selling lowers the quantity, not the average cost") and a note appears when the history does not account for the holding. **Buy more** and **Sell** switch the pane to the shared trade panel (4.16): the same price card and order ticket the market data page uses |
 
@@ -587,8 +618,8 @@ weighted-average rule.
 
 `/market` ("Market data" in the sidebar) hosts the live market board, which used to sit on the dashboard. The board
 (`app-market-board`) and the quote detail (`app-quote-detail`) live in `features/market`. Rows show the instrument
-logo. Clicking a row opens the quote detail in a split view (4.15): the table compresses to half the screen and the
-detail glides in on the right (a dialog under 1100px). The selected row is filled with the primary colour. The detail
+logo. Clicking a row opens the quote detail in a split view (4.15): the table shrinks to a compact column of instruments (260px), the
+detail glides in beside it and, with the AI assistant on and room, the assistant chat opens in a third pane on the right (a dialog under 1100px). The selected row is filled with the primary colour. The detail
 shows the price card (4.16, which also gives the price in your account currency when the instrument is quoted in
 another one); **Buy** and **Sell** open the shared trade panel.
 
@@ -655,6 +686,32 @@ fill, `--surface-line-subtle` for the grid). It draws a stepped area (it holds a
 axis starting at zero and a tooltip with the date and the formatted value. Put the numbers that matter in text next to
 the chart; the SVG is a labelled image.
 
+### 4.13c Charts: bar, area, treemap and candlestick
+
+Four more wrappers next to the donut (4.13) and the line (4.13b). They share one approach and one set of rules.
+
+| Component | Inputs | Draws |
+|---|---|---|
+| `app-bar-chart` (`shared/ui/bar-chart`) | `bars` (`{ label \| time, value }`), `orientation` (`column` \| `bar`), `timeAxis`, `line` (an overlay, for a running total), `valueFormatter`, `ariaLabel` | Bars where **the sign is the story**: above zero is success, below is error. Horizontal for "who made and lost the money", columns per day for the daily profit and loss |
+| `app-area-chart` (`shared/ui/area-chart`) | `series` (`{ name, points, tone }`), `stacked`, `zeroBased`, `legend`, formatters, `ariaLabel` | One or more areas over time; `tone` is `primary` / `neutral` / `success` / `loss`. Stacked for cash against holdings; one `loss` series for the fall from the peak |
+| `app-treemap-chart` (`shared/ui/treemap-chart`) | `items` (`{ name, value, change, detail }`), `valueName`, `changeName`, formatters, `ariaLabel` | Blocks: **size = value, colour = change** in five steps (`changeBucket`). Each block writes its name and change |
+| `app-candle-chart` (`shared/ui/candle-chart`) | `candles`, `averageCost`, `trades`, `valueFormatter`, `ariaLabel` | Candlesticks with volume in a second pane, the customer's **average cost as a dashed line** and their **buys and sells as triangle markers** |
+
+Rules for every chart (so the next one is thin too):
+
+* **Highcharts, lazy, styled mode.** `HIGHCHARTS_LOADER` loads the core; `HIGHCHARTS_MODULE_LOADER('treemap' \| 'stock')` loads an optional module
+  as its own chunk, only for a page that draws such a chart. Specs provide fakes for both (`testing/highcharts.ts`). Treemap and Stock are extra modules
+  of the same library; **Highcharts is free for non-commercial use, and a commercial launch needs a licence**, which is worth settling before building more on it.
+* **Tokens only.** The shared chrome (grid, axes, tooltip, hiding the credits) is `.hc` in `styles.css`; each chart's own stylesheet only colours its
+  series, from `--status-*`, `--accent-primary-*` and the `--data-mono-*` ramps. No shadows, no gradients on data, both themes.
+* **Colour is never the only signal.** Every chart has an `aria-label` (`role="img"`) summarising it and a **View as table** `<details>` listing the same numbers
+  (at most the 60 newest rows for a time series, with a note). Up and down candles also differ by fill; a partial month has a dashed edge.
+* **A title that states the question and a sentence that states the answer** ("Your top 3 holdings are 68% of your portfolio") sit above each chart that is
+  used on the portfolio (`.chart-takeaway`).
+* The plot sits in a fixed-height frame (`--hc-height`), so Highcharts measuring its container cannot make the card grow. `prefers-reduced-motion` turns the animation off.
+* Two things are not charts: the **monthly heat strip** (`app-monthly-returns`, a table of cells coloured in five steps, with the number in each) and the
+  **52-week range bar** (`app-price-range-bar`, a CSS bar with a marker and a text equivalent).
+
 ### 4.14 Order ticket, confirmation and side toggle (`shared/ui/order-ticket`, `order-confirmation`, `side-toggle`)
 
 Moved from `features/dashboard` so any screen can trade. It is embedded by the trade panel (4.16), which the quote
@@ -666,14 +723,16 @@ the limit price in the account currency. See `CURRENCY.md`.
 
 ### 4.15 Split view (`shared/ui/split-view`)
 
-A list with a detail pane beside it. On wide screens (`min-width: 1100px`, exported as `SPLIT_VIEW_QUERY`) selecting
-something compresses the list to half the width and glides the detail in on the right; under that width the same
-detail opens in a `SheetDialog` (4.12), so mobile keeps the pop-up. Market data and Positions both use it.
+A list with a detail pane beside it, and optionally a third pane (the aside). On wide screens (`min-width: 1100px`, exported as
+`SPLIT_VIEW_QUERY`) selecting something shrinks the list to a compact 260px column and glides the detail in beside it; under that width
+the same detail opens in a `SheetDialog` (4.12), so mobile keeps the pop-up and the list keeps its full width. Market data and Portfolio
+(Holdings) both use it.
 
 ```html
-<app-split-view [open]="!!selected()" labelledBy="detail-title" testId="my-detail" (closed)="selected.set(null)">
-  <div list>...table or cards...</div>
-  <div detail>@if (selected(); as row) { <app-quote-detail [row]="row" (closed)="selected.set(null)" /> }</div>
+<app-split-view #split [open]="!!selected()" [aside]="assistantOn()" labelledBy="detail-title" testId="my-detail" (closed)="selected.set(null)">
+  <div list><table class="row-table" [class.is-compact]="split.compact()">...</table></div>
+  <div detail>@if (selected(); as row) { <app-quote-detail [row]="row" [chatInline]="!split.asideVisible()" (closed)="selected.set(null)" /> }</div>
+  <div aside>@if (split.asideVisible()) { <app-assistant-chat layout="pane" [symbol]="symbol()" /> }</div>
 </app-split-view>
 ```
 
@@ -682,21 +741,31 @@ detail opens in a `SheetDialog` (4.12), so mobile keeps the pop-up. Market data 
 | `open` | Whether a detail is showing |
 | `labelledBy` | Id of the heading inside the detail (the shared header uses `detail-title`), for `aria-labelledby` |
 | `testId` | `data-testid` of the pane (or of the dialog on narrow screens) |
-| `(closed)` | Esc inside the pane, or Esc / backdrop click on the dialog; the detail also has its own close button |
+| `layout` | `table` (default, animates the columns) or `cards` (columns change at once, the detail glides in) |
+| `aside` | The page has something for a third pane (for example the assistant is on) |
+| `(closed)` | Esc inside the detail or the aside, or Esc / backdrop click on the dialog; the detail also has its own close button |
+| `compact` (signal) | A detail is open beside the list: the list should show only its instrument column (and a compact footer) |
+| `asideVisible` (signal) | The aside has room: a detail is open, `aside` is true and the container is at least `SPLIT_ASIDE_MIN_WIDTH` (1100px) wide |
 
 How it behaves:
 
-- **The slide.** `.split` is a grid whose columns are `1fr 0` closed and `1fr calc(50% + gap / 2)` open (a percentage: `cqw` on the grid itself would resolve against an ancestor container and shrink the page), so only
-  lengths and `fr` are interpolated and the grid animates smoothly (0.45s, ease-out). The detail panel keeps its final
-  width the whole time and the column clips it, so it is revealed rather than squeezed and reflowed. Do not animate a
-  column to `minmax(...)` or between `fr` units; it jumps.
-- **Compressing.** The list is a container. Tables hide low-priority columns (`.col-extra`) with `@container`
-  queries, so they cope with the half-width pane and a phone alike; never pass a "compact" flag down.
+- **The slide.** `.split` is a grid of three tracks, list / detail / aside, every one a length or a percentage so the grid animates
+  (0.45s, ease-out): closed `100% 0 0`; open `260px calc(100% - 260px) 0`; open with the aside `260px` `calc(100% - 260px - 340px - gap)` `calc(340px + gap)`.
+  The gaps are folded into the track sizes, so the gap itself never animates. The panels keep their final width (`cqw` against the
+  split container) the whole time and the tracks clip them, so they are revealed rather than squeezed and reflowed. Do not animate a track
+  to `minmax(...)` or between `fr` units; it jumps.
+- **Room for the aside** is measured on the split container with a `ResizeObserver` (a signal, disconnected on destroy), not on the window:
+  the sidebar and the page padding decide what is left. Below 1100px the page puts the chat inside the detail instead (`chatInline`).
+  Without `ResizeObserver` (jsdom) the width counts as unbounded.
+- **The aside** is sticky and as tall as the screen allows, so a conversation can fill it. It stays when the detail switches to Buy / Sell.
+- **Compacting.** The page passes `split.compact()` to the list: `.row-table.is-compact`, the cards' `compact` input (one column of small cards),
+  `app-pagination [compact]` and a hidden "Updated" time in the Market header. Container-query column dropping (`.col-extra`) is the fallback
+  on phones.
 - **Selection.** Selected card: primary border plus `--accent-primary-container-background`. Selected table row: the
   full `--accent-primary-background` with `--accent-primary-foreground` text (and `--label-subtle` set to the same, so
   instrument labels stay legible). Tokens only; the selected item also carries `aria-current` or is the button that
   opened the pane.
-- **Focus.** The pane takes focus when it opens (`tabindex="-1"`), Esc closes it.
+- **Focus.** The detail takes focus when it opens (`tabindex="-1"`, not the chat input), Esc closes the whole split.
 - **Without `matchMedia`** (jsdom, old browsers) it uses the dialog.
 - Motion is disabled under `prefers-reduced-motion`.
 
@@ -724,14 +793,18 @@ styled like a sidebar link, a bell icon and an unread **badge** (solid error-tok
 like the other links while the notifications page is open.
 
 The **Notifications page** (`/notifications`, `app-notifications-page`) replaces the earlier pop-up, because an inbox can hold
-hundreds of items: a title with "N unread" / "You are all caught up", a search box (debounced 300 ms), a category
-`app-multi-dropdown`, the list (newest first, as long as the page size; the page scrolls), `app-pagination` with a "Rows per
-page" selector, and empty, loading and error states. Unread items carry an accent edge, a dot and a bold title; read ones show
-the word "Read" (never colour alone) and drop out of the list an hour after they were read. Each item is a `<button>` whose
-`aria-label` starts "Unread:" or "Read:". Clicking an unread one marks it read.
+hundreds of items, up to the 1200px page width: a title with "N unread" / "You are all caught up", one filter row (a
+search box debounced 300 ms, a Category and a **Status** `app-multi-dropdown` with `atLeastOne`, and an icon-only **Reset filters**
+button, disabled while everything is at its default) and an `app-date-range` under it, the list (newest first, as long as the
+page size; the page scrolls), `app-pagination` with a "Rows per page" selector, and empty, loading and error states. The defaults
+are: no search, no category, **Unread only**, any date; they apply every time the page opens, and the empty state says "You have
+no unread notifications." at the defaults and "No notifications match." otherwise. Each row is a grid (icon, title and a
+two-line message, category chip, time, state) that stacks under 700px. Unread items carry an accent edge, a dot and a bold
+title; read ones show the word "Read" (never colour alone). An item opened a moment ago stays, dimmed, until the next refresh
+or filter change. Each item is a `<button>` whose `aria-label` starts "Unread:" or "Read:". Clicking an unread one marks it read.
 
-State lives in `NotificationInboxStore` (`core/notification-inbox.store.ts`): the applied query, categories, page and
-page size, the loaded page, `unreadCount` (what the badge shows) and a 30-second refresh. Components hold only what is
+State lives in `NotificationInboxStore` (`core/notification-inbox.store.ts`): the applied query, categories, statuses, date
+range, page and page size, the loaded page, `unreadCount` (what the badge shows) and a 30-second refresh. Components hold only what is
 being typed. The bell does not use `.sidebar-link` (that class is scoped to the sidebar), so `notification-bell.css`
 repeats its few spacing rules with the same tokens. The footer's `--footer-z` is below the sidebar's, so the footer scrolling
 into view never covers the navigation.
@@ -752,21 +825,30 @@ the account has 20 active alerts, except entries that already have one (replacin
 
 ### 4.20 Portfolio page (`features/portfolio`)
 
-`/portfolio` (sidebar: **Portfolio**) is the account's statement: what it is worth now, how it has done, what it holds and where the profit
-and loss came from. It is one page of independent sections, in this order:
+`/portfolio` (sidebar: **Portfolio**) is the account's statement, split by job into a shell and four lazy tabs (routes in `portfolio.routes.ts`, so each is
+linkable and costs nothing until opened). The shell (`PortfolioShell`, `portfolio-shell/`) is what never changes:
 
 1. **Header**: the title, "Prices as of ..." (with a **Delayed** badge when any served price is old) and **Refresh** (the account and every section).
 2. **Tiles** (`.card.tile`, a grid of three, two below 1000 px, one below 560 px): *Total value* (the featured gradient tile, the only one),
    *Cash*, *Market value* (with the cost under it), *Unrealised P&L*, *Realised P&L*, *Today*. Figures are in the account currency and
-   formatted by the preference pipes.
-3. **Performance** (`app-portfolio-performance`): the graph, straight under the tiles (below).
-4. **Holdings**: the cards and table of 4.10d, with the position detail.
-5. **Profit and loss by instrument** (below).
+   formatted by the preference pipes. They stay on **every** tab, so context is never lost.
+3. **Tab bar** (`<nav aria-label="Portfolio sections">`, links with `aria-current="page"`) and the `<router-outlet>` for the tab.
 
-* **Sections load on their own.** The page is three resources in `PortfolioStore`: the summary and priced positions (`data`), profit and loss
+| Tab | Route | Job | Contains |
+|---|---|---|---|
+| **Overview** | `/portfolio` | The ten-second picture | The NAV chart in its **compact** form (ranges, benchmark, figures), **Allocation** (donut, by instrument or by currency, takeaway "Your top 3 holdings are 68% of your portfolio"), **Who made the money** (horizontal contribution bars, best and worst named), **What moved today** (treemap, biggest mover named) |
+| **Holdings** | `/portfolio/holdings` | Manage what I own | Cards or table, the split-view detail with Buy / Sell, a **candlestick of the past year with my average cost and my trades** (`PositionDetail`), and the 52-week range bar per row |
+| **Performance** | `/portfolio/performance` | How I did over time | The NAV chart in full, then **cash against holdings** (stacked area, takeaway "62% of your account is working in the market"), **profit and loss day by day** (columns, with the realised total as a line), **how far below its peak** (drawdown area), **month by month** (heat strip) and the **Daily statements** |
+| **Profit and loss** | `/portfolio/pnl` | What I made, instrument by instrument | The table with its realised date filter, a **Download CSV** button, and **what you have banked, over time** (the running realised total) |
+
+Every old capability is still reachable at its own route. `PortfolioStore` is shared (switching tabs refetches nothing); each tab reads its own extras on demand.
+The analyses need no new API except that `NavPoint` now carries `cash`, `holdingsValue` and `costBasis` (optional, see `contracts/CONTRACT-CHANGES.md`); without them
+the cash-against-holdings chart is simply left out.
+
+* **Sections load on their own.** The tabs read three resources in `PortfolioStore`: the summary and priced positions (`data`), profit and loss
   by instrument (`pnl`) and the history (`performance`). Applying the realised date filter reloads **only** the profit-and-loss section, which
   shows its own spinner ("Loading profit and loss...", `aria-busy` on the section); the benchmark toggle reloads only the performance section.
-  The tiles, holdings and graph stay on screen and make no request. The page-level spinner appears only for the first load.
+  The tiles stay on screen and nothing else is requested. The page-level spinner appears only for the first load.
 * **Performance section.** A range switch (1M, 3M, 6M, 1Y, All; changing it reloads nothing, the points are already there), a
   "Compare with SPY" checkbox, the range figures (return, profit, annualised for a range over a year, max drawdown, best and worst day) and
   the **shared `app-line-chart`**, drawn as percent change from the start of the range, with the benchmark as a second series. The chart has an
@@ -789,7 +871,7 @@ and loss came from. It is one page of independent sections, in this order:
   **realised** figure by two dates. A start after the end is refused with an inline message and Apply stays disabled; the hint says the dates
   bound realised only and unrealised is always as at now.
 * State lives in `PortfolioStore` (`core/portfolio.store.ts`); `autoRefresh()` is started by the page while it is open (every minute; the server caches quotes) and
-  stops when it closes. The page only holds what is being typed, the view, the page and the selection.
+  stops when it closes. A tab holds only what is being typed, the view, the page and the selection.
 
 ### 4.10 `NoClipboard` directive (`shared/directives/no-clipboard`)
 
@@ -801,51 +883,72 @@ drag on password fields (autofill still works) and emits so the form can say why
 `/strategies` (sidebar item **Strategies**, icon `fa-robot`) is where a customer sets rules the platform trades for them. See
 [STRATEGIES.md](STRATEGIES.md) for what it does and why.
 
-- **Header and safety card.** A title, a plain sentence on what a strategy is, **Refresh** and **New strategy** (hidden while the form is
-  open), then a card "How your money is protected" saying the limits are theirs, a switch-off takes effect at once, a strategy only trades
+- **Header and safety card.** A title, one line ("The platform places this order for you when the price reaches your level, even when you are
+  signed out."), **Refresh** and **New strategy** (hidden while the form is open), then a card "How your money is protected" saying every strategy
+  has a spending cap and a largest holding (worked out unless the customer sets them), a switch-off takes effect at once, a strategy only trades
   when the price moves *through* its level, and they are notified.
-- **`app-strategy-form`** (`strategy-form/`, Signal Forms). Section 1 is the rule (an `app-dropdown` of instruments that have a price, the
-  shared `app-side-toggle`, "When the price" falls to or below / rises to or above, the price, the quantity); section 2 is the limits (most
-  one order may cost, largest holding, orders it may place, failures that stop it, optional end date). The limits are **required and never
-  defaulted**; the form shows what the order would cost at the trigger and offers a one-click suggestion ("Use 8,250"). A trigger the
-  price has already reached is explained and keeps **Create** disabled; server errors (`STR-409`, `STR-422`) show as sentences.
+- **`app-strategy-form`** (`strategy-form/`, Signal Forms). **Five inputs in one row** (wrapping to two columns, then one): an `app-dropdown` of
+  instruments that have a price, the shared `app-side-toggle`, "When the price" falls to or below / rises to or above, the price, the quantity.
+  Under them a **live summary sentence** (an `aria-live="polite"` region) replaces the helper paragraphs: the rule in words, how many runs, and the
+  worst-case spend ("Buy 5 AAPL when the price falls to $150.00. Runs once. Worst case about $863 (the order is placed at the market price, so it
+  can differ)."). Hints appear under a field only as errors (tied with `aria-describedby`). A trigger the price has already reached shows one short
+  line ("AAPL is already below that level, so this would trade now. Pick a lower price.") and keeps **Create** disabled. A closed `<details>`
+  **More options** holds *Repeat up to N times*, *Ends on*, and the **Spending cap** and **Largest holding** as empty fields whose placeholder
+  says `auto` (the spending cap shows `auto: 8,625`); a value typed there is sent, an empty one is worked out by the order-service. Server
+  errors (`STR-409`, `STR-422`) show as sentences. The summary-line pattern (a computed sentence in an `aria-live` region) is reusable by the
+  order ticket.
 - **The list** is a `.data-table` in a `.table-container`: the rule (instrument label plus "Buy 50 when the price is at or below $150.00"),
   a **status chip** (an icon and a word, never colour alone: Watching, Running, Switched off, Done, Cancelled, Expired, Stopped), runs
-  against the allowance, the limits, the end date, and the actions that make sense for that status: **Switch off**, **Switch on**,
+  against the allowance, the end date, and the actions that make sense for that status: **Switch off**, **Switch on**,
   **Cancel** (after a confirmation dialog) and **Activity**.
-- **`app-strategy-activity`** opens under a row and lists every time the strategy was triggered: when, what happened (*Order placed*,
+- **`app-strategy-activity`** opens under a row, starts with the strategy's limits in one line ("Spends at most 10,000 per order, holds at most 200 units, stops after 3 failures in a row"), and lists every time the strategy was triggered: when, what happened (*Order placed*,
   *Held back by your limit*, *Switched off first*, *Order refused*, *Price too old* ...), the price, and the order with how it ended.
 - Chips use the status container tokens (`--status-*-container-bg/-fg`); neutral ones use `--surface-container-background` with a border. No
   shadows, no hardcoded colours.
 
-### 4.22 Signal advisor (`features/market/signal-advisor`)
+### 4.22 Signal card and assistant chat (`features/market/signal-card`, `features/market/assistant-chat`)
 
-`app-signal-advisor` sits in the quote detail between the price chart and Buy / Sell (input `symbol`, a computed in the parent so it does not
-change on every price tick). See [SIGNALS.md](SIGNALS.md).
+The old signal advisor is two components. See [SIGNALS.md](SIGNALS.md).
+
+**`app-signal-card`** sits in the quote detail between the price chart and Buy / Sell (input `symbol`, a computed in the parent so it does not
+change on every price tick).
 
 - **Header:** "Trade signal" and a **badge**: BUY (success fill), SELL (error fill) or HOLD (outlined), each with an icon and the word.
 - **Strength:** a `role="meter"` bar labelled "Signal strength" ("Balance of the indicators" for a HOLD), with `aria-valuenow` and a
   `aria-valuetext`, filled with the status background token.
 - **The numbers:** the two averages, the RSI with its zone in words, the latest close; then the explanation with where it came from
   ("Written by the AI assistant" / "Standard explanation") and a **Copy** button; the date it is as of, a warning when the history is stale.
-- **Chat** (only when the assistant is on in Settings): four suggested questions, a `role="log"` conversation (`aria-live="polite"`) with
-  a copy button on each answer, and an input. A refusal such as `AST-429` appears in the conversation as a sentence. The conversation resets
-  for another instrument. When the assistant is off the card says so and links to Settings; nothing about the customer is sent.
+- When the assistant is off the card says so and links to Settings; nothing about the customer is sent.
 - **Always shown:** "How is this worked out?" (a `<details>`) and the disclaimer. Loading, "not enough history" and error-with-retry states
   are all handled.
+
+**`app-assistant-chat`** (inputs `symbol`, `layout: 'pane' | 'inline'`) renders only while the assistant is on: a header ("Ask the assistant" and
+the symbol), four suggested questions, a `role="log"` conversation (`aria-live="polite"`) with a copy button on each answer, and an input. A
+refusal such as `AST-429` appears in the conversation as a sentence. `pane` is the tall panel in the split view's aside (the log fills the
+height, the input stays at the bottom, the border comes from the aside); `inline` is the compact card inside the quote detail, used when the
+aside has no room (the log appears with the first message). It does not need the signal to have loaded, so an instrument with no signal can
+still be asked about.
+
+**`ChatSessionStore`** (`core/chat-session.store.ts`) holds the conversations: one per instrument, in memory only (never browser storage), at
+most the last 5 instruments and 50 messages each, cleared on sign-out. It owns a turn (`ask`): the last 10 turns are sent with each question
+(the server keeps none), a problem message is shown but never sent back, and only one question is in flight at a time. Because the state lives
+there, moving the chat between the pane and the quote, opening Buy / Sell and coming back, or re-selecting the same instrument loses nothing.
 
 ### 4.17 Settings, preferences and the formatting pipes
 
 `/settings` (`features/settings`) is one form with one Save. It edits a **draft**: nothing changes elsewhere until Save,
-and the preview under "Display" is drawn from the draft. The whole document goes to the Trade API in a single `PUT`.
+and the preview under "Display" is drawn from the draft. The whole document goes to the Trade API in a single `PUT` (without the currency, which is read-only).
+The page is a two-column grid from 900px (security + notifications, display + appearance); a label plus one control is a **setting row**
+(`.setting-row` on the control: label left, control right, switching back to stacked in a card narrower than 360px), and a read-only fact
+uses the same row shape (`.setting-fact`).
 
 | Setting | Control | Applied by |
 |---|---|---|
 | Channel of communication (SMS, Email, In-application, No notifications) | `app-multiselect` | Stored; the notification path reads it through `PreferenceResolver` (Java, in-process) |
 | Notification categories | `app-multiselect` | Stored, same as above |
-| Account currency | `app-dropdown` | Converts the real account on save (after a confirmation); the whole UI then follows the account |
+| Account currency | read-only fact (a `.setting-row`) | Not a setting: chosen once in account setup (a `Currency` dropdown next to the opening balance) and fixed for the life of the account; the API refuses a different one with `CUR-409`. Settings shows it with "Set when your account was opened." |
 | Date, time, number format | `app-dropdown` | The formatting pipes, `Intl` in the charts and the chart tooltip |
-| AI assistant | `app-dropdown` | `app-signal-advisor` (4.22): the chat under each quote's signal, and whether the platform may send the signal and the holding to the language model |
+| AI assistant | `app-dropdown` | `app-signal-card` / `app-assistant-chat` (4.22): the chat beside each quote's signal, and whether the platform may send the signal and the holding to the language model |
 | Theme, landing page, order ticket type | `app-dropdown` | `ThemeService.apply`, `AuthDialog` / `guestGuard`, `OrderTicket` |
 
 - **`PreferencesStore`** (`core/preferences.store.ts`) loads once per sign-in (one `GET`), saves with one `PUT`, never polls and
@@ -856,7 +959,7 @@ and the preview under "Display" is drawn from the draft. The whole document goes
   names (`date`, `number`, `currency`), so templates do not change. `mediumDate`, `mediumTime` and `medium` follow the
   customer's formats; any other pattern passes through untouched. They are impure on purpose (see the file comment).
   Do not import Angular's own three pipes in new UI, or that screen ignores the customer's formats.
-- The assistant is not a separate chatbot any more: the earlier floating `app-chat-assistant` icon was removed, and the assistant lives inside the quote detail (4.22).
+- The assistant is not a separate chatbot any more: the earlier floating `app-chat-assistant` icon was removed, and the assistant chat lives beside the quote detail, or inside it when there is no room (4.22).
 - **Notification categories** are three: order status, watchlist alerts and **strategy executions** (4.21). Existing customers get the new one on.
 
 ## 5. Services the UI relies on
