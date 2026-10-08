@@ -2,7 +2,7 @@ package org.example.backend.notifications.email;
 
 /**
  * The only thing the notifications module knows about email. Today the one real implementation is
- * {@link MailHogEmailSender}, which exists only in a development environment (see {@link DevOnlyEmailGuard}); in every
+ * {@link SmtpEmailSender}, which exists only in a development environment (see {@link DevOnlyEmailGuard}); in every
  * other environment the {@link DisabledEmailSender} is what is wired, and an email delivery is recorded as skipped
  * rather than sent.
  *
