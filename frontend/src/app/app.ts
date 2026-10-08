@@ -8,10 +8,11 @@ import { Sidebar, SidebarItem } from './layout/sidebar/sidebar';
 import { AuthDialog } from './features/auth/auth-dialog/auth-dialog';
 import { Dialog } from './shared/ui/dialog/dialog';
 import { NotificationCenter } from './shared/ui/notification/notification';
+import { AnimatedCatComponent } from './shared/ui/animated-cat/animated-cat';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Header, Footer, Sidebar, Dialog, AuthDialog, NotificationCenter],
+  imports: [RouterOutlet, Header, Footer, Sidebar, Dialog, AuthDialog, NotificationCenter, AnimatedCatComponent],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
