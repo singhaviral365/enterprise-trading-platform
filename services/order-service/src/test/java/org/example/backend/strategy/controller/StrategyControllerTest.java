@@ -83,16 +83,17 @@ class StrategyControllerTest {
     }
 
     @Test
-    void theLimitsAreRequired() throws Exception {
+    void theLimitsAreOptionalBecauseTheServiceWorksThemOutWhenTheyAreLeftOut() throws Exception {
+        when(strategies.create(org.mockito.ArgumentMatchers.eq(7L), any())).thenReturn(response(StrategyStatus.ACTIVE));
+
         for (String body : List.of(
+                "{\"accountId\":1001,\"symbol\":\"AAPL\",\"side\":\"BUY\",\"quantity\":50,\"direction\":\"BELOW\",\"triggerPrice\":150}",
                 "{\"accountId\":1001,\"symbol\":\"AAPL\",\"side\":\"BUY\",\"quantity\":50,\"direction\":\"BELOW\",\"triggerPrice\":150,\"maxPositionQty\":200}",
                 "{\"accountId\":1001,\"symbol\":\"AAPL\",\"side\":\"BUY\",\"quantity\":50,\"direction\":\"BELOW\",\"triggerPrice\":150,\"maxOrderValue\":10000}")) {
             mockMvc.perform(post("/api/v1/strategies").requestAttr(AuthContext.USER_ID_ATTRIBUTE, 7L)
                             .contentType("application/json").content(body))
-                    .andExpect(status().isUnprocessableEntity())
-                    .andExpect(jsonPath("$.errorCode").value("VAL-422"));
+                    .andExpect(status().isCreated());
         }
-        verifyNoInteractions(strategies);
     }
 
     @Test

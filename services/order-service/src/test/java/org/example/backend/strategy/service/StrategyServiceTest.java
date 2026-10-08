@@ -9,7 +9,10 @@ import org.example.backend.enums.OrderSide;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.entities.Holding;
+import org.example.backend.fx.CurrencyConversionService;
 import org.example.backend.mapper.AccountMapper;
+import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.strategy.StrategyFixtures;
 import org.example.backend.strategy.config.StrategyLimits;
@@ -63,6 +66,8 @@ class StrategyServiceTest {
     private AccountMapper accounts;
     private InstrumentMapper instruments;
     private QuoteSource quotes;
+    private HoldingMapper holdings;
+    private CurrencyConversionService fx;
     private StrategyService service;
 
     @BeforeEach
@@ -71,6 +76,10 @@ class StrategyServiceTest {
         accounts = mock(AccountMapper.class);
         instruments = mock(InstrumentMapper.class);
         quotes = mock(QuoteSource.class);
+        holdings = mock(HoldingMapper.class);
+        fx = mock(CurrencyConversionService.class);
+        when(holdings.selectHoldingByAccountAndInstrument(anyInt(), anyInt())).thenReturn(Optional.empty());
+        when(fx.convert(any(), anyString(), anyString())).thenAnswer(call -> call.getArgument(0));
 
         when(accounts.accountExists((int) ACCOUNT)).thenReturn(true);
         when(accounts.selectAccountLinkedUserId((int) ACCOUNT)).thenReturn((int) USER);
@@ -82,8 +91,8 @@ class StrategyServiceTest {
 
         service = new StrategyService(
                 new StrategyAccess(mapper, accounts), mapper, accounts, instruments, quotes,
-                new StrategyLimits(20, 1_000_000, new BigDecimal("10000000"), 10_000_000, 366, 300),
-                Clock.fixed(NOW.toInstant(), ZoneOffset.UTC));
+                new StrategyLimits(20, 1_000_000, new BigDecimal("10000000"), 10_000_000, 366, 300, 15),
+                holdings, fx, Clock.fixed(NOW.toInstant(), ZoneOffset.UTC));
     }
 
     private static Account account(AccountStatus status) {
@@ -125,6 +134,104 @@ class StrategyServiceTest {
         assertEquals(new BigDecimal("10000"), created.getValue().maxOrderValue());
         assertEquals(200, created.getValue().maxPositionQty());
         verify(mapper).lockAccountForStrategies(ACCOUNT);
+    }
+
+    // ---------------------------------------------------------------- limits worked out when not sent
+
+    private static CreateStrategyRequest noLimits(OrderSide side, long quantity, TriggerDirection direction, String trigger, Integer maxExecutions) {
+        return new CreateStrategyRequest(ACCOUNT, "AAPL", side, quantity, direction, new BigDecimal(trigger), null, null,
+                null, null, maxExecutions, null);
+    }
+
+    private NewStrategy created() {
+        ArgumentCaptor<NewStrategy> created = ArgumentCaptor.forClass(NewStrategy.class);
+        verify(mapper).insertIfUnderLimit(created.capture(), anyInt());
+        return created.getValue();
+    }
+
+    @Test
+    void aBuyWithNoLimitsGetsASpendingCapOfQuantityTimesTriggerPlusTheBufferRoundedUp() {
+        service.create(USER, noLimits(OrderSide.BUY, 5, TriggerDirection.BELOW, "150", null));
+
+        // 5 x 150 = 750, plus 15% = 862.5, rounded up to a whole unit.
+        assertEquals(new BigDecimal("863"), created().maxOrderValue());
+    }
+
+    @Test
+    void aBuyWithNoLimitsMayHoldWhatItHoldsNowPlusTheQuantityForEveryRun() {
+        when(holdings.selectHoldingByAccountAndInstrument((int) ACCOUNT, 2001)).thenReturn(Optional.of(
+                new Holding(1, 30, new BigDecimal("100.0000"), (int) ACCOUNT, 2001)));
+
+        service.create(USER, noLimits(OrderSide.BUY, 5, TriggerDirection.BELOW, "150", 3));
+
+        assertEquals(45, created().maxPositionQty());
+    }
+
+    @Test
+    void aSellWithNoLimitsMayHoldWhatItHoldsNow() {
+        when(holdings.selectHoldingByAccountAndInstrument((int) ACCOUNT, 2001)).thenReturn(Optional.of(
+                new Holding(1, 30, new BigDecimal("100.0000"), (int) ACCOUNT, 2001)));
+
+        service.create(USER, noLimits(OrderSide.SELL, 10, TriggerDirection.ABOVE, "160", null));
+
+        NewStrategy strategy = created();
+        assertEquals(30, strategy.maxPositionQty());
+        assertEquals(new BigDecimal("1840"), strategy.maxOrderValue());
+    }
+
+    @Test
+    void aSellOfMoreThanIsHeldStillGetsAPositionAtLeastItsQuantity() {
+        service.create(USER, noLimits(OrderSide.SELL, 10, TriggerDirection.ABOVE, "160", null));
+
+        assertEquals(10, created().maxPositionQty());
+    }
+
+    @Test
+    void theSpendingCapIsWorkedOutInTheAccountCurrency() {
+        when(instruments.selectInstrumentByTicker("AAPL")).thenReturn(Optional.of(
+                new Instrument(2001, "AAPL", "Apple Inc.", InstrumentAssetClass.EQUITY, InstrumentStatus.TRADING, "EUR", null)));
+        when(fx.convert(eq(new BigDecimal("750")), eq("EUR"), eq("USD"))).thenReturn(new BigDecimal("810.4321"));
+
+        service.create(USER, noLimits(OrderSide.BUY, 5, TriggerDirection.BELOW, "150", null));
+
+        // 810.4321 plus 15% = 932.0 (931.99...), rounded up.
+        assertEquals(new BigDecimal("932"), created().maxOrderValue());
+        verify(fx).convert(new BigDecimal("750"), "EUR", "USD");
+    }
+
+    @Test
+    void theDerivedSpendingCapNeverExceedsThePlatformCeiling() {
+        service.create(USER, noLimits(OrderSide.BUY, 1_000_000, TriggerDirection.BELOW, "100000", null));
+
+        assertEquals(new BigDecimal("10000000"), created().maxOrderValue());
+    }
+
+    @Test
+    void limitsTheCustomerSentAreUsedAsTheyAreAndNothingIsWorkedOut() {
+        service.create(USER, request());
+
+        NewStrategy strategy = created();
+        assertEquals(new BigDecimal("10000"), strategy.maxOrderValue());
+        assertEquals(200, strategy.maxPositionQty());
+        verify(fx, never()).convert(any(), anyString(), anyString());
+        verify(holdings, never()).selectHoldingByAccountAndInstrument(anyInt(), anyInt());
+    }
+
+    @Test
+    void oneLimitCanBeSentAndTheOtherWorkedOut() {
+        service.create(USER, new CreateStrategyRequest(ACCOUNT, "AAPL", OrderSide.BUY, 5L, TriggerDirection.BELOW,
+                new BigDecimal("150"), null, null, new BigDecimal("5000"), null, null, null));
+
+        NewStrategy strategy = created();
+        assertEquals(new BigDecimal("5000"), strategy.maxOrderValue());
+        assertEquals(5, strategy.maxPositionQty());
+    }
+
+    @Test
+    void aLimitOverThePlatformCeilingIsStillRefusedWhenSent() {
+        assertThrows(IllegalArgumentException.class, () -> service.create(USER, new CreateStrategyRequest(ACCOUNT, "AAPL",
+                OrderSide.BUY, 5L, TriggerDirection.BELOW, new BigDecimal("150"), null, null, new BigDecimal("10000001"), null, null, null)));
+        verify(mapper, never()).insertIfUnderLimit(any(), anyInt());
     }
 
     @Test

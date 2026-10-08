@@ -15,9 +15,11 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
- * A new strategy. The limits are required, not defaulted: a strategy that trades when nobody is watching must have had its
- * damage bounded by a decision somebody made. {@code maxExecutions} and {@code maxFailures} may be left out and then
- * default to 1 and 3.
+ * A new strategy. A strategy that trades when nobody is watching must have its damage bounded, so the two limits always
+ * exist on the saved strategy, but the customer need not type them: when {@code maxOrderValue} or {@code maxPositionQty} is
+ * left out, {@code StrategyService} works it out from the rule (see {@code StrategyLimitDefaults}). A value that is sent is
+ * used and validated exactly as before. {@code maxExecutions} and {@code maxFailures} may be left out and then default to
+ * 1 and 3.
  */
 public record CreateStrategyRequest(
         @NotNull @Min(1) Long accountId,
@@ -28,8 +30,8 @@ public record CreateStrategyRequest(
         @NotNull @DecimalMin(value = "0.00", inclusive = false) @Digits(integer = 14, fraction = 4) BigDecimal triggerPrice,
         OffsetDateTime validFrom,
         OffsetDateTime validUntil,
-        @NotNull @DecimalMin(value = "0.00", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal maxOrderValue,
-        @NotNull @Min(1) Long maxPositionQty,
+        @DecimalMin(value = "0.00", inclusive = false) @Digits(integer = 15, fraction = 2) BigDecimal maxOrderValue,
+        @Min(1) Long maxPositionQty,
         @Min(1) @Max(20) Integer maxExecutions,
         @Min(1) @Max(10) Integer maxFailures) {
 

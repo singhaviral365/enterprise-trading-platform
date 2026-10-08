@@ -6,7 +6,10 @@ import org.example.backend.enums.AccountStatus;
 import org.example.backend.exceptions.AccountNotActiveException;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.exceptions.InstrumentNotFoundException;
+import org.example.backend.entities.Holding;
+import org.example.backend.fx.CurrencyConversionService;
 import org.example.backend.mapper.AccountMapper;
+import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.strategy.config.StrategyLimits;
 import org.example.backend.strategy.dto.CreateStrategyRequest;
@@ -57,6 +60,8 @@ public class StrategyService {
     private final InstrumentMapper instruments;
     private final QuoteSource quotes;
     private final StrategyLimits limits;
+    private final HoldingMapper holdings;
+    private final CurrencyConversionService fx;
     private final Clock clock;
 
     @Autowired
@@ -66,8 +71,10 @@ public class StrategyService {
             AccountMapper accounts,
             InstrumentMapper instruments,
             QuoteSource quotes,
-            StrategyLimits limits) {
-        this(access, strategies, accounts, instruments, quotes, limits, Clock.systemUTC());
+            StrategyLimits limits,
+            HoldingMapper holdings,
+            CurrencyConversionService fx) {
+        this(access, strategies, accounts, instruments, quotes, limits, holdings, fx, Clock.systemUTC());
     }
 
     StrategyService(
@@ -77,6 +84,8 @@ public class StrategyService {
             InstrumentMapper instruments,
             QuoteSource quotes,
             StrategyLimits limits,
+            HoldingMapper holdings,
+            CurrencyConversionService fx,
             Clock clock) {
         this.access = access;
         this.strategies = strategies;
@@ -84,6 +93,8 @@ public class StrategyService {
         this.instruments = instruments;
         this.quotes = quotes;
         this.limits = limits;
+        this.holdings = holdings;
+        this.fx = fx;
         this.clock = clock;
     }
 
@@ -104,7 +115,13 @@ public class StrategyService {
                 .orElseThrow(() -> new InstrumentNotFoundException(symbol));
 
         OffsetDateTime now = OffsetDateTime.now(clock);
-        validate(request, now);
+        BigDecimal maxOrderValue = request.maxOrderValue() != null
+                ? request.maxOrderValue()
+                : deriveSpendingCap(account, instrument, request);
+        long maxPositionQty = request.maxPositionQty() != null
+                ? request.maxPositionQty()
+                : deriveLargestHolding(account, instrument, request);
+        validate(request, maxOrderValue, maxPositionQty, now);
 
         boolean armed = armedAtCreation(instrument.getInstrumentTicker(), request, now);
 
@@ -118,8 +135,8 @@ public class StrategyService {
                 armed,
                 request.validFrom(),
                 request.validUntil(),
-                request.maxOrderValue(),
-                request.maxPositionQty(),
+                maxOrderValue,
+                maxPositionQty,
                 request.maxExecutionsOrDefault(),
                 request.maxFailuresOrDefault());
 
@@ -187,7 +204,24 @@ public class StrategyService {
         return strategies.selectRuns(strategyId, RUNS_SHOWN).stream().map(StrategyRunResponse::from).toList();
     }
 
-    private void validate(CreateStrategyRequest request, OffsetDateTime now) {
+    /** The spending cap for a customer who sent none: see {@link StrategyLimitDefaults}. */
+    private BigDecimal deriveSpendingCap(Account account, Instrument instrument, CreateStrategyRequest request) {
+        BigDecimal atTrigger = request.triggerPrice().multiply(BigDecimal.valueOf(request.quantity()));
+        BigDecimal inAccountCurrency = fx.convert(atTrigger, instrument.getCurrency(), account.getCurrency());
+        return StrategyLimitDefaults.spendingCap(inAccountCurrency, limits);
+    }
+
+    /** The largest holding for a customer who sent none: see {@link StrategyLimitDefaults}. */
+    private long deriveLargestHolding(Account account, Instrument instrument, CreateStrategyRequest request) {
+        long held = holdings
+                .selectHoldingByAccountAndInstrument(Math.toIntExact(account.getAccountId()), instrument.getInstrumentId())
+                .map(Holding::getQuantity)
+                .orElse(0L);
+        return StrategyLimitDefaults.largestHolding(
+                request.side(), held, request.quantity(), request.maxExecutionsOrDefault(), limits);
+    }
+
+    private void validate(CreateStrategyRequest request, BigDecimal maxOrderValue, long maxPositionQty, OffsetDateTime now) {
         if (request.quantity() > limits.maxQuantity()) {
             throw new IllegalArgumentException("Quantity cannot exceed " + limits.maxQuantity());
         }
@@ -197,16 +231,16 @@ public class StrategyService {
         if (request.triggerPrice().compareTo(MAX_TRIGGER) > 0) {
             throw new IllegalArgumentException("Trigger price is too large");
         }
-        if (request.maxOrderValue().stripTrailingZeros().scale() > 2) {
+        if (maxOrderValue.stripTrailingZeros().scale() > 2) {
             throw new IllegalArgumentException("Maximum order value can have at most 2 decimal places");
         }
-        if (request.maxOrderValue().compareTo(limits.maxOrderValue()) > 0) {
+        if (maxOrderValue.compareTo(limits.maxOrderValue()) > 0) {
             throw new IllegalArgumentException("Maximum order value cannot exceed " + limits.maxOrderValue().toPlainString());
         }
-        if (request.maxPositionQty() > limits.maxPositionQty()) {
+        if (maxPositionQty > limits.maxPositionQty()) {
             throw new IllegalArgumentException("Maximum position cannot exceed " + limits.maxPositionQty() + " units");
         }
-        if (request.side() == org.example.backend.enums.OrderSide.BUY && request.quantity() > request.maxPositionQty()) {
+        if (request.side() == org.example.backend.enums.OrderSide.BUY && request.quantity() > maxPositionQty) {
             throw new IllegalArgumentException("Maximum position must be at least the quantity bought");
         }
         if (request.validUntil() != null) {

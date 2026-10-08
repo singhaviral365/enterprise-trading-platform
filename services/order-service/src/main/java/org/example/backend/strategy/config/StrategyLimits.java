@@ -19,6 +19,7 @@ public class StrategyLimits {
     private final long maxPositionQty;
     private final int maxWindowDays;
     private final long armFreshSeconds;
+    private final int defaultBufferPercent;
 
     public StrategyLimits(
             @Value("${strategy.limits.max-open-per-account:20}") int maxOpenPerAccount,
@@ -26,13 +27,15 @@ public class StrategyLimits {
             @Value("${strategy.limits.max-order-value:10000000}") BigDecimal maxOrderValue,
             @Value("${strategy.limits.max-position-qty:10000000}") long maxPositionQty,
             @Value("${strategy.limits.max-window-days:366}") int maxWindowDays,
-            @Value("${strategy.limits.arm-fresh-seconds:300}") long armFreshSeconds) {
+            @Value("${strategy.limits.arm-fresh-seconds:300}") long armFreshSeconds,
+            @Value("${strategy.limits.default-buffer-percent:15}") int defaultBufferPercent) {
         this.maxOpenPerAccount = Math.max(1, maxOpenPerAccount);
         this.maxQuantity = Math.max(1, maxQuantity);
         this.maxOrderValue = maxOrderValue;
         this.maxPositionQty = Math.max(1, maxPositionQty);
         this.maxWindowDays = Math.max(1, maxWindowDays);
         this.armFreshSeconds = Math.max(1, armFreshSeconds);
+        this.defaultBufferPercent = Math.max(0, defaultBufferPercent);
     }
 
     /** How many ACTIVE, EXECUTING or DISABLED strategies one account may hold. */
@@ -55,6 +58,14 @@ public class StrategyLimits {
     /** How far ahead a strategy's end date may be. */
     public int maxWindowDays() {
         return maxWindowDays;
+    }
+
+    /**
+     * How far above quantity x trigger price the derived spending cap sits, in percent, so ordinary slippage passes and a real
+     * gap is stopped. Only used when the customer sent no cap.
+     */
+    public int defaultBufferPercent() {
+        return defaultBufferPercent;
     }
 
     /** A quote older than this is not taken as proof the price was on the safe side when the strategy was created. */
