@@ -1,16 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormField, form, maxLength, minLength, required, submit, validate } from '@angular/forms/signals';
-import { UserResponse } from '../../../api/generated/auth';
-import { AuthService } from '../../../core/auth.service';
-import { describeError, errorCodeOf } from '../../../core/errors/describe-error';
-import { NotificationService } from '../../../core/notification.service';
-import { SessionService } from '../../../core/session.service';
-import { PASSWORD_MAX, PASSWORD_MIN, passwordRules } from '../../../features/auth/credential-rules';
-import { NoClipboard } from '../../../shared/directives/no-clipboard';
-import { PreferenceDatePipe } from '../../../shared/formatting/preference-pipes';
-import { SheetDialog } from '../../../shared/ui/sheet-dialog/sheet-dialog';
-import { Spinner } from '../../../shared/ui/spinner/spinner';
+import { AuthService } from '../../../../core/auth.service';
+import { describeError, errorCodeOf } from '../../../../core/errors/describe-error';
+import { NotificationService } from '../../../../core/notification.service';
+import { SessionService } from '../../../../core/session.service';
+import { PASSWORD_MAX, PASSWORD_MIN, passwordRules } from '../../../../features/auth/credential-rules';
+import { NoClipboard } from '../../../../shared/directives/no-clipboard';
+import { Spinner } from '../../../../shared/ui/spinner/spinner';
 
 interface PasswordModel {
   currentPassword: string;
@@ -19,31 +16,30 @@ interface PasswordModel {
 }
 
 /**
- * The profile dialog behind the person icon in the header: who is signed in, and a way to change the password.
+ * The change-password form inside the profile pane.
  *
  * The current and the new password are typed together. The server checks the current one first: a wrong one says how many
- * tries are left, and the third wrong one ends this session (`PWD-423`), so the dialog signs the user out and goes home.
+ * tries are left, and the third wrong one ends this session (`PWD-423`), so the form signs the user out and tells the pane.
  * A right one changes the password; the server keeps this session going and ends every other.
  */
 @Component({
-  selector: 'app-profile-dialog',
-  imports: [FormField, NoClipboard, PreferenceDatePipe, SheetDialog, Spinner],
-  templateUrl: './profile-dialog.html',
-  styleUrls: ['../../../features/auth/auth-form.css', './profile-dialog.css'],
+  selector: 'app-change-password-form',
+  imports: [FormField, NoClipboard, Spinner],
+  templateUrl: './change-password-form.html',
+  styleUrl: '../../../../features/auth/auth-form.css',
 })
-export class ProfileDialog {
+export class ChangePasswordForm {
   private readonly auth = inject(AuthService);
   private readonly session = inject(SessionService);
   private readonly notifications = inject(NotificationService);
 
-  readonly open = input(false);
-  readonly closed = output<void>();
-  /** The session ended inside the dialog (too many wrong passwords); the header sends the user home. */
+  /** The password was changed. */
+  readonly changed = output<void>();
+  /** The user chose Back. */
+  readonly cancelled = output<void>();
+  /** The session ended here (too many wrong passwords); the pane closes and the header sends the user home. */
   readonly signedOut = output<void>();
 
-  protected readonly user = signal<UserResponse | null>(null);
-  protected readonly loadError = signal('');
-  protected readonly changing = signal(false);
   protected readonly serverError = signal('');
   protected readonly showPassword = signal(false);
   protected readonly clipboardNotice = signal('');
@@ -70,28 +66,12 @@ export class ProfileDialog {
 
   protected readonly passwordChecklist = computed(() => passwordRules(this.model().newPassword, this.session.username()));
 
-  constructor() {
-    effect(() => {
-      if (this.open()) {
-        untracked(() => void this.load());
-      } else {
-        untracked(() => this.reset());
-      }
-    });
-  }
-
   protected onClipboardBlocked(): void {
     this.clipboardNotice.set('Copy and paste are turned off for password fields. Please type your password.');
   }
 
-  protected startChange(): void {
-    this.serverError.set('');
-    this.model.set({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    this.changing.set(true);
-  }
-
-  protected cancelChange(): void {
-    this.reset();
+  protected cancel(): void {
+    this.cancelled.emit();
   }
 
   protected async onSubmit(event: Event): Promise<void> {
@@ -102,15 +82,13 @@ export class ProfileDialog {
       try {
         await this.auth.changePassword(currentPassword, newPassword);
         this.notifications.success('Password changed. Any other device was signed out.');
-        this.reset();
-        this.closed.emit();
+        this.changed.emit();
       } catch (error) {
         const code = errorCodeOf(error);
         if (code === 'PWD-423') {
           // The third wrong password: the server has ended this session, so end it here too.
           this.auth.logout();
           this.notifications.error(describeError(error));
-          this.reset();
           this.signedOut.emit();
           return undefined;
         }
@@ -133,20 +111,4 @@ export class ProfileDialog {
     return '';
   }
 
-  private async load(): Promise<void> {
-    this.loadError.set('');
-    try {
-      this.user.set(await this.auth.me());
-    } catch (error) {
-      this.loadError.set(describeError(error));
-    }
-  }
-
-  private reset(): void {
-    this.changing.set(false);
-    this.serverError.set('');
-    this.showPassword.set(false);
-    this.clipboardNotice.set('');
-    this.model.set({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  }
 }

@@ -36,19 +36,7 @@
     </app-tooltip>
 
     @if (session.isLoggedIn()) {
-      <app-tooltip position="bottom" text="Profile">
-        <button
-          type="button"
-          class="btn is-tertiary is-icon-only"
-          aria-label="Open profile"
-          aria-haspopup="dialog"
-          data-testid="open-profile"
-          (click)="profileOpen.set(true)"
-        >
-          <i class="fas fa-user" aria-hidden="true"></i>
-        </button>
-      </app-tooltip>
-      <app-account-menu />
+      <app-profile-menu (signedOut)="onSignedOut()" />
       <app-tooltip position="bottom" text="Logout">
         <button type="button" class="btn is-error is-icon-only" aria-label="Logout" data-testid="logout-button" (click)="logout()">
           <i class="fas fa-power-off" aria-hidden="true"></i>
@@ -68,7 +56,3 @@
     }
   </div>
 </header>
-
-@if (session.isLoggedIn()) {
-  <app-profile-dialog [open]="profileOpen()" (closed)="profileOpen.set(false)" (signedOut)="onSignedOut()" />
-}

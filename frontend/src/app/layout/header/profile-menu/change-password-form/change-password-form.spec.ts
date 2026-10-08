@@ -1,17 +1,17 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AUTH_API_BASE_URL, provideApiClients } from '../../../api/api.config';
-import { NotificationService } from '../../../core/notification.service';
-import { SessionService } from '../../../core/session.service';
-import { ProfileDialog } from './profile-dialog';
+import { AUTH_API_BASE_URL, provideApiClients } from '../../../../api/api.config';
+import { NotificationService } from '../../../../core/notification.service';
+import { SessionService } from '../../../../core/session.service';
+import { ChangePasswordForm } from './change-password-form';
 
 const ME = { id: 1, username: 'alice.trader', email: 'alice@example.com', roles: [], twoFactorEnabled: true, createdOn: '2026-10-05T08:00:00Z' };
 const CURRENT = 'Old!Passw0rd#1';
 const FRESH = 'N3w!Password#2';
 
-describe('ProfileDialog', () => {
-  let fixture: ComponentFixture<ProfileDialog>;
+describe('ChangePasswordForm', () => {
+  let fixture: ComponentFixture<ChangePasswordForm>;
   let http: HttpTestingController;
   let root: HTMLElement;
   let notifications: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> };
@@ -26,16 +26,7 @@ describe('ProfileDialog', () => {
     await fixture.whenStable();
   }
 
-  async function openDialog(): Promise<void> {
-    fixture.componentRef.setInput('open', true);
-    await fixture.whenStable();
-    (await vi.waitFor(() => http.expectOne({ method: 'GET', url: `${AUTH_API_BASE_URL}/auth/me` }))).flush(ME);
-    await fixture.whenStable();
-  }
-
   async function fillChange(current = CURRENT, next = FRESH): Promise<void> {
-    byTestId<HTMLButtonElement>('profile-change-password')!.click();
-    await fixture.whenStable();
     await type('current-password', current);
     await type('profile-new-password', next);
     await type('profile-confirm-password', next);
@@ -45,7 +36,7 @@ describe('ProfileDialog', () => {
     localStorage.clear();
     notifications = { success: vi.fn(), error: vi.fn() };
     await TestBed.configureTestingModule({
-      imports: [ProfileDialog],
+      imports: [ChangePasswordForm],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -54,7 +45,7 @@ describe('ProfileDialog', () => {
       ],
     }).compileComponents();
     TestBed.inject(SessionService).start('alice.trader', { expiresIn: 900 });
-    fixture = TestBed.createComponent(ProfileDialog);
+    fixture = TestBed.createComponent(ChangePasswordForm);
     http = TestBed.inject(HttpTestingController);
     root = fixture.nativeElement as HTMLElement;
     await fixture.whenStable();
@@ -62,36 +53,7 @@ describe('ProfileDialog', () => {
 
   afterEach(() => http.verify());
 
-  it('loads and shows who is signed in, only once it is opened', async () => {
-    http.expectNone(`${AUTH_API_BASE_URL}/auth/me`);
-
-    await openDialog();
-
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(byTestId('profile-username')?.textContent).toContain('alice.trader');
-    });
-    expect(byTestId('profile-email')?.textContent).toContain('alice@example.com');
-    expect(byTestId('profile-two-factor')?.textContent).toContain('On');
-    expect(byTestId('change-password-form')).toBeNull();
-  });
-
-  it('reveals the form from the Change password button, and Cancel hides it again', async () => {
-    await openDialog();
-    byTestId<HTMLButtonElement>('profile-change-password')!.click();
-    await fixture.whenStable();
-    expect(byTestId('change-password-form')).not.toBeNull();
-
-    byTestId<HTMLButtonElement>('change-password-cancel')!.click();
-    await fixture.whenStable();
-
-    expect(byTestId('change-password-form')).toBeNull();
-  });
-
   it('keeps the button disabled until the current and new password are valid and match', async () => {
-    await openDialog();
-    byTestId<HTMLButtonElement>('profile-change-password')!.click();
-    await fixture.whenStable();
     const submit = byTestId<HTMLButtonElement>('change-password-submit')!;
     expect(submit.disabled).toBe(true);
 
@@ -105,10 +67,9 @@ describe('ProfileDialog', () => {
     expect(submit.disabled).toBe(false);
   });
 
-  it('sends both passwords together, then closes with a notice', async () => {
-    await openDialog();
+  it('sends both passwords together, then reports it changed, with a notice', async () => {
     const closed = vi.fn();
-    fixture.componentInstance.closed.subscribe(closed);
+    fixture.componentInstance.changed.subscribe(closed);
     await fillChange();
 
     byTestId<HTMLButtonElement>('change-password-submit')!.click();
@@ -122,7 +83,6 @@ describe('ProfileDialog', () => {
   });
 
   it('says how many tries are left after a wrong current password, and clears that field', async () => {
-    await openDialog();
     await fillChange();
 
     byTestId<HTMLButtonElement>('change-password-submit')!.click();
@@ -138,7 +98,6 @@ describe('ProfileDialog', () => {
   });
 
   it('says "1 try left" in the singular', async () => {
-    await openDialog();
     await fillChange();
 
     byTestId<HTMLButtonElement>('change-password-submit')!.click();
@@ -151,7 +110,6 @@ describe('ProfileDialog', () => {
   });
 
   it('signs the user out when the third wrong password ends the session', async () => {
-    await openDialog();
     const signedOut = vi.fn();
     fixture.componentInstance.signedOut.subscribe(signedOut);
     await fillChange();
@@ -169,7 +127,6 @@ describe('ProfileDialog', () => {
   });
 
   it('explains a new password that equals the current one, without counting a try', async () => {
-    await openDialog();
     await fillChange(FRESH, FRESH);
 
     byTestId<HTMLButtonElement>('change-password-submit')!.click();
@@ -180,5 +137,14 @@ describe('ProfileDialog', () => {
 
     await vi.waitFor(() => expect(byTestId('change-password-error')?.textContent).toContain('different'));
     expect(byTestId('change-password-error')?.textContent).not.toContain('tries left');
+  });
+
+  it('says Back is pressed, without sending anything', async () => {
+    const cancelled = vi.fn();
+    fixture.componentInstance.cancelled.subscribe(cancelled);
+
+    byTestId<HTMLButtonElement>('change-password-cancel')!.click();
+
+    expect(cancelled).toHaveBeenCalled();
   });
 });

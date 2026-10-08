@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, output } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthDialogService } from '../../core/auth-dialog.service';
 import { AuthService } from '../../core/auth.service';
@@ -6,12 +6,11 @@ import { NotificationService } from '../../core/notification.service';
 import { SessionService } from '../../core/session.service';
 import { ThemeService } from '../../core/theme.service';
 import { Tooltip } from '../../shared/ui/tooltip/tooltip';
-import { AccountMenu } from './account-menu/account-menu';
-import { ProfileDialog } from './profile-dialog/profile-dialog';
+import { ProfileMenu } from './profile-menu/profile-menu';
 
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, Tooltip, AccountMenu, ProfileDialog],
+  imports: [RouterLink, Tooltip, ProfileMenu],
   templateUrl: './header.html',
   styleUrl: './header.css',
 })
@@ -27,11 +26,8 @@ export class Header {
   readonly sidebarOpen = input(false);
   readonly toggleSidebar = output<void>();
 
-  protected readonly profileOpen = signal(false);
-
-  /** The profile dialog ended the session (three wrong current passwords): go home. */
+  /** The profile pane ended the session (three wrong current passwords): go home. */
   protected onSignedOut(): void {
-    this.profileOpen.set(false);
     void this.router.navigateByUrl('/');
   }
 

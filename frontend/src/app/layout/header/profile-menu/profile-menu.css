@@ -1,0 +1,200 @@
+:host {
+  position: relative;
+  display: inline-block;
+}
+
+/* Border and the bright surface, no shadow, like the other panels. */
+.profile-pane {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: calc(var(--header-z) + 1);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 340px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 18px;
+  transform-origin: top right;
+  animation: pane-in 0.16s ease-out;
+}
+
+.profile-pane:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: -2px;
+}
+
+.pane-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+}
+
+.identity-text {
+  min-width: 0;
+}
+
+.identity-name {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.identity-email {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+  overflow-wrap: anywhere;
+}
+
+.pane-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-line-subtle);
+}
+
+.pane-heading {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.account-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.account-number {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.account-balance {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.account-balance-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--surface-foreground-subtle);
+}
+
+.pane-facts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.pane-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.pane-facts dt {
+  color: var(--surface-foreground-subtle);
+}
+
+.pane-facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.status-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.status-badge.is-active {
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+}
+
+.status-badge.is-suspended {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
+
+.status-badge.is-closed {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+}
+
+.pane-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--surface-foreground-subtle);
+}
+
+.pane-state.is-error {
+  color: var(--status-error-container-fg);
+}
+
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* A bottom sheet on phones. */
+@media (max-width: 599px) {
+  :host {
+    position: static;
+  }
+
+  .profile-pane {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: auto;
+    max-height: 85vh;
+    border-radius: 18px 18px 0 0;
+    transform-origin: bottom center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-pane {
+    animation: none;
+  }
+}
