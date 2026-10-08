@@ -234,3 +234,14 @@
   grid-column: 1 / -1;
 }
 
+/* The currency symbol in front of the opening balance, in the same spot as an input icon. */
+.currency-symbol {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}

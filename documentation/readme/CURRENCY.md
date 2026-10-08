@@ -94,26 +94,21 @@ icon paths.
    across accounts. Aggregating across accounts needs a conversion (or a currency column in `fact_trades`).
 5. **Dashboard totals** are fine: they sum account-currency numbers of one account.
 
-## Changing the account currency (Settings)
+## The account currency is fixed at opening
 
-A customer can move their account to another currency in Settings (`PUT /api/v1/accounts/{id}/preferences`). The rule above
-still holds afterwards, because the Trade API converts everything that is stored in the account currency in one
-transaction, with **one exchange factor taken once** (`CurrencyConversionService`), to four decimal places:
+The currency is a property of the account, **chosen once during account setup and read-only afterwards**. That keeps everything stored
+"in the account currency" (orders, holdings, balances, cost basis, the rule above) stable for the life of the account. It used to be
+a Settings preference that converted the whole account at the day's rate; it was removed because it rewrote real money values at whatever
+the rate was, did not round-trip, and needed special handling (open orders, missing rates, a confirmation dialog).
 
-| What | Column |
-|---|---|
-| Cash balance | `account.balance` |
-| Purchasing power | `account.purchasing_power` |
-| Every order's price | `orders.price` (kept at the 0.0001 minimum if it would round to zero) |
-| Every holding's purchase price | `holdings.purchase_price` |
-
-`account.currency` is set to the new code and `account.version` is incremented, so a fill running at the same moment
-fails its optimistic-lock check and retries against the converted account.
-
-- **Refused while an order is NEW** (`ACC-409`, 409): it is waiting to be filled in the old currency.
-- **Refused without an exchange rate** (`FX-503`, 503): nothing is changed.
-- **Market data is not converted.** Quotes stay in the currency their instrument is quoted in (the market board still shows
-  INR for INFY.NS). Only buying or selling converts to the account currency, exactly as in the table above.
-- **It is not an exact round trip.** EUR to USD and back uses each day's rate, so the amounts differ slightly.
-- The UI asks for confirmation first, naming both currencies, and reads the account again afterwards.
-
+- `POST /api/v1/accounts/create` takes an optional `currency` (one of `USD, EUR, GBP, INR, JPY, CAD, AUD, CHF, SGD, CNY`, default `USD`) and
+  returns it. An unsupported code is a `422`.
+- The **opening balance minimum depends on the currency**, from a table in configuration, not from an exchange rate:
+  `account.opening.minimum.<CODE>` (defaults: USD 20,000, EUR 18,000, GBP 16,000, INR 1,600,000, JPY 3,000,000, CAD 27,000, AUD 30,000,
+  CHF 17,000, SGD 27,000, CNY 145,000). No rate call happens at account creation.
+- `PUT /api/v1/accounts/{id}/preferences` may omit `preferredCurrency` or repeat the account's; any other value is `409 CUR-409` and nothing
+  is saved. `GET` always returns the account's currency.
+- Settings shows it as a read-only fact ("Account currency: EUR. Set when your account was opened."). No dropdown, no confirmation dialog.
+- Existing accounts keep whatever currency they have (the sample data has EUR and GBP accounts on purpose).
+- `CurrencyConversionService` stays: it converts an instrument's quote currency to the account currency when an order is placed, and
+  prices the portfolio.

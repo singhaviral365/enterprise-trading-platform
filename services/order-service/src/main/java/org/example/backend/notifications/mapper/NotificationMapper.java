@@ -31,12 +31,18 @@ public interface NotificationMapper {
             @Param("detail") String detail);
 
     /**
-     * The inbox page: this account's in-app notifications that are unread, or were read after {@code readCutoff}.
-     * {@code pattern} is a ready-made LIKE pattern (already escaped), or null for no text filter.
+     * The inbox page: this account's in-app notifications. {@code includeUnread} and {@code includeRead} choose the read
+     * states; when {@code readCutoff} is set, a read notification is listed only if it was read after it (null: no limit).
+     * {@code from} and {@code to} bound {@code created_at} inclusively (null: unbounded). {@code pattern} is a ready-made
+     * LIKE pattern (already escaped), or null for no text filter.
      */
     List<Notification> selectInbox(
             @Param("accountId") long accountId,
+            @Param("includeUnread") boolean includeUnread,
+            @Param("includeRead") boolean includeRead,
             @Param("readCutoff") OffsetDateTime readCutoff,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to,
             @Param("pattern") String pattern,
             @Param("categories") List<String> categories,
             @Param("limit") int limit,
@@ -44,7 +50,11 @@ public interface NotificationMapper {
 
     long countInbox(
             @Param("accountId") long accountId,
+            @Param("includeUnread") boolean includeUnread,
+            @Param("includeRead") boolean includeRead,
             @Param("readCutoff") OffsetDateTime readCutoff,
+            @Param("from") OffsetDateTime from,
+            @Param("to") OffsetDateTime to,
             @Param("pattern") String pattern,
             @Param("categories") List<String> categories);
 

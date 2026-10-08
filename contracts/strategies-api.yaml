@@ -45,15 +45,18 @@ info:
 
     ## Limits that bound the damage
 
-    Every strategy carries the customer's own limits, and the executor checks them **before every order**, at the point of
-    decision, with fresh data:
+    Every strategy carries two safety limits, and the executor checks them **before every order**, at the point of
+    decision, with fresh data. The customer need not type them: when `maxOrderValue` or `maxPositionQty` is left out of the
+    request, the order-service works it out from the rule before saving (so the stored strategy and everything that reads it
+    are unchanged), and the response returns the effective values. A value that is sent is used and validated as always.
 
-    | Limit | Meaning |
-    |---|---|
-    | `maxOrderValue` | The most one order may cost, in the account's currency |
-    | `maxPositionQty` | The largest holding a buy may build, in units |
-    | `maxExecutions` | How many orders the strategy may place in all (default 1) |
-    | `maxFailures` | How many failures in a row stop it (default 3) |
+    | Limit | Meaning | When left out |
+    |---|---|---|
+    | `maxOrderValue` | The most one order may cost, in the account's currency | `quantity x triggerPrice x (1 + buffer)`, converted from the instrument's currency, rounded up to a whole unit, at most the platform ceiling. The buffer is 15% by default (`strategy.limits.default-buffer-percent`) |
+    | `maxPositionQty` | The largest holding a buy may build, in units | Buy: what is held now plus `quantity x maxExecutions`. Sell: what is held now. Never below `quantity` |
+    | `maxExecutions` | How many orders the strategy may place in all (default 1) | 1 |
+    | `maxFailures` | How many failures in a row stop it (default 3) | 3 |
+
 
     The platform also has ceilings the customer's limits cannot exceed, and a cap on open strategies per account (`STR-422`).
     The order route checks funds only when an order settles, so these limits, not the route, are what cap what an unattended
@@ -362,10 +365,11 @@ components:
     CreateStrategyRequest:
       type: object
       additionalProperties: false
-      required: [accountId, symbol, side, quantity, direction, triggerPrice, maxOrderValue, maxPositionQty]
+      required: [accountId, symbol, side, quantity, direction, triggerPrice]
       description: |
-        The limits are required, not defaulted: a strategy that trades unattended must have had its damage bounded by a
-        decision somebody made. `maxExecutions` and `maxFailures` may be left out.
+        The two limits are optional: a strategy that trades unattended always ends up with both (the order-service works out
+        the one that is left out, see "Limits that bound the damage"), but nobody has to invent them. `maxExecutions` and
+        `maxFailures` may be left out as well.
       properties:
         accountId:
           type: integer
@@ -404,7 +408,9 @@ components:
         maxOrderValue:
           type: number
           exclusiveMinimum: 0
-          description: The most one order may cost, in the account's currency, at most 2 decimal places.
+          description: |
+            The most one order may cost, in the account's currency, at most 2 decimal places. Optional: worked out from the
+            rule when left out.
           example: 10000
         maxPositionQty:
           type: integer
@@ -412,6 +418,7 @@ components:
           minimum: 1
           description: |
             The largest holding of the instrument a buy may build, in units. For a buy it must be at least `quantity`.
+            Optional: worked out from the rule when left out.
           example: 200
         maxExecutions:
           type: integer

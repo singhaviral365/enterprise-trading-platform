@@ -27,6 +27,8 @@ export class Pagination {
   readonly pageSize = model(10);
   /** Total rows across all pages, for the range text. */
   readonly totalItems = input(0);
+  /** For a narrow column: no page-size selector or range, and "2/5" between the arrows instead of "Page 2 of 5". */
+  readonly compact = input(false);
 
   protected readonly sizeId = `pagination-size-${nextPaginationId++}`;
   protected readonly sizeChoices = computed<readonly DropdownOption[]>(() =>

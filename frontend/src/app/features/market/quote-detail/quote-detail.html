@@ -12,6 +12,32 @@
   <section class="price-chart" aria-labelledby="price-chart-title" data-testid="quote-chart">
     <header class="chart-header">
       <h3 id="price-chart-title" class="chart-title">Price · 1 year</h3>
+      @if (candles().length) {
+        <div class="chart-kind" role="group" aria-label="Chart style">
+          <button
+            type="button"
+            class="btn is-small"
+            [class.is-primary]="chartKind() === 'line'"
+            [class.is-tertiary]="chartKind() !== 'line'"
+            [attr.aria-pressed]="chartKind() === 'line'"
+            data-testid="quote-chart-line"
+            (click)="chartKind.set('line')"
+          >
+            Line
+          </button>
+          <button
+            type="button"
+            class="btn is-small"
+            [class.is-primary]="chartKind() === 'candles'"
+            [class.is-tertiary]="chartKind() !== 'candles'"
+            [attr.aria-pressed]="chartKind() === 'candles'"
+            data-testid="quote-chart-candles"
+            (click)="chartKind.set('candles')"
+          >
+            Candles
+          </button>
+        </div>
+      }
       @if (yearChange(); as change) {
         <span
           class="chart-change"
@@ -25,7 +51,9 @@
       }
     </header>
 
-    @if (chartPoints().length) {
+    @if (chartKind() === 'candles' && candles().length) {
+      <app-candle-chart [candles]="candles()" [valueFormatter]="formatPrice()" [ariaLabel]="chartLabel() + ', as candlesticks'" [height]="300" />
+    } @else if (chartPoints().length) {
       <app-line-chart
         [points]="chartPoints()"
         [seriesName]="'Close'"
@@ -63,7 +91,11 @@
     }
   </section>
 
-  <app-signal-advisor [symbol]="symbol()" />
+  <app-signal-card [symbol]="symbol()" />
+
+  @if (chatInline()) {
+    <app-assistant-chat [symbol]="symbol()" layout="inline" />
+  }
 
   <footer class="quote-actions">
     <div class="action-buttons">

@@ -1,0 +1,192 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.portfolio-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.portfolio-header .page-title {
+  margin-bottom: 4px;
+}
+
+.portfolio-asof {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--surface-foreground-subtle);
+  font-size: 14px;
+}
+
+.portfolio-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.is-delayed {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.notice > i {
+  margin-top: 3px;
+}
+
+.notice > div,
+.notice > p {
+  flex: 1;
+}
+
+.notice-title {
+  font-weight: 700;
+}
+
+.notice.is-warning {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+  border-color: var(--status-warning-container-line);
+}
+
+.notice.is-error {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+  border-color: var(--status-error-container-line);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+}
+
+.tile-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--surface-foreground-subtle);
+}
+
+.tile-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-note {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.tile.is-featured {
+  color: var(--hero-foreground);
+  background: var(--hero-gradient);
+  border-color: transparent;
+}
+
+.tile.is-featured .tile-label,
+.tile.is-featured .tile-note {
+  color: var(--hero-foreground);
+  opacity: 0.85;
+}
+
+@media (max-width: 1000px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .tiles {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-header {
+    flex-direction: column;
+  }
+}
+
+/* Tabs under the tiles: one nav, each a route. The active one carries the primary colour and aria-current. */
+.portfolio-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 14px;
+  background: var(--surface-container-background);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.portfolio-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--surface-foreground-subtle);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.portfolio-tab:hover {
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+}
+
+.portfolio-tab.is-active {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+}
+
+.portfolio-tab:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-tab {
+    transition: none;
+  }
+}

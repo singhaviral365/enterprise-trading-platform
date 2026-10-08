@@ -181,24 +181,21 @@ describe('PreferencesStore', () => {
     expect(theme.apply).toHaveBeenCalledWith(Theme.Light);
   });
 
-  it('reads the account again after a save that moves it to another currency, and not otherwise', async () => {
+  it('never sends the currency: it belongs to the account and is read-only, and a save never reads the account again', async () => {
     const store = setUp();
     http.expectOne(URL).flush(DEFAULTS);
     await vi.waitFor(() => expect(store.state()).toBe('ready'));
 
-    const same = store.save({ ...store.current(), theme: Theme.Light });
-    http.expectOne(URL).flush({ ...DEFAULTS, theme: Theme.Light, updatedAt: '2026-10-06T11:00:00Z' });
-    await same;
-    expect(refresh).not.toHaveBeenCalled();
-
-    const changed = store.save({ ...store.current(), preferredCurrency: Currency.Usd });
+    const saving = store.save({ ...store.current(), theme: Theme.Light });
     const put = http.expectOne(URL);
-    expect(put.request.body.preferredCurrency).toBe(Currency.Usd);
-    put.flush({ ...DEFAULTS, preferredCurrency: Currency.Usd, updatedAt: '2026-10-06T11:05:00Z' });
-    await changed;
+    expect('preferredCurrency' in put.request.body).toBe(false);
+    expect(put.request.body.theme).toBe(Theme.Light);
+    put.flush({ ...DEFAULTS, theme: Theme.Light, updatedAt: '2026-10-06T11:00:00Z' });
+    await saving;
 
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(store.current().preferredCurrency).toBe(Currency.Usd);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(store.current().preferredCurrency).toBe(Currency.Eur);
+    expect(store.preferredCurrency()).toBe('EUR');
   });
 
   it('takes the currency from the account while it is loaded, whatever an older row says', async () => {

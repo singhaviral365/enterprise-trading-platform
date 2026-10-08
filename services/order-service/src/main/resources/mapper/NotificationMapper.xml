@@ -72,14 +72,27 @@
     </insert>
 
     <!--
-      The inbox filter, shared by the page and its count. Always scoped to the account. A read notification stays
-      listed until readCutoff passes, so a message that was just opened does not vanish under the customer's cursor.
+      The inbox filter, shared by the page and its count. Always scoped to the account. includeUnread / includeRead choose
+      the read states (the service guarantees at least one). With a readCutoff a read notification stays listed only until
+      it passes, so a message that was just opened does not vanish under the customer's cursor; without one every read
+      notification qualifies. from / to bound created_at inclusively.
       The pattern is bound, never concatenated, and arrives with its % and _ already escaped; ESCAPE names the escape.
     -->
     <sql id="inboxWhere">
         WHERE account_id = #{accountId}
           AND in_app
-          AND (read_at IS NULL OR read_at &gt; #{readCutoff})
+          AND (
+            <trim prefixOverrides="OR ">
+              <if test="includeUnread">OR read_at IS NULL</if>
+              <if test="includeRead">OR (read_at IS NOT NULL<if test="readCutoff != null"> AND read_at &gt; #{readCutoff}</if>)</if>
+            </trim>
+          )
+        <if test="from != null">
+          AND created_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND created_at &lt;= #{to}
+        </if>
         <if test="pattern != null">
           AND (title ILIKE #{pattern} ESCAPE '\' OR message ILIKE #{pattern} ESCAPE '\')
         </if>

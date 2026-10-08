@@ -28,7 +28,8 @@ class TradeServiceAccountContactTest {
             mock(InstrumentMapper.class),
             mock(OrderMapper.class),
             mock(OrderPlacedAfterCommitListener.class),
-            mock(CurrencyConversionService.class));
+            mock(CurrencyConversionService.class),
+            new org.example.backend.service.OpeningBalanceMinimums(new org.springframework.mock.env.MockEnvironment()));
 
     @Test
     void theEmailAndPhoneNumberAreStoredOnTheNewAccountAfterItIsInserted() {
@@ -36,7 +37,7 @@ class TradeServiceAccountContactTest {
         when(accountMapper.nextAccountId()).thenReturn(1011L);
 
         tradeService.createAccountForAuth(1000L, new CreateAccountRequest(
-                "Alice Example", " +353 1 555 0100 ", " alice@example.com ", null, new BigDecimal("25000")));
+                "Alice Example", " +353 1 555 0100 ", " alice@example.com ", null, new BigDecimal("25000"), null));
 
         var order = inOrder(accountMapper);
         order.verify(accountMapper).insertAccount(org.mockito.ArgumentMatchers.any());
@@ -50,7 +51,7 @@ class TradeServiceAccountContactTest {
         org.junit.jupiter.api.Assertions.assertThrows(
                 org.example.backend.exceptions.AccountLinkConflictException.class,
                 () -> tradeService.createAccountForAuth(1000L, new CreateAccountRequest(
-                        "Alice Example", "+353 1 555 0100", "alice@example.com", null, null)));
+                        "Alice Example", "+353 1 555 0100", "alice@example.com", null, null, null)));
 
         verify(accountMapper, never()).updateAccountContact(anyInt(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }

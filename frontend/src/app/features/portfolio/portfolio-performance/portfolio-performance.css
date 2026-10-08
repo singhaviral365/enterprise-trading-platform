@@ -145,3 +145,30 @@
   color: var(--status-warning-container-fg);
   background: var(--status-warning-container-bg);
 }
+
+/* The Performance tab's analyses: one card each, stacked, inside the performance card. */
+.analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.analysis-card {
+  padding: 14px 16px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 14px;
+  background: var(--surface-container-background-low);
+}
+
+.analysis-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.chart-takeaway {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}

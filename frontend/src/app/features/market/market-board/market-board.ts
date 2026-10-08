@@ -9,10 +9,12 @@ import {
 } from '@angular/core';
 import { MarketRow, toMarketRow } from '../../../core/market-row';
 import { MarketBoard, MarketError, MarketService } from '../../../core/market.service';
+import { PreferencesStore } from '../../../core/preferences.store';
 import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Pagination } from '../../../shared/ui/pagination/pagination';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { SplitView } from '../../../shared/ui/split-view/split-view';
+import { AssistantChat } from '../assistant-chat/assistant-chat';
 import { QuoteDetail } from '../quote-detail/quote-detail';
 import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } from '../../../shared/formatting/preference-pipes';
 
@@ -22,8 +24,9 @@ const REFRESH_MS = 30_000;
 export const PAGE_SIZES = [5, 10, 25] as const;
 
 /**
- * Live market table: one row per tradable instrument. Clicking a row selects it and shows its quote on the right (the
- * table compresses to half the width; on a narrow screen the quote opens in a dialog instead).
+ * Live market table: one row per tradable instrument. Clicking a row selects it: the list shrinks to a compact column of
+ * instruments, the quote opens beside it and, when the AI assistant is on and there is room, the chat opens in a third pane on
+ * the right (without room it sits inside the quote instead). On a narrow screen the quote opens in a dialog and the list stays full.
  */
 @Component({
   selector: 'app-market-board',
@@ -36,12 +39,14 @@ export const PAGE_SIZES = [5, 10, 25] as const;
     Spinner,
     SplitView,
     QuoteDetail,
+    AssistantChat,
   ],
   templateUrl: './market-board.html',
   styleUrl: './market-board.css',
 })
 export class MarketBoardPanel {
   private readonly market = inject(MarketService);
+  protected readonly assistantOn = inject(PreferencesStore).aiAssistantEnabled;
 
   protected readonly board = resource({ loader: () => this.market.getBoard() });
   /**

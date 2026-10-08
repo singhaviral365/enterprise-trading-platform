@@ -85,8 +85,8 @@ public class PerformanceService {
     }
 
     private static NavPoint point(NavRow row) {
-        return new NavPoint(row.date(), row.nav(), row.totalValue(), row.netFlow(), row.dayPnl(), row.unrealisedPnl(),
-                row.realisedPnlCumulative(), row.estimated());
+        return new NavPoint(row.date(), row.nav(), row.totalValue(), row.cash(), row.holdingsValue(), row.costBasis(), row.netFlow(),
+                row.dayPnl(), row.unrealisedPnl(), row.realisedPnlCumulative(), row.estimated());
     }
 
     /** The benchmark's adjusted closes over the same days, rebased so the first one is 1000 like the portfolio. Null if none are stored. */

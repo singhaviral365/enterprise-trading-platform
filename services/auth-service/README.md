@@ -176,12 +176,13 @@ All configuration comes from environment variables. Required variables:
 | `LOG_LEVEL` | Logging level | debug |
 | `AUTH_EMAIL_VERIFICATION_ENABLED` | Registering emails a code to the address typed, and the login is created only once it is entered. `false` skips the check | true |
 | `AUTH_TWO_FACTOR_ENABLED` | Offers two-step sign-in as a per-user option (off for every user until they switch it on in Settings). `false` removes the option | true |
-| `AUTH_EMAIL_ENABLED` | Send email (MailHog). **Development only**; refused under `NODE_ENV=production` or a non-local SMTP host | false |
+| `AUTH_EMAIL_MODE` | `off`, `dev` (MailHog; refused under `NODE_ENV=production`) or `prod` (a real provider over TLS with a login; see [EMAIL.md](../../documentation/readme/EMAIL.md) for every setting) | off |
+| `AUTH_EMAIL_ENABLED` | Deprecated alias: `true` means `AUTH_EMAIL_MODE=dev` | false |
 | `AUTH_EMAIL_SMTP_HOST` / `AUTH_EMAIL_SMTP_PORT` | The SMTP server (MailHog) | localhost / 1025 |
 | `AUTH_OTP_*` | Code lifetime, guess and resend limits, hashing key: see [AUTH-OTP.md](../../documentation/readme/AUTH-OTP.md) | safe defaults |
 
 The registration email check is on by default and needs email, so the service **refuses to start** with it on and `AUTH_EMAIL_ENABLED` off.
-For development set `AUTH_EMAIL_ENABLED=true` with MailHog running, or `AUTH_EMAIL_VERIFICATION_ENABLED=false`.
+For development set `AUTH_EMAIL_MODE=dev` with MailHog running, or `AUTH_EMAIL_VERIFICATION_ENABLED=false`.
 
 ## Testing
 

@@ -50,7 +50,7 @@ describe('Header', () => {
     expect(root.querySelector('[data-testid="open-auth-dialog"]')).toBeTruthy();
   });
 
-  it('shows the profile button beside the theme toggle only when signed in, and opens the profile dialog', async () => {
+  it('shows one profile button beside the theme toggle only when signed in, and opens the profile pane', async () => {
     const signedOut = TestBed.createComponent(Header);
     await signedOut.whenStable();
     expect((signedOut.nativeElement as HTMLElement).querySelector('[data-testid="open-profile"]')).toBeNull();
@@ -61,6 +61,9 @@ describe('Header', () => {
     const http = TestBed.inject(HttpTestingController);
     (await vi.waitFor(() => http.expectOne('/api/v1/accounts/link'))).flush({ linked: false, message: 'No linked account yet' });
     await fixture.whenStable();
+
+    expect(root.querySelectorAll('[data-testid="open-profile"]').length).toBe(1);
+    expect(root.querySelector('[data-testid="header-username"]')).toBeNull();
 
     root.querySelector<HTMLButtonElement>('[data-testid="open-profile"]')!.click();
     (await vi.waitFor(() => http.expectOne({ method: 'GET', url: 'http://localhost:3000/auth/me' }))).flush({

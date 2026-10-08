@@ -12,6 +12,17 @@
   list-style: none;
 }
 
+/* A detail is open beside the list: one narrow column of small cards. */
+.position-grid.is-compact {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.position-grid.is-compact .position-card {
+  gap: 0;
+  padding: 10px 12px;
+}
+
 @media (max-width: 600px) {
   .position-grid {
     grid-template-columns: 1fr;

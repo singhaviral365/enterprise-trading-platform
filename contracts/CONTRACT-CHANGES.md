@@ -191,3 +191,55 @@ that names the strategy; an ordinary order keeps `ORDER_STATUS`. In `preferences
 value (default: all three) and the text of `aiAssistantEnabled` now says what it turns on (the signal assistant on the quote
 screen) instead of "the chatbot icon". Existing clients keep working: a customer's stored choice for the two old categories is
 unchanged, and the new one defaults to on.
+
+## notifications-api.yaml: inbox filters (status and date range)
+
+`GET /api/v1/accounts/{accountId}/notifications` gained three optional query parameters: `status` (repeatable, schema
+`InboxStatus` = `UNREAD` | `READ`), `from` and `to` (date-time, inclusive). Without `status` the response is exactly what it
+was (unread plus read within the last hour), so existing consumers are unaffected. With `status` the read-retention window no
+longer limits `READ`: every read notification is returned. `from > to` or a span over 366 days is `422`. `unreadCount` stays
+the account's total unread count whatever the filters, because the bell depends on it. Code:
+`NotificationController`, `NotificationInboxService`, `NotificationMapper.xml` (`inboxWhere`).
+
+## strategies-api.yaml: the two limits are optional
+
+`CreateStrategyRequest.maxOrderValue` and `maxPositionQty` moved from required to optional (additive: a client that sends them
+behaves exactly as before). When one is left out the order-service works it out before saving, so the stored strategy always has
+both and the executor is unchanged: the spending cap is `quantity x triggerPrice x (1 + buffer)` in the account currency, rounded
+up to a whole unit and never above the platform ceiling (buffer `strategy.limits.default-buffer-percent`, default 15); the largest
+holding is, for a buy, what is held now plus `quantity x maxExecutions`, and for a sell, what is held now (never below
+`quantity`). The response returns the effective limits. Code: `StrategyService`, `StrategyLimitDefaults`, `StrategyLimits`.
+
+## trade-api.yaml and preferences-api.yaml: the account currency is chosen once
+
+The currency is now a property of the account, chosen when it is opened and read-only afterwards.
+
+* `trade-api.yaml`: `CreateAccountRequest.currency` (optional, one of the ten supported codes, default `USD`, so existing clients are
+  unchanged) and `CreateAccountResponse.currency`. The smallest opening balance is a per-currency table in configuration
+  (`account.opening.minimum.<CODE>`, defaults about 20,000 USD in each currency: 18,000 EUR, 16,000 GBP, 1,600,000 INR, 3,000,000 JPY ...),
+  so no exchange rate is needed at account creation; the error message names the currency and the amount.
+* `preferences-api.yaml`: `PreferencesRequest.preferredCurrency` is now optional. If present it must equal the account's currency,
+  otherwise `409 CUR-409` ("The account currency is set when the account is opened and cannot be changed.") and nothing is saved. The
+  conversion behaviour is gone: no `ACC-409` (open orders) and no `FX-503` on this route, and the "Changing the currency" section is removed.
+  A client that sends the current currency, or none, is not affected.
+
+Code: `TradeService.createAccountForAuth`, `OpeningBalanceMinimums`, `PreferencesService.update`, `AccountCurrencyFixedException`. Removed:
+`changeAccountCurrency`, `CurrencyChangeBlockedException`, `UnsupportedCurrencyException`, `AccountMoney` and the mapper statements that
+converted balances, order prices and holding prices. `CurrencyConversionService` stays for orders.
+
+## portfolio-performance-api.yaml: cash, holdings value and cost basis on each point
+
+`NavPoint` gained three optional numbers, `cash`, `holdingsValue` and `costBasis`, already stored in `portfolio_nav_daily`
+and now returned (`value = cash + holdingsValue`; `unrealisedPnl = holdingsValue - costBasis`). They are not in `required`, so an
+existing consumer is unaffected. They let the Performance tab draw the account as cash against holdings over time. Code:
+`NavPoint`, `PerformanceService.point`.
+
+## auth-api.yaml: payload encryption (todo 02, phase 1)
+
+New `GET /.well-known/jwks.json` (`getJwks`): the service's RSA public key, or `404 ENCRYPTION_OFF` while `ENC_MODE=off` (the default).
+With `ENC_MODE=optional|required`, request and response bodies of every `/auth` call are a JWE (`application/jose`; an `X-Envelope`
+header carries the envelope of a request with no body), around the same plain JSON shapes as before, so no schema changed and the
+generated clients are untouched. Plaintext refusals before decryption use the existing `ErrorResponse` with `ENCRYPTION_INVALID`,
+`ENCRYPTION_EXPIRED`, `ENCRYPTION_REPLAY` (409) and `ENCRYPTION_REQUIRED`. Code: `src/encryption/*`, the frontend
+`core/encryption/*`.
+

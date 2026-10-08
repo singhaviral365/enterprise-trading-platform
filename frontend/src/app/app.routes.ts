@@ -39,12 +39,12 @@ export const routes: Routes = [
       {
         path: 'portfolio',
         title: 'Portfolio | Trading Platform',
-        loadComponent: () => import('./features/portfolio/portfolio').then((m) => m.Portfolio),
+        loadChildren: () => import('./features/portfolio/portfolio.routes').then((m) => m.PORTFOLIO_ROUTES),
       },
       {
-        // Positions now live on the portfolio page; the old address keeps working.
+        // Positions live under Portfolio, on the Holdings tab; the old address keeps working.
         path: 'positions',
-        redirectTo: 'portfolio',
+        redirectTo: 'portfolio/holdings',
         pathMatch: 'full',
       },
       {

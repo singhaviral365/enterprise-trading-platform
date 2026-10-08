@@ -47,7 +47,8 @@ class PerformanceControllerTest {
     @Test
     void returnsTheHistoryAndTheCurve() throws Exception {
         PerformanceResponse response = new PerformanceResponse(7, "USD", false, LocalDate.of(2026, 9, 1), null,
-                List.of(new NavPoint(LocalDate.of(2026, 9, 1), new BigDecimal("1000"), new BigDecimal("10000"), new BigDecimal("10000"),
+                List.of(new NavPoint(LocalDate.of(2026, 9, 1), new BigDecimal("1000"), new BigDecimal("10000"), new BigDecimal("2500"),
+                        new BigDecimal("7500"), new BigDecimal("7000"), new BigDecimal("10000"),
                         BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, false)), null);
         when(service.curve(eq(1000L), eq(7L), any(), any(), any())).thenReturn(Optional.of(response));
 
@@ -55,6 +56,9 @@ class PerformanceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.baseCurrency").value("USD"))
                 .andExpect(jsonPath("$.points[0].nav").value(1000))
+                .andExpect(jsonPath("$.points[0].cash").value(2500))
+                .andExpect(jsonPath("$.points[0].holdingsValue").value(7500))
+                .andExpect(jsonPath("$.points[0].costBasis").value(7000))
                 .andExpect(jsonPath("$.benchmark").doesNotExist());
     }
 

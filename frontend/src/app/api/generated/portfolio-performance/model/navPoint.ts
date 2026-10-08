@@ -20,6 +20,18 @@ export interface NavPoint {
      */
     value: number;
     /**
+     * The cash part of `value`. Optional: absent from responses of services older than this field.
+     */
+    cash?: number;
+    /**
+     * The holdings part of `value`, at that day\'s close. Optional, as `cash`.
+     */
+    holdingsValue?: number;
+    /**
+     * What the holdings cost (quantity times average cost) at that day\'s close; `unrealisedPnl` is `holdingsValue` less this. Optional, as `cash`.
+     */
+    costBasis?: number;
+    /**
      * Money put in or taken out that day. On the first day, the whole starting value.
      */
     netFlow: number;

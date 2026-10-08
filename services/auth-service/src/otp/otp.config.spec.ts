@@ -1,3 +1,4 @@
+import { MailSettings } from '../mail/mail.config';
 import { assertEmailCanBeSent, otpSecret, otpSettings } from './otp.config';
 
 describe('otp settings', () => {
@@ -50,10 +51,23 @@ describe('otp settings', () => {
 });
 
 describe('assertEmailCanBeSent', () => {
-  const mail = (enabled: boolean) => ({ enabled, host: 'localhost', port: 1025, from: 'x@y.z' });
+  const mail = (enabled: boolean): MailSettings => ({
+    mode: enabled ? 'dev' : 'off',
+    enabled,
+    host: 'localhost',
+    port: 1025,
+    tls: 'none',
+    user: null,
+    password: null,
+    from: 'x@y.z',
+    fromDomains: [],
+    allowedRecipientDomains: [],
+    replyTo: null,
+    usedLegacySwitch: false,
+  });
 
   it('refuses to start with the registration email check on and no way to send the code, and says how to fix it', () => {
-    expect(() => assertEmailCanBeSent(otpSettings({}), mail(false))).toThrow(/AUTH_EMAIL_ENABLED=true/);
+    expect(() => assertEmailCanBeSent(otpSettings({}), mail(false))).toThrow(/AUTH_EMAIL_MODE=dev/);
     expect(() => assertEmailCanBeSent(otpSettings({}), mail(false))).toThrow(/AUTH_EMAIL_VERIFICATION_ENABLED=false/);
   });
 

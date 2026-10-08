@@ -29,8 +29,10 @@ test.describe('portfolio', () => {
     test.skip(await noAccount.isVisible(), 'This login has no trading account yet, so there is no portfolio to show.');
 
     if (await total.isVisible()) {
-      // A priced portfolio says when the prices are from, and every holding says whether its price is live.
+      // A priced portfolio says when the prices are from, and every holding (on the Holdings tab) says whether its price is live.
       await expect(page.getByTestId('portfolio-asof')).toContainText('Prices as of');
+      await page.getByTestId('portfolio-tab-holdings').click();
+      await expect(page).toHaveURL(/\/portfolio\/holdings$/);
       for (const status of await page.locator('[data-testid^="holding-status-"]').all()) {
         await expect(status).toHaveText(/Live|Delayed|Unavailable/);
       }
@@ -44,7 +46,7 @@ test.describe('portfolio', () => {
     expect(requested.filter((url) => /fauxnance|execute-api\.|amazonaws\.com/i.test(url))).toEqual([]);
   });
 
-  test('keeps the graph above the holdings, and filtering profit and loss reloads only that section', async ({ page }) => {
+  test('has a tab per job, keeps the tiles on each, and filtering profit and loss reloads only that section', async ({ page }) => {
     await signInFromHome(page, userCredentials());
     await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Portfolio' }).click();
 
@@ -53,11 +55,16 @@ test.describe('portfolio', () => {
     await expect(total.or(page.getByTestId('portfolio-unavailable')).or(noAccount)).toBeVisible();
     test.skip(!(await total.isVisible()), 'Needs a priced portfolio to compare sections.');
 
-    // The performance section sits between the summary tiles and the holdings.
-    const performance = await page.getByTestId('portfolio-performance').boundingBox();
-    const holdings = await page.getByTestId('portfolio-holdings-section').boundingBox();
-    expect(performance!.y).toBeLessThan(holdings!.y);
+    // The overview comes first, with the performance curve; the other tabs are separate routes under the same tiles.
+    await expect(page.getByTestId('portfolio-tab-overview')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('portfolio-performance')).toBeVisible();
+    for (const [tab, path] of [['holdings', 'holdings'], ['performance', 'performance'], ['pnl', 'pnl']]) {
+      await page.getByTestId(`portfolio-tab-${tab}`).click();
+      await expect(page).toHaveURL(new RegExp(`/portfolio/${path}$`));
+      await expect(total).toBeVisible();
+    }
 
+    await page.getByTestId('portfolio-tab-pnl').click();
     const portfolioRequests: string[] = [];
     page.on('request', (request) => {
       if (request.url().includes('/api/v1/portfolio/')) {
@@ -93,6 +100,7 @@ test.describe('portfolio', () => {
     await expect(unavailable).toContainText('Prices are unavailable right now');
     await expect(page.getByTestId('portfolio-cash')).toBeVisible();
     await expect(page.getByTestId('portfolio-total')).toHaveCount(0);
+    await page.getByTestId('portfolio-tab-holdings').click();
     for (const status of await page.locator('[data-testid^="holding-status-"]').all()) {
       await expect(status).toHaveText('Unavailable');
     }

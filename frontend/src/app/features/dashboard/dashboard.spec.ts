@@ -122,7 +122,7 @@ describe('Dashboard', () => {
     expect(stats.some((s) => s.includes('Open orders') && s.includes('1'))).toBe(true);
     expect(stats.some((s) => s.includes('Positions') && s.includes('2'))).toBe(true);
     expect(stats.some((s) => s.includes('Total orders') && s.includes('3'))).toBe(true);
-    expect(byTestId('positions-link')?.getAttribute('href')).toBe('/portfolio');
+    expect(byTestId('positions-link')?.getAttribute('href')).toBe('/portfolio/holdings');
     expect(byTestId('total-orders-link')?.getAttribute('href')).toBe('/orders');
     // Open orders opens the history already filtered to Working (status NEW).
     expect(byTestId('open-orders-link')?.getAttribute('href')).toBe('/orders?status=NEW');

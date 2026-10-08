@@ -49,7 +49,7 @@ describe('AccountSetupForm', () => {
     expect(byTestId<HTMLButtonElement>('account-setup-submit')!.disabled).toBe(false);
   });
 
-  it('creates the account without a balance so the 20,000 default applies', async () => {
+  it('creates the account in USD without a balance, so the 20,000 default applies', async () => {
     const completed = vi.fn();
     fixture.componentInstance.completed.subscribe(completed);
 
@@ -63,8 +63,9 @@ describe('AccountSetupForm', () => {
       client_name: 'Priya Menon',
       phone_no: '+1 555 123 4567',
       email: 'priya@example.com',
+      currency: 'USD',
     });
-    request.flush({ accountId: 1011, accountNumber: 'ACC000001011', status: 'ACTIVE', message: 'Account created successfully' });
+    request.flush({ accountId: 1011, accountNumber: 'ACC000001011', status: 'ACTIVE', message: 'Account created successfully', currency: 'USD' });
 
     await vi.waitFor(() => expect(completed).toHaveBeenCalled());
   });
@@ -78,7 +79,7 @@ describe('AccountSetupForm', () => {
 
     const request = await vi.waitFor(() => http.expectOne(CREATE_URL));
     expect(request.request.body).toMatchObject({ dob: '1990-05-17', balance: 25000 });
-    request.flush({ accountId: 1, accountNumber: 'ACC000000001', status: 'ACTIVE', message: '' });
+    request.flush({ accountId: 1, accountNumber: 'ACC000000001', status: 'ACTIVE', message: '', currency: 'USD' });
   });
 
   it('blocks a balance below the 20,000 minimum and empty required fields', async () => {
@@ -107,5 +108,54 @@ describe('AccountSetupForm', () => {
     );
 
     await vi.waitFor(() => expect(completed).toHaveBeenCalled());
+  });
+
+  async function choose(currency: string): Promise<void> {
+    const select = root.querySelector<HTMLSelectElement>('#account-currency')!;
+    select.value = currency;
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+  }
+
+  it('offers the ten currencies, USD first and chosen, with the reason it is asked once', () => {
+    const select = root.querySelector<HTMLSelectElement>('#account-currency')!;
+
+    expect([...select.options].map((o) => o.value)).toEqual(['USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD', 'CHF', 'SGD', 'CNY']);
+    expect(select.value).toBe('USD');
+    expect(root.textContent).toContain('Chosen once. It cannot be changed later.');
+  });
+
+  it('sends the chosen currency', async () => {
+    await choose('EUR');
+    await type('account-client-name', 'Priya Menon');
+    await type('account-phone', '5551234567');
+    byTestId<HTMLButtonElement>('account-setup-submit')!.click();
+
+    const request = await vi.waitFor(() => http.expectOne(CREATE_URL));
+    expect(request.request.body.currency).toBe('EUR');
+    request.flush({ accountId: 1, accountNumber: 'ACC000000001', status: 'ACTIVE', message: '', currency: 'EUR' });
+  });
+
+  it('shows the symbol and the minimum of the chosen currency', async () => {
+    expect(byTestId('account-balance-symbol')?.textContent?.trim()).toBe('$');
+    expect(byTestId('account-balance-hint')?.textContent).toContain('Defaults to 20,000 USD');
+
+    await choose('JPY');
+
+    expect(byTestId('account-balance-symbol')?.textContent?.trim()).toBe('¥');
+    expect(byTestId('account-balance-hint')?.textContent).toContain('Defaults to 3,000,000 JPY');
+  });
+
+  it('checks the balance against the minimum of the chosen currency, not 20,000', async () => {
+    await choose('JPY');
+    await type('account-balance', '20000');
+    expect(root.textContent).toContain('Opening balance must be a number of at least 3,000,000.');
+
+    await type('account-balance', '3000000');
+    expect(root.textContent).not.toContain('Opening balance must be a number of at least');
+
+    await choose('USD');
+    await type('account-balance', '20000');
+    expect(root.textContent).not.toContain('Opening balance must be a number of at least');
   });
 });

@@ -12,7 +12,7 @@ import { OrderSide } from './orderSide';
 
 
 /**
- * The limits are required, not defaulted: a strategy that trades unattended must have had its damage bounded by a decision somebody made. `maxExecutions` and `maxFailures` may be left out. 
+ * The two limits are optional: a strategy that trades unattended always ends up with both (the order-service works out the one that is left out, see \"Limits that bound the damage\"), but nobody has to invent them. `maxExecutions` and `maxFailures` may be left out as well. 
  */
 export interface CreateStrategyRequest { 
     accountId: number;
@@ -36,13 +36,13 @@ export interface CreateStrategyRequest {
      */
     validUntil?: string | null;
     /**
-     * The most one order may cost, in the account\'s currency, at most 2 decimal places.
+     * The most one order may cost, in the account\'s currency, at most 2 decimal places. Optional: worked out from the rule when left out. 
      */
-    maxOrderValue: number;
+    maxOrderValue?: number;
     /**
-     * The largest holding of the instrument a buy may build, in units. For a buy it must be at least `quantity`. 
+     * The largest holding of the instrument a buy may build, in units. For a buy it must be at least `quantity`. Optional: worked out from the rule when left out. 
      */
-    maxPositionQty: number;
+    maxPositionQty?: number;
     maxExecutions?: number;
     maxFailures?: number;
 }

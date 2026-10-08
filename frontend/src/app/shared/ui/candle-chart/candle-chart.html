@@ -1,0 +1,48 @@
+<div class="candle-chart hc" data-testid="candle-chart">
+  <div class="hc-frame" [style.--hc-height]="height() + 'px'">
+    <div #plot class="hc-plot" role="img" [attr.aria-label]="ariaLabel()"></div>
+  </div>
+
+  <details class="chart-table" data-testid="candle-chart-table">
+    <summary>View as table</summary>
+    <div class="table-container">
+      <table class="data-table is-compact">
+        <caption class="visually-hidden">{{ ariaLabel() }}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            <th scope="col" class="is-numeric">Open</th>
+            <th scope="col" class="is-numeric">High</th>
+            <th scope="col" class="is-numeric">Low</th>
+            <th scope="col" class="is-numeric">Close</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.time) {
+            <tr>
+              <th scope="row">{{ formatTime(row.time) }}</th>
+              <td class="is-numeric">{{ valueFormatter()(row.open) }}</td>
+              <td class="is-numeric">{{ valueFormatter()(row.high) }}</td>
+              <td class="is-numeric">{{ valueFormatter()(row.low) }}</td>
+              <td class="is-numeric">{{ valueFormatter()(row.close) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (hiddenRows() > 0) {
+      <p class="form-hint">Showing the latest {{ rows().length }} days.</p>
+    }
+    @if (tradesNewestFirst().length) {
+      <p class="chart-table-heading">Your trades</p>
+      <ul class="trade-list" data-testid="candle-chart-trades">
+        @for (trade of tradesNewestFirst(); track $index) {
+          <li>
+            {{ formatTime(trade.time) }}: {{ trade.side === 'BUY' ? 'Bought' : 'Sold' }} {{ trade.quantity }} at
+            {{ valueFormatter()(trade.price) }}
+          </li>
+        }
+      </ul>
+    }
+  </details>
+</div>

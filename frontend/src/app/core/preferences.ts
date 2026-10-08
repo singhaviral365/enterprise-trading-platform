@@ -224,7 +224,7 @@ export function landingRoute(page: LandingPage): string {
     case LandingPage.Market:
       return '/market';
     case LandingPage.Positions:
-      return '/positions';
+      return '/portfolio/holdings';
     case LandingPage.Orders:
       return '/orders';
     case LandingPage.Dashboard:

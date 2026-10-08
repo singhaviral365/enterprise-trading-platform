@@ -2,6 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   computed,
+  effect,
   inject,
   input,
   linkedSignal,
@@ -12,8 +13,11 @@ import {
 import { OrderSide } from '../../../api/generated/trade';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { MarketRow, toMarketRow } from '../../../core/market-row';
-import { MarketError, MarketService } from '../../../core/market.service';
+import { MarketError, MarketService, convertCurrency } from '../../../core/market.service';
+import { toCandles, toTradeMarkers } from '../../../core/price-candles';
 import { positionBreakdown } from '../../../core/position-lots';
+import { FormatPreferences } from '../../../core/format-preferences';
+import { CandleChart } from '../../../shared/ui/candle-chart/candle-chart';
 import { InstrumentIcon } from '../../../shared/ui/instrument-icon/instrument-icon';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 import { TradePanel } from '../../../shared/ui/trade-panel/trade-panel';
@@ -23,7 +27,8 @@ import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } fro
 /**
  * What the positions page shows for the selected position (in the side pane on a wide screen, in a dialog on a narrow one): the symbol, name and cost basis on one line,
  * quantity and average cost, and a table of the filled BUY orders that add up to the holding (quantity and
- * cost per buy), which is how the average cost is worked out. Buy more and Sell switch to the shared `TradePanel`, the same buy / sell screen the market page uses.
+ * cost per buy), which is how the average cost is worked out. Above them a candlestick chart of the past year shows the customer's own
+ * average cost as a dashed line and their buys and sells as markers. Buy more and Sell switch to the shared `TradePanel`, the same buy / sell screen the market page uses.
  */
 @Component({
   selector: 'app-position-detail',
@@ -31,6 +36,7 @@ import { PreferenceCurrencyPipe, PreferenceDatePipe, PreferenceDecimalPipe } fro
     PreferenceCurrencyPipe,
     PreferenceDatePipe,
     PreferenceDecimalPipe,
+    CandleChart,
     InstrumentIcon,
     NgTemplateOutlet,
     Spinner,
@@ -48,6 +54,7 @@ export class PositionDetail {
 
   private readonly store = inject(AccountOverviewStore);
   private readonly market = inject(MarketService);
+  private readonly formats = inject(FormatPreferences);
 
   /** Exposed so the template passes the generated enum, never a string literal. */
   protected readonly OrderSide = OrderSide;
@@ -60,6 +67,60 @@ export class PositionDetail {
     // and that must not throw away the order confirmation the user is looking at.
     computation: (position, previous) =>
       previous && previous.source?.symbol === position?.symbol ? previous.value : 'details',
+  });
+
+  // ---- The price chart with the customer's own cost and trades ------------------------------------------------------
+
+  /** A year of daily candles for the symbol; read again only when the symbol changes. */
+  protected readonly history = resource({
+    params: () => this.position()?.symbol,
+    loader: ({ params: symbol }) => this.market.getPriceHistory(symbol),
+  });
+  protected readonly candles = computed(() => (this.history.hasValue() ? toCandles(this.history.value()) : []));
+  protected readonly chartCurrency = computed(() => (this.history.hasValue() ? this.history.value().currency : null));
+
+  /** An amount in the account currency, in the currency the chart is drawn in; null if the rates are not there to convert it. */
+  private readonly toChartCurrency = computed(() => {
+    const account = this.currency();
+    const chart = this.chartCurrency();
+    const rates = this.market.fxRates();
+    return (amount: number): number | null =>
+      !account || !chart || account === chart ? amount : convertCurrency(rates, amount, account, chart);
+  });
+  protected readonly chartAverageCost = computed(() => {
+    const position = this.position();
+    return position ? this.toChartCurrency()(position.averageCost) : null;
+  });
+  protected readonly chartTrades = computed(() => {
+    const position = this.position();
+    const first = this.candles()[0]?.time;
+    if (!position || first === undefined) {
+      return [];
+    }
+    return toTradeMarkers(this.store.linked()?.overview.orders ?? [], position.symbol, first, this.toChartCurrency());
+  });
+  protected readonly formatChartPrice = computed(() => {
+    const currency = this.chartCurrency() ?? this.currency();
+    if (!currency) {
+      return (value: number) => value.toFixed(2);
+    }
+    const formatter = new Intl.NumberFormat(this.formats.locale(), { style: 'currency', currency });
+    return (value: number) => formatter.format(value);
+  });
+  protected readonly chartError = computed(() => {
+    const error = this.history.error();
+    if (!error) {
+      return '';
+    }
+    return error instanceof MarketError ? error.message : 'Price history could not be loaded.';
+  });
+  protected readonly chartLabel = computed(() => {
+    const position = this.position();
+    const trades = this.chartTrades().length;
+    return (
+      `${position?.symbol ?? ''} daily candles over the past year with your average cost as a dashed line` +
+      (trades ? ` and ${trades} of your ${trades === 1 ? 'trade' : 'trades'} marked` : '')
+    );
   });
 
   /** The filled buys behind this position, from the order history the account store already holds. */
@@ -102,6 +163,17 @@ export class PositionDetail {
     }
     return error instanceof MarketError ? error.message : 'Market data could not be loaded.';
   });
+
+  constructor() {
+    // A holding in another currency than the account needs the board's exchange rates to draw its average cost and trades.
+    effect(() => {
+      const account = this.currency();
+      const chart = this.chartCurrency();
+      if (account && chart && account !== chart && !this.market.fxRates()) {
+        void this.market.getBoard().catch(() => undefined);
+      }
+    });
+  }
 
   protected openTicket(side: OrderSide): void {
     this.side.set(side);

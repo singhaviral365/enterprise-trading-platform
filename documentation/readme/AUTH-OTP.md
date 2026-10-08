@@ -2,7 +2,7 @@
 
 Registration, two-step sign-in and forgot password send a six-digit code by email. Registration sends it to the address **typed on the
 form** (nothing exists yet); the other two send it to the address on the user's own record (`users.email`). Change password sends no
-code (it asks for the current password) but mails a notice. Email is **development only** (MailHog); see "Running it" below.
+code (it asks for the current password) but mails a notice. Email has three modes (off, dev with MailHog, prod with a real provider; see [EMAIL.md](EMAIL.md)); "Running it" below covers dev.
 
 ## Registration verifies the email first
 
@@ -116,15 +116,14 @@ Email is development only, in the same four layers as the Trade API's notificati
 | Off by default | `AUTH_EMAIL_ENABLED` must be exactly `true` |
 | Different bean | When off, `DisabledEmailSender` is wired; `SmtpEmailSender` is not even created |
 | Start-up guard | The service refuses to start with email on under `NODE_ENV=production`/`prod`/`staging`, or with an SMTP host other than `localhost`, `127.0.0.1`, `::1`, `mailhog` |
-| Compose | `mailhog` is in its own profile (`dev-mail`) |
+| Compose | MailHog is not in `docker-compose.yml`: run it on your machine (SMTP 1025, web UI 8025) |
 
 Registration needs email too, so **the service refuses to start with the registration email check on (the default) and email off**,
 and says how to fix it: `AUTH_EMAIL_ENABLED=true` with MailHog, or `AUTH_EMAIL_VERIFICATION_ENABLED=false`. (Two-step sign-in being
 on offer does not stop the service starting: it is each user's choice, and switching it on is refused if no mail can be sent.)
 
 ```bash
-# MailHog (SMTP on 1025, web interface on 8025)
-docker compose -f services/docker-compose.yml --profile dev-mail up -d mailhog
+# MailHog (SMTP on 1025, web interface on 8025): run the MailHog executable on your machine
 
 # the auth service, in development
 AUTH_EMAIL_ENABLED=true  npm run start:dev          # from services/auth-service; MailHog on localhost:1025
@@ -141,7 +140,7 @@ AUTH_EMAIL_ENABLED=true  npm run start:dev          # from services/auth-service
 
 **Docker Compose** is production-like (`NODE_ENV=production`), where email is refused, so it runs with the registration email check **off**
 and two-step sign-in **off** by default. To use MailHog with it:
-`AUTH_NODE_ENV=development AUTH_EMAIL_ENABLED=true AUTH_EMAIL_VERIFICATION_ENABLED=true AUTH_TWO_FACTOR_ENABLED=true` and `--profile dev-mail`.
+`AUTH_NODE_ENV=development AUTH_EMAIL_ENABLED=true AUTH_EMAIL_VERIFICATION_ENABLED=true AUTH_TWO_FACTOR_ENABLED=true` with MailHog running on your machine.
 
 **The table.** `otp_challenges` (and `users.two_factor_enabled`) is created by the auth service itself on every start-up (`CREATE TABLE ... IF NOT EXISTS`), in any
 environment, so it does not matter how the database was prepared (TypeORM `synchronize` only runs under `NODE_ENV=development`).
@@ -163,4 +162,4 @@ running for any journey that registers or signs in with two-step on; the seeded 
 | Settings and start-up guards | `src/otp/otp.config.ts`, `src/mail/mail.config.ts` |
 | Email | `src/mail/` (`EmailSender`, `SmtpEmailSender`, `DisabledEmailSender`, `otp-messages.ts`) |
 | Contract | `contracts/auth-api.yaml` |
-| Angular | `features/auth/login-form` and `register-form` (code steps), `features/auth/forgot-password-form`, `layout/header/profile-dialog`, `features/settings` (two-step switch), `core/auth.service.ts` |
+| Angular | `features/auth/login-form` and `register-form` (code steps), `features/auth/forgot-password-form`, `layout/header/profile-menu`, `features/settings` (two-step switch), `core/auth.service.ts` |

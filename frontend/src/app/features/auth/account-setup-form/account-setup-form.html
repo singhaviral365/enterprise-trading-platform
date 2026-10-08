@@ -74,6 +74,18 @@
     }
   </div>
 
+  <div class="form-group">
+    <app-dropdown
+      label="Currency"
+      inputId="account-currency"
+      data-testid="account-currency"
+      [options]="currencyOptions"
+      [value]="model().currency"
+      (valueChange)="setupForm.currency().value.set($event)"
+    />
+    <p class="form-hint" id="account-currency-hint">Chosen once. It cannot be changed later.</p>
+  </div>
+
   <div class="form-row">
     <div class="form-group">
       <label class="form-label" for="account-dob">Date of birth <span class="optional">(optional)</span></label>
@@ -96,13 +108,13 @@
     <div class="form-group">
       <label class="form-label" for="account-balance">Opening balance <span class="optional">(optional)</span></label>
       <div class="input-with-icon">
-        <i class="fas fa-dollar-sign" aria-hidden="true"></i>
+        <span class="currency-symbol" aria-hidden="true" data-testid="account-balance-symbol">{{ currencySymbol() }}</span>
         <input
           id="account-balance"
           class="form-input"
           type="text"
           inputmode="decimal"
-          [placeholder]="minBalance"
+          [placeholder]="minBalance()"
           data-testid="account-balance"
           [formField]="setupForm.balance"
           [class.is-error]="setupForm.balance().touched() && setupForm.balance().invalid()"
@@ -113,7 +125,7 @@
       @if (setupForm.balance().touched() && setupForm.balance().invalid()) {
         <p id="account-balance-error" class="form-error-text">{{ setupForm.balance().errors()[0].message }}</p>
       } @else {
-        <p id="account-balance-hint" class="form-hint">Defaults to 20,000 if left blank.</p>
+        <p id="account-balance-hint" class="form-hint" data-testid="account-balance-hint">Defaults to {{ minBalance().toLocaleString('en-US') }} {{ model().currency }} if left blank.</p>
       }
     </div>
   </div>

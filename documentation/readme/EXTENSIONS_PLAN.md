@@ -68,10 +68,10 @@ We will dive deep into UI in-app notifications for now and work on it. Plan out 
 
 ## Watchlist Notifications
 
-We will also implement price alerts for watchlist. 
+Price alerts for watchlist. 
 
 - A target price that we can set (so a small update to DB)
 - Need to be alerted when the price goes above/below target - can be anyone of those two. So maybe a dropdown for Above/Below, and a form field for desired target price. It can't be both Above and Below, potentially, so that should be good.
 - Where are the prices fetched from to make the notifications? The market-data kafka, of course. 
 
-So in-app notifications for order placement/filled, fetched from trade-events, and watchlist notifications, only ever consumed from market-data, for price alerts. And Email notifications. Plus plan for SMS alone.
+So in-app notifications for order placement/filled, fetched from trade-events, and watchlist notifications, only ever consumed from market-data, for price alerts. And Email notifications.

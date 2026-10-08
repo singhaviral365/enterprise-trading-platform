@@ -168,6 +168,22 @@ The trade event carries only the order id, so the order-service recognises a str
 The executor cannot reach the notifications module, so stopped and expired strategies are announced by a small job in the
 order-service (`StrategyAnnouncer`) that finds finished strategies not yet announced.
 
+## Limits are worked out for the customer
+
+A strategy must be bounded, but the customer should not have to invent the bounds. The form asks for five things (instrument, buy or
+sell, when the price, the price, the quantity); `maxOrderValue` and `maxPositionQty` are optional in the request, and when they are
+left out `StrategyService` fills them in before saving (`StrategyLimitDefaults`), so the columns stay NOT NULL and every guard in the
+executor reads the same two numbers as before:
+
+| Limit | Worked out as |
+|---|---|
+| Spending cap (`maxOrderValue`) | `quantity x trigger price x (1 + buffer)`, converted from the instrument's currency to the account's, rounded up to a whole unit, at most the platform ceiling. Buffer 15% so ordinary slippage passes and a real gap is stopped |
+| Largest holding (`maxPositionQty`) | Buy: what is held now plus `quantity x runs`. Sell: what is held now. Never below the quantity |
+
+A customer (or API client) who sends a value gets exactly that, validated as before. The effective values are in the response and the
+form shows them ("Worst case about $863") and lets "More options" overwrite them. Maximum executions defaults to 1: a strategy places
+one order unless the customer asks for more.
+
 ## Configuration
 
 | Setting | Default | Meaning |
@@ -176,6 +192,7 @@ order-service (`StrategyAnnouncer`) that finds finished strategies not yet annou
 | `strategy.limits.max-quantity` / `max-order-value` / `max-position-qty` | 1,000,000 / 10,000,000 / 10,000,000 | The platform's ceilings on what a customer may set |
 | `strategy.limits.max-window-days` | 366 | How far ahead an end date may be |
 | `strategy.limits.arm-fresh-seconds` | 300 | How recent a price must be to create a strategy already armed |
+| `strategy.limits.default-buffer-percent` | 15 | Added to `quantity x trigger price` when the customer sends no spending cap |
 | `strategy.execution.enabled` (`STRATEGY_EXECUTION_ENABLED`) | true | The kill switch. Needs a restart of the executor |
 | `strategy.execution.max-quote-age-seconds` | 180 | A quote older than this is never traded on |
 | `strategy.execution.claim-timeout-seconds` | 120 | A claim older than this is taken to be abandoned |

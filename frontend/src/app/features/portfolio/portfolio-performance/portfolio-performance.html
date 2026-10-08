@@ -56,7 +56,12 @@
         <div class="stat">
           <dt>Return</dt>
           <dd data-testid="performance-return" [class.is-gain]="s.returnPct > 0" [class.is-loss]="s.returnPct < 0">
-            <i class="fas" [class.fa-arrow-trend-up]="s.returnPct > 0" [class.fa-arrow-trend-down]="s.returnPct < 0" [class.fa-minus]="s.returnPct === 0" aria-hidden="true"></i>
+            @if (s.returnPct === 0) {
+              <span class="zero-mark" aria-hidden="true">-</span>
+              <span class="visually-hidden">Unchanged</span>
+            } @else {
+              <i class="fas" [class.fa-arrow-trend-up]="s.returnPct > 0" [class.fa-arrow-trend-down]="s.returnPct < 0" aria-hidden="true"></i>
+            }
             {{ formatPercent(s.returnPct) }}
           </dd>
         </div>
@@ -118,6 +123,65 @@
         </p>
       }
 
+      @if (layout() === 'full') {
+      <div class="analysis" data-testid="performance-analysis">
+        @if (hasSplit()) {
+          <section class="analysis-card" aria-labelledby="value-split-title" data-testid="performance-value-split">
+            <h3 id="value-split-title" class="analysis-title">Cash and holdings</h3>
+            @if (investedPct() !== null) {
+              <p class="chart-takeaway" data-testid="performance-invested">{{ investedPct()!.toFixed(0) }}% of your account is working in the market, the rest is cash.</p>
+            }
+            <app-area-chart
+              [series]="valueSeries()"
+              [stacked]="true"
+              [legend]="true"
+              [valueFormatter]="formatMoney()"
+              [axisFormatter]="formatAxisMoney()"
+              [ariaLabel]="valueLabel()"
+            />
+          </section>
+        }
+
+        <section class="analysis-card" aria-labelledby="daily-pnl-title" data-testid="performance-daily">
+          <h3 id="daily-pnl-title" class="analysis-title">Profit and loss, day by day</h3>
+          <p class="chart-takeaway" data-testid="performance-daily-takeaway">{{ daysUp() }} of {{ visible().length }} days made money. The line is what you have banked in total.</p>
+          <app-bar-chart
+            [bars]="dailyBars()"
+            [timeAxis]="true"
+            seriesName="Day's profit or loss"
+            [line]="realisedLine()"
+            lineName="Realised so far"
+            [valueFormatter]="formatMoney()"
+            [axisFormatter]="formatAxisMoney()"
+            [ariaLabel]="dailyLabel()"
+          />
+        </section>
+
+        <section class="analysis-card" aria-labelledby="drawdown-title" data-testid="performance-drawdown-card">
+          <h3 id="drawdown-title" class="analysis-title">How far below its peak</h3>
+          <p class="chart-takeaway" data-testid="performance-drawdown-takeaway">
+            The deepest fall was {{ formatPercent(s.maxDrawdownPct) }}.
+            @if (currentDrawdown() < -0.005) {
+              Today it is {{ formatPercent(currentDrawdown()) }} from its high.
+            } @else {
+              It is at its high now.
+            }
+          </p>
+          <app-area-chart
+            [series]="drawdown()"
+            [zeroBased]="false"
+            [valueFormatter]="formatPercent"
+            [ariaLabel]="drawdownLabel()"
+            [height]="200"
+          />
+        </section>
+
+        <section class="analysis-card" aria-labelledby="monthly-title" data-testid="performance-monthly">
+          <h3 id="monthly-title" class="analysis-title">Month by month</h3>
+          <app-monthly-returns [points]="visible()" />
+        </section>
+      </div>
+
       <details class="statements" data-testid="performance-statements">
         <summary>Daily statements ({{ visible().length }} {{ visible().length === 1 ? 'day' : 'days' }})</summary>
         <div class="row-table-scroll">
@@ -160,6 +224,7 @@
           </button>
         }
       </details>
+      }
     }
   } @else {
     <div class="performance-state is-empty" data-testid="performance-none">

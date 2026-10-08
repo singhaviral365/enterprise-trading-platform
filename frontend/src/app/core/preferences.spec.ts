@@ -111,7 +111,7 @@ describe('preferences', () => {
   it('maps every landing page to a route', () => {
     expect(landingRoute(LandingPage.Dashboard)).toBe('/dashboard');
     expect(landingRoute(LandingPage.Market)).toBe('/market');
-    expect(landingRoute(LandingPage.Positions)).toBe('/positions');
+    expect(landingRoute(LandingPage.Positions)).toBe('/portfolio/holdings');
     expect(landingRoute(LandingPage.Orders)).toBe('/orders');
   });
 });

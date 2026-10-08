@@ -627,6 +627,45 @@ paths:
                     errorCode: PWD-423
                     message: Too many wrong passwords. You have been signed out
 
+  /.well-known/jwks.json:
+    get:
+      tags: [Health]
+      operationId: getJwks
+      security: []
+      summary: The public key for payload encryption
+      description: |
+        Unauthenticated. Publishes the service's RSA public key (JWK, `kid`, `alg` RSA-OAEP-256) when `ENC_MODE` is `optional` or
+        `required`; `404 ENCRYPTION_OFF` while encryption is off, which is how a browser learns not to encrypt. When encryption is on, a
+        request and its answer travel as a JWE (`Content-Type: application/jose`, or the `X-Envelope` header when the request has no body)
+        around the plain JSON bodies described in this file; see documentation/todo/02-payload-encryption.md. Refusals that come before
+        decryption are plaintext `ErrorResponse`s with `ENCRYPTION_INVALID`, `ENCRYPTION_EXPIRED`, `ENCRYPTION_REPLAY` (409) or `ENCRYPTION_REQUIRED`.
+      x-encrypted: false
+      responses:
+        '200':
+          description: The key set.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: public, max-age=300
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '404':
+          description: Encryption is off (`errorCode` ENCRYPTION_OFF).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /health:
     get:
       tags: [Health]

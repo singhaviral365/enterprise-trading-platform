@@ -84,7 +84,8 @@ services:
     profiles: [platform]
     container_name: auth-service
     environment:
-      # Set AUTH_NODE_ENV=development to use MailHog for the sign-in code (see below); production refuses to send mail.
+      # Set AUTH_NODE_ENV=development to send the sign-in code through a local SMTP catcher (MailHog, run on the host, not
+      # in this compose file); production refuses to send mail.
       NODE_ENV: ${AUTH_NODE_ENV:-production}
       PORT: 3000
       DATABASE_HOST: auth-db
@@ -97,15 +98,31 @@ services:
       # Session cookies. NODE_ENV=production makes them Secure by default, which a plain-http compose setup cannot
       # use (browsers only exempt http://localhost); set AUTH_COOKIE_SECURE=true once you serve over https.
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
-      # Registration, two-step sign-in and forgot password email a code. Email is DEVELOPMENT ONLY and the service refuses to
-      # start with it on under NODE_ENV=production or with a non-local SMTP host. So this stack, which is production-like by
-      # default, runs with the registration email check and two-step sign-in OFF unless you opt in for development:
-      #   AUTH_NODE_ENV=development  AUTH_EMAIL_ENABLED=true  AUTH_EMAIL_VERIFICATION_ENABLED=true  AUTH_TWO_FACTOR_ENABLED=true
-      #   (and --profile dev-mail)
+      # Registration, two-step sign-in and forgot password email a code. Email has three modes (AUTH_EMAIL_MODE): off (the default,
+      # nothing is sent), dev (a local MailHog, refused under NODE_ENV=production) and prod (a real provider over TLS with a login,
+      # from a verified domain; see documentation/readme/EMAIL.md). So this stack, which is production-like by default, runs with the
+      # registration email check and two-step sign-in OFF unless you choose a mode:
+      #   development:  AUTH_NODE_ENV=development  AUTH_EMAIL_MODE=dev  AUTH_EMAIL_VERIFICATION_ENABLED=true  (and MailHog on your machine)
+      #   real mail:    AUTH_EMAIL_MODE=prod  AUTH_EMAIL_SMTP_HOST/_USER/_PASSWORD  AUTH_EMAIL_FROM  AUTH_EMAIL_FROM_DOMAINS
+      # (AUTH_EMAIL_ENABLED=true still works for one release and means dev.) The credentials come from the environment only.
       AUTH_EMAIL_VERIFICATION_ENABLED: ${AUTH_EMAIL_VERIFICATION_ENABLED:-false}
       AUTH_TWO_FACTOR_ENABLED: ${AUTH_TWO_FACTOR_ENABLED:-false}
+      AUTH_EMAIL_MODE: ${AUTH_EMAIL_MODE:-off}
       AUTH_EMAIL_ENABLED: ${AUTH_EMAIL_ENABLED:-false}
-      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-mailhog}
+      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-localhost}
+      AUTH_EMAIL_SMTP_PORT: ${AUTH_EMAIL_SMTP_PORT:-}
+      AUTH_EMAIL_SMTP_TLS: ${AUTH_EMAIL_SMTP_TLS:-}
+      AUTH_EMAIL_SMTP_USER: ${AUTH_EMAIL_SMTP_USER:-}
+      AUTH_EMAIL_SMTP_PASSWORD: ${AUTH_EMAIL_SMTP_PASSWORD:-}
+      AUTH_EMAIL_FROM: ${AUTH_EMAIL_FROM:-}
+      AUTH_EMAIL_FROM_DOMAINS: ${AUTH_EMAIL_FROM_DOMAINS:-}
+      AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS: ${AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS:-}
+      AUTH_EMAIL_REPLY_TO: ${AUTH_EMAIL_REPLY_TO:-}
+      # Payload encryption (documentation/todo/02-payload-encryption.md): off by default. optional/required need the private key, from the
+      # environment only (generate one with `npm run enc:keygen` in services/auth-service).
+      ENC_MODE: ${ENC_MODE:-off}
+      ENC_KID: ${ENC_KID:-}
+      ENC_PRIVATE_KEY_PEM: ${ENC_PRIVATE_KEY_PEM:-}
       AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
       JWT_ACCESS_TOKEN_EXPIRES_IN: 900
       JWT_REFRESH_TOKEN_EXPIRES_IN: 604800
@@ -151,10 +168,19 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # Email is development-only and off unless BOTH of these are set (see documentation/readme/NOTIFICATIONS.md):
-      #   BACKEND_SPRING_PROFILES_ACTIVE=dev   NOTIFICATIONS_EMAIL_SMTP_HOST=mailhog
+      # Email is off unless the profile chooses a mode (documentation/readme/EMAIL.md, NOTIFICATIONS.md):
+      #   BACKEND_SPRING_PROFILES_ACTIVE=dev    a local MailHog (NOTIFICATIONS_EMAIL_SMTP_HOST=localhost)
+      #   BACKEND_SPRING_PROFILES_ACTIVE=prod   a real provider over TLS: the host, login and sending domain below are required, and
+      #                                         the service refuses to start without them. They come from the environment only.
+      #   The port (587) and TLS (starttls) come from the prod profile; for another provider add NOTIFICATIONS_EMAIL_SMTP_PORT/_TLS here.
       SPRING_PROFILES_ACTIVE: ${BACKEND_SPRING_PROFILES_ACTIVE:-}
       NOTIFICATIONS_EMAIL_SMTP_HOST: ${NOTIFICATIONS_EMAIL_SMTP_HOST:-localhost}
+      NOTIFICATIONS_EMAIL_SMTP_USERNAME: ${NOTIFICATIONS_EMAIL_SMTP_USERNAME:-}
+      NOTIFICATIONS_EMAIL_SMTP_PASSWORD: ${NOTIFICATIONS_EMAIL_SMTP_PASSWORD:-}
+      NOTIFICATIONS_EMAIL_FROM: ${NOTIFICATIONS_EMAIL_FROM:-noreply@etpteamriya.com}
+      NOTIFICATIONS_EMAIL_FROM_DOMAINS: ${NOTIFICATIONS_EMAIL_FROM_DOMAINS:-}
+      NOTIFICATIONS_EMAIL_ALLOWED_RECIPIENT_DOMAINS: ${NOTIFICATIONS_EMAIL_ALLOWED_RECIPIENT_DOMAINS:-}
+      NOTIFICATIONS_EMAIL_REPLY_TO: ${NOTIFICATIONS_EMAIL_REPLY_TO:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -172,20 +198,6 @@ services:
       timeout: 5s
       retries: 15
       start_period: 20s
-    networks:
-      - trading-net
-
-  # DEVELOPMENT ONLY. A local SMTP catcher: the order-service sends "email" here and nothing leaves the machine.
-  # Never started by the platform profile; start it on purpose with:  docker compose --profile dev-mail up -d mailhog
-  # Read the mail at http://localhost:8025. The order-service only talks to it when run with the dev profile (see
-  # documentation/readme/NOTIFICATIONS.md); DevOnlyEmailGuard refuses any other combination.
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    profiles: [dev-mail]
-    container_name: mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
     networks:
       - trading-net
 

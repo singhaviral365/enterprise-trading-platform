@@ -2,9 +2,8 @@ package org.example.backend.preferences.controller;
 
 import org.example.backend.dto.ErrorResponse;
 import org.example.backend.exceptions.DomainException;
-import org.example.backend.preferences.exceptions.CurrencyChangeBlockedException;
+import org.example.backend.preferences.exceptions.AccountCurrencyFixedException;
 import org.example.backend.preferences.exceptions.PreferencesAccessDeniedException;
-import org.example.backend.preferences.exceptions.UnsupportedCurrencyException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -24,13 +23,12 @@ public class PreferencesExceptionHandler {
 
     @ExceptionHandler({
             PreferencesAccessDeniedException.class,
-            UnsupportedCurrencyException.class,
-            CurrencyChangeBlockedException.class
+            AccountCurrencyFixedException.class
     })
     public ResponseEntity<ErrorResponse> handle(DomainException ex) {
         HttpStatus status = switch (ex) {
             case PreferencesAccessDeniedException ignored -> HttpStatus.FORBIDDEN;
-            case CurrencyChangeBlockedException ignored -> HttpStatus.CONFLICT;
+            case AccountCurrencyFixedException ignored -> HttpStatus.CONFLICT;
             default -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
 

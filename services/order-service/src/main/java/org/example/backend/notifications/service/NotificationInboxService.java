@@ -7,6 +7,7 @@ import org.example.backend.notifications.dto.NotificationResponse;
 import org.example.backend.notifications.exceptions.NotificationAccessDeniedException;
 import org.example.backend.notifications.exceptions.NotificationNotFoundException;
 import org.example.backend.notifications.mapper.NotificationMapper;
+import org.example.backend.notifications.model.InboxStatus;
 import org.example.backend.notifications.model.Notification;
 import org.example.backend.preferences.model.NotificationCategory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,7 @@ public class NotificationInboxService {
 
     static final int MAX_PAGE_SIZE = 50;
     static final int MAX_QUERY_LENGTH = 100;
+    static final Duration MAX_DATE_RANGE = Duration.ofDays(366);
 
     private final NotificationMapper mapper;
     private final AccountMapper accountMapper;
@@ -50,11 +52,22 @@ public class NotificationInboxService {
         this.clock = clock;
     }
 
+    /**
+     * One page of the inbox.
+     *
+     * <p>Without {@code statuses} (the original call) the list holds the unread notifications and the ones read within
+     * the retention window. With {@code statuses} the customer chose: UNREAD and/or READ, and the retention window no
+     * longer limits what READ returns. {@code from} and {@code to} (both inclusive, optional) bound the created time.
+     * {@code unreadCount} is always the account's total, whatever was filtered, because the bell reads it.
+     */
     public NotificationPageResponse list(
             long userId,
             long accountId,
             String query,
             List<NotificationCategory> categories,
+            List<InboxStatus> statuses,
+            OffsetDateTime from,
+            OffsetDateTime to,
             int page,
             int size) {
 
@@ -65,14 +78,26 @@ public class NotificationInboxService {
         if (size < 1 || size > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("Page size must be between 1 and " + MAX_PAGE_SIZE);
         }
+        if (from != null && to != null) {
+            if (from.isAfter(to)) {
+                throw new IllegalArgumentException("'from' cannot be after 'to'");
+            }
+            if (Duration.between(from.toInstant(), to.toInstant()).compareTo(MAX_DATE_RANGE) > 0) {
+                throw new IllegalArgumentException("The date range cannot exceed 366 days");
+            }
+        }
 
         String pattern = likePattern(query);
         List<String> categoryNames = categories == null ? List.of() : categories.stream().map(Enum::name).distinct().toList();
-        OffsetDateTime readCutoff = OffsetDateTime.now(clock).minus(readRetention);
+        boolean explicit = statuses != null && !statuses.isEmpty();
+        boolean includeUnread = !explicit || statuses.contains(InboxStatus.UNREAD);
+        boolean includeRead = !explicit || statuses.contains(InboxStatus.READ);
+        // The retention window only applies to the original call; asking for READ explicitly means all of them.
+        OffsetDateTime readCutoff = explicit ? null : OffsetDateTime.now(clock).minus(readRetention);
 
-        long total = mapper.countInbox(accountId, readCutoff, pattern, categoryNames);
+        long total = mapper.countInbox(accountId, includeUnread, includeRead, readCutoff, from, to, pattern, categoryNames);
         List<NotificationResponse> items = mapper
-                .selectInbox(accountId, readCutoff, pattern, categoryNames, size, (long) page * size)
+                .selectInbox(accountId, includeUnread, includeRead, readCutoff, from, to, pattern, categoryNames, size, (long) page * size)
                 .stream()
                 .map(NotificationResponse::from)
                 .toList();

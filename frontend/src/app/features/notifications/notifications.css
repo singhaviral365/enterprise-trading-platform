@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 900px;
+  max-width: 1200px;
 }
 
 .ni-head .page-title {
@@ -12,6 +12,12 @@
 
 .ni-head .form-hint {
   margin: 0;
+}
+
+.ni-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .ni-toolbar {
@@ -74,9 +80,11 @@
   list-style: none;
 }
 
+/* A row is a grid so the columns line up down the page: icon, text, category, time, state. */
 .ni-item {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto 56px;
+  align-items: center;
   gap: 12px;
   width: 100%;
   padding: 12px;
@@ -119,14 +127,16 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  flex: 1;
 }
 
-.ni-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.ni-chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--status-info-container-fg);
+  background: var(--status-info-container-bg);
 }
 
 .ni-item-title {
@@ -139,17 +149,23 @@
 }
 
 .ni-message {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 
 .ni-time {
   font-size: 12px;
+  white-space: nowrap;
   color: var(--surface-foreground-subtle);
 }
 
 .ni-dot {
-  flex: none;
+  justify-self: end;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -157,10 +173,41 @@
 }
 
 .ni-read {
-  flex: none;
+  justify-self: end;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--surface-foreground-subtle);
+}
+
+/* Narrow: the category and the time move under the message. */
+@media (max-width: 699px) {
+  .ni-item {
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    row-gap: 6px;
+  }
+
+  .ni-body {
+    grid-column: 2 / 3;
+  }
+
+  .ni-chip {
+    grid-column: 2 / 3;
+    justify-self: start;
+  }
+
+  .ni-time {
+    grid-column: 2 / 4;
+  }
+
+  .ni-icon {
+    grid-row: 1 / 2;
+  }
+
+  .ni-dot,
+  .ni-read {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+  }
 }

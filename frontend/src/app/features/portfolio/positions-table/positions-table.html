@@ -1,5 +1,5 @@
 <div class="row-table-scroll" data-testid="positions-table-view">
-  <table class="row-table">
+  <table class="row-table" [class.is-compact]="compact()">
     <caption class="visually-hidden">
       Holdings in this account with their prices, market value and profit and loss. Select a row to see its buys and to trade it.
     </caption>
@@ -13,6 +13,7 @@
         <th scope="col" class="num">Market value</th>
         <th scope="col" class="num">Unrealised P&amp;L</th>
         <th scope="col" class="num col-extra">Today</th>
+        <th scope="col" class="col-extra">52-week range</th>
         <th scope="col">Price status</th>
       </tr>
     </thead>
@@ -46,7 +47,7 @@
             @if (row.pricing?.marketValue != null) {
               {{ row.pricing!.marketValue | currency: currency() ?? 'USD' }}
             } @else {
-              <span class="muted" aria-hidden="true">—</span>
+              <span class="no-value" aria-hidden="true">-</span>
               <span class="visually-hidden">Not available</span>
             }
           </td>
@@ -55,6 +56,15 @@
           </td>
           <td class="num col-extra">
             <app-pnl-value [amount]="row.pricing?.dayPnl" [percent]="row.pricing?.dayPnlPercent" [currency]="currency() ?? 'USD'" />
+          </td>
+          <td class="col-extra" [attr.data-testid]="'holding-range-' + row.symbol">
+            @let range = ranges.accountRange(row.symbol);
+            <app-price-range-bar
+              [low]="range?.low ?? null"
+              [high]="range?.high ?? null"
+              [value]="row.pricing?.lastPrice ?? null"
+              [formatter]="formatPrice()"
+            />
           </td>
           <td class="col-last">
             @if (row.pricing; as pricing) {

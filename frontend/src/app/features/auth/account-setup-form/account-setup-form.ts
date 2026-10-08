@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import {
   FormField,
   email,
@@ -11,10 +11,12 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
-import { CreateAccountRequest } from '../../../api/generated/trade';
+import { CreateAccountRequest, CreateAccountRequestCurrencyEnum } from '../../../api/generated/trade';
 import { AccountOverviewStore } from '../../../core/account-overview.store';
 import { AuthService } from '../../../core/auth.service';
 import { describeError } from '../../../core/errors/describe-error';
+import { CURRENCY_OPTIONS } from '../../../core/preferences';
+import { Dropdown } from '../../../shared/ui/dropdown/dropdown';
 import { Spinner } from '../../../shared/ui/spinner/spinner';
 
 interface AccountSetupModel {
@@ -23,10 +25,47 @@ interface AccountSetupModel {
   email: string;
   dob: string;
   balance: string;
+  /** The account currency, chosen once. */
+  currency: string;
 }
 
-/** Minimum (and default) opening balance enforced by the Trade API. */
-export const MIN_OPENING_BALANCE = 20000;
+/**
+ * Smallest (and default) opening balance for each currency, mirrored from the Trade API's configuration
+ * (`account.opening.minimum.*`). 20,000 is a dollar-sized number, so each currency has its own; the server remains the authority.
+ */
+export const OPENING_BALANCE_MINIMUMS: Readonly<Record<string, number>> = {
+  USD: 20000,
+  EUR: 18000,
+  GBP: 16000,
+  INR: 1600000,
+  JPY: 3000000,
+  CAD: 27000,
+  AUD: 30000,
+  CHF: 17000,
+  SGD: 27000,
+  CNY: 145000,
+};
+
+/** The narrow symbol shown in front of the opening balance. */
+export const CURRENCY_SYMBOLS: Readonly<Record<string, string>> = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  INR: '₹',
+  JPY: '¥',
+  CAD: 'CA$',
+  AUD: 'A$',
+  CHF: 'CHF',
+  SGD: 'S$',
+  CNY: 'CN¥',
+};
+
+export const DEFAULT_CURRENCY = 'USD';
+
+/** The smallest opening balance in a currency. */
+export function minimumOpeningBalance(currency: string): number {
+  return OPENING_BALANCE_MINIMUMS[currency] ?? OPENING_BALANCE_MINIMUMS[DEFAULT_CURRENCY];
+}
 
 /**
  * Collects the details for `POST /accounts/create` (CreateAccountRequest in the Trade API) and opens
@@ -34,7 +73,7 @@ export const MIN_OPENING_BALANCE = 20000;
  */
 @Component({
   selector: 'app-account-setup-form',
-  imports: [FormField, Spinner],
+  imports: [Dropdown, FormField, Spinner],
   templateUrl: './account-setup-form.html',
   styleUrl: '../auth-form.css',
 })
@@ -47,14 +86,18 @@ export class AccountSetupForm implements OnInit {
   readonly completed = output<void>();
   readonly skipped = output<void>();
 
-  protected readonly minBalance = MIN_OPENING_BALANCE;
+  protected readonly currencyOptions = CURRENCY_OPTIONS;
   protected readonly model = signal<AccountSetupModel>({
     clientName: '',
     phoneNo: '',
     email: '',
     dob: '',
     balance: '',
+    currency: DEFAULT_CURRENCY,
   });
+  /** The smallest opening balance in the currency chosen now. */
+  protected readonly minBalance = computed(() => minimumOpeningBalance(this.model().currency));
+  protected readonly currencySymbol = computed(() => CURRENCY_SYMBOLS[this.model().currency] ?? this.model().currency);
   protected readonly setupForm = form(this.model, (path) => {
     required(path.clientName, { message: 'Enter your full name.' });
     minLength(path.clientName, 2, { message: 'Name must be at least 2 characters.' });
@@ -77,9 +120,10 @@ export class AccountSetupForm implements OnInit {
         return undefined;
       }
       const amount = Number(raw);
-      return Number.isFinite(amount) && amount >= MIN_OPENING_BALANCE
+      const minimum = minimumOpeningBalance(this.model().currency);
+      return Number.isFinite(amount) && amount >= minimum
         ? undefined
-        : { kind: 'balance', message: `Opening balance must be a number of at least ${MIN_OPENING_BALANCE.toLocaleString('en-US')}.` };
+        : { kind: 'balance', message: `Opening balance must be a number of at least ${minimum.toLocaleString('en-US')}.` };
     });
   });
   protected readonly serverError = signal('');
@@ -122,14 +166,15 @@ export class AccountSetupForm implements OnInit {
   }
 
   private toRequest(): CreateAccountRequest {
-    const { clientName, phoneNo, email: emailAddress, dob, balance } = this.model();
+    const { clientName, phoneNo, email: emailAddress, dob, balance, currency } = this.model();
     const amount = balance.replace(/,/g, '').trim();
     return {
       client_name: clientName.trim(),
       phone_no: phoneNo.trim(),
       email: emailAddress.trim(),
       ...(dob ? { dob } : {}),
-      // Left out when blank so the Trade API applies its default opening balance.
+      currency: currency as CreateAccountRequestCurrencyEnum,
+      // Left out when blank so the Trade API applies its default (the minimum for the chosen currency).
       ...(amount ? { balance: Number(amount) } : {}),
     };
   }

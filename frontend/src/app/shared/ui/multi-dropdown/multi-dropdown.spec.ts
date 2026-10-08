@@ -48,6 +48,25 @@ describe('MultiDropdown', () => {
     expect(summary()).toBe('All');
   });
 
+  it('with atLeastOne the last ticked option stays ticked and there is no clear button', async () => {
+    fixture.componentRef.setInput('atLeastOne', true);
+    fixture.componentInstance.selected.set(['NEW']);
+    await fixture.whenStable();
+
+    expect(root.querySelector('.multi-clear')).toBeNull();
+    const box = root.querySelector<HTMLInputElement>('input[data-value="NEW"]')!;
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.selected()).toEqual(['NEW']);
+    expect(box.checked).toBe(true);
+
+    await tick('FILLED');
+    await tick('NEW');
+    expect(fixture.componentInstance.selected()).toEqual(['FILLED']);
+  });
+
   it('names the button after its label for assistive tech', () => {
     const button = root.querySelector('button.multi-trigger')!;
     const labelledBy = button.getAttribute('aria-labelledby')!.split(' ');

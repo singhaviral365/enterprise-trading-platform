@@ -5,9 +5,12 @@
   </div>
 </header>
 
+<div class="settings-layout" data-testid="settings-layout">
+
 <section class="card rise-in" aria-labelledby="security-title" data-testid="settings-security">
   <h2 id="security-title" class="card-title">Sign-in security</h2>
   <app-dropdown
+    class="setting-row"
     label="Two-step sign-in"
     inputId="settings-two-factor"
     [options]="twoFactorOptions"
@@ -26,17 +29,17 @@
 
 @if (store.accountId() === null) {
   @if (accounts.data.isLoading() && !accounts.data.hasValue()) {
-    <div class="card settings-state" aria-live="polite">
+    <div class="card settings-state is-full" aria-live="polite">
       <app-spinner [inline]="true" label="Loading your account" />
       <span>Loading your account…</span>
     </div>
   } @else if (accounts.errorMessage()) {
-    <div class="card settings-state" role="alert" data-testid="settings-error">
+    <div class="card settings-state is-full" role="alert" data-testid="settings-error">
       <p>{{ accounts.errorMessage() }}</p>
       <button type="button" class="btn is-secondary" (click)="accounts.reload()">Try again</button>
     </div>
   } @else {
-    <div class="card empty-state" data-testid="settings-no-account">
+    <div class="card empty-state is-full" data-testid="settings-no-account">
       <i class="fas fa-building-columns" aria-hidden="true"></i>
       <p class="empty-state-text">Settings belong to your trading account, and you don't have one yet.</p>
       <button type="button" class="btn is-primary mt-16" (click)="openAccountSetup()">Open my account</button>
@@ -44,13 +47,13 @@
   }
 } @else {
   @if (store.state() === 'loading' && !store.customised()) {
-    <div class="card settings-state" aria-live="polite">
+    <div class="card settings-state is-full" aria-live="polite">
       <app-spinner [inline]="true" label="Loading your settings" />
       <span>Loading your settings…</span>
     </div>
   } @else {
     @if (store.state() === 'error') {
-      <div class="card settings-state" role="alert" data-testid="settings-load-error">
+      <div class="card settings-state is-full" role="alert" data-testid="settings-load-error">
         <p>
           We could not load your saved settings, so the defaults are showing. Saving now will replace whatever you had.
         </p>
@@ -98,15 +101,14 @@
       <section class="card rise-in" aria-labelledby="display-title">
         <h2 id="display-title" class="card-title">Display</h2>
 
-        <div class="settings-grid">
+        <div class="settings-rows">
+          <div class="setting-row setting-fact" data-testid="settings-currency">
+            <span class="form-label" id="settings-currency-label">Account currency</span>
+            <strong aria-labelledby="settings-currency-label" data-testid="settings-currency-value">{{ accountCurrency() ?? draft().preferredCurrency }}</strong>
+            <span class="form-hint setting-fact-hint">Set when your account was opened.</span>
+          </div>
           <app-dropdown
-            label="Account currency"
-            inputId="settings-currency"
-            [options]="currencyOptions"
-            [value]="draft().preferredCurrency"
-            (valueChange)="setCurrency($event)"
-          />
-          <app-dropdown
+            class="setting-row"
             label="Date format"
             inputId="settings-date-format"
             [options]="dateFormatOptions"
@@ -114,6 +116,7 @@
             (valueChange)="setDateFormat($event)"
           />
           <app-dropdown
+            class="setting-row"
             label="Time format"
             inputId="settings-time-format"
             [options]="timeFormatOptions"
@@ -121,6 +124,7 @@
             (valueChange)="setTimeFormat($event)"
           />
           <app-dropdown
+            class="setting-row"
             label="Number format"
             inputId="settings-number-format"
             [options]="numberFormatOptions"
@@ -128,24 +132,6 @@
             (valueChange)="setNumberFormat($event)"
           />
         </div>
-
-        @if (differsFromAccount()) {
-          <p class="form-hint" data-testid="settings-currency-note">
-            Saving will move your account from {{ accountCurrency() }} to {{ draft().preferredCurrency }}. Your cash,
-            your purchasing power and the prices on your orders and holdings are converted at today's rate. Market
-            prices stay in the currency they are quoted in, and an order converts them when you buy or sell.
-          </p>
-          @if (openOrders() > 0) {
-            <p class="form-error-text" data-testid="settings-currency-blocked">
-              You have {{ openOrders() }} open {{ openOrders() === 1 ? 'order' : 'orders' }}. The currency can change once
-              {{ openOrders() === 1 ? 'it is' : 'they are' }} filled or cancelled.
-            </p>
-          }
-        } @else {
-          <p class="form-hint">
-            Your account is in {{ accountCurrency() }}. Choosing another converts your account when you save.
-          </p>
-        }
 
         <dl class="settings-preview" aria-label="Preview of your formats" data-testid="settings-preview">
           <div>
@@ -166,8 +152,9 @@
       <section class="card rise-in" aria-labelledby="behaviour-title">
         <h2 id="behaviour-title" class="card-title">Appearance and behaviour</h2>
 
-        <div class="settings-grid">
+        <div class="settings-rows">
           <app-dropdown
+            class="setting-row"
             label="Theme"
             inputId="settings-theme"
             [options]="themeOptions"
@@ -175,6 +162,7 @@
             (valueChange)="setTheme($event)"
           />
           <app-dropdown
+            class="setting-row"
             label="Open on after sign-in"
             inputId="settings-landing-page"
             [options]="landingPageOptions"
@@ -182,6 +170,7 @@
             (valueChange)="setLandingPage($event)"
           />
           <app-dropdown
+            class="setting-row"
             label="Order ticket starts on"
             inputId="settings-order-type"
             [options]="orderTypeOptions"
@@ -189,6 +178,7 @@
             (valueChange)="setOrderType($event)"
           />
           <app-dropdown
+            class="setting-row"
             label="AI assistant"
             inputId="settings-assistant"
             [options]="assistantOptions"
@@ -221,3 +211,4 @@
     </form>
   }
 }
+</div>

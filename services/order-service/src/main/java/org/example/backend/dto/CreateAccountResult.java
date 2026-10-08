@@ -4,6 +4,7 @@ public record CreateAccountResult(
         long accountId,
         String accountNumber,
         String status,
-        String message) {
+        String message,
+        String currency) {
 }
 

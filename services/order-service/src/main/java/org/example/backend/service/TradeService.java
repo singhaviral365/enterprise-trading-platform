@@ -32,6 +32,7 @@ import org.example.backend.exceptions.OrderNotCancellableException;
 import org.example.backend.fx.CurrencyConversionService;
 import org.example.backend.fx.ExchangeRateUnavailableException;
 import org.example.backend.mapper.AccountMapper;
+import org.example.backend.preferences.model.SupportedCurrencies;
 import org.example.backend.mapper.HoldingMapper;
 import org.example.backend.mapper.InstrumentMapper;
 import org.example.backend.mapper.OrderMapper;
@@ -48,7 +49,6 @@ import java.util.UUID;
 @Service
 public class TradeService {
 
-        private static final BigDecimal MIN_OPENING_BALANCE = new BigDecimal("20000.0000");
 
         private static final BigDecimal MARKET_PERSISTED_PRICE = new BigDecimal("0.0001");
 
@@ -61,6 +61,7 @@ public class TradeService {
     private final OrderMapper orderMapper;
     private final OrderPlacedAfterCommitListener orderPlacedAfterCommitListener;
     private final CurrencyConversionService currencyConversionService;
+    private final OpeningBalanceMinimums openingBalanceMinimums;
 
     public TradeService(
             AccountMapper accountMapper,
@@ -68,7 +69,8 @@ public class TradeService {
             InstrumentMapper instrumentMapper,
             OrderMapper orderMapper,
             OrderPlacedAfterCommitListener orderPlacedAfterCommitListener,
-            CurrencyConversionService currencyConversionService) {
+            CurrencyConversionService currencyConversionService,
+            OpeningBalanceMinimums openingBalanceMinimums) {
 
         this.accountMapper = accountMapper;
         this.holdingMapper = holdingMapper;
@@ -76,6 +78,7 @@ public class TradeService {
         this.orderMapper = orderMapper;
         this.orderPlacedAfterCommitListener = orderPlacedAfterCommitListener;
         this.currencyConversionService = currencyConversionService;
+        this.openingBalanceMinimums = openingBalanceMinimums;
     }
 
     // =========================================================
@@ -615,7 +618,8 @@ public class TradeService {
 
         int accountId = Math.toIntExact(accountMapper.nextAccountId());
         String accountNumber = formatAccountNumber(accountId);
-        BigDecimal openingBalance = resolveOpeningBalance(request.balance());
+        String currency = resolveCurrency(request.currency());
+        BigDecimal openingBalance = resolveOpeningBalance(request.balance(), currency);
 
         Account account = new Account(
                 accountId,
@@ -624,7 +628,7 @@ public class TradeService {
                 openingBalance,
                 openingBalance,
                 AccountStatus.ACTIVE,
-                "USD",
+                currency,
                 1L,
                 null,
                 null,
@@ -638,17 +642,33 @@ public class TradeService {
                 accountId,
                 accountNumber,
                 AccountStatus.ACTIVE.name(),
-                "Account created successfully");
+                "Account created successfully",
+                currency);
     }
 
-        private BigDecimal resolveOpeningBalance(BigDecimal requestedBalance) {
+        /** The currency the account is opened in, chosen once. USD when none was sent. */
+        private static String resolveCurrency(String requested) {
+                if (requested == null || requested.isBlank()) {
+                        return "USD";
+                }
+                String code = requested.trim().toUpperCase();
+                if (!SupportedCurrencies.isSupported(code)) {
+                        throw new IllegalArgumentException(
+                                "Currency must be one of " + String.join(", ", SupportedCurrencies.CODES));
+                }
+                return code;
+        }
+
+        private BigDecimal resolveOpeningBalance(BigDecimal requestedBalance, String currency) {
+                BigDecimal minimum = openingBalanceMinimums.forCurrency(currency).setScale(4);
                 if (requestedBalance == null) {
-                        return MIN_OPENING_BALANCE;
+                        return minimum;
                 }
 
                 BigDecimal normalized = requestedBalance.setScale(4);
-                if (normalized.compareTo(MIN_OPENING_BALANCE) < 0) {
-                        throw new IllegalArgumentException("Opening balance must be at least 20000");
+                if (normalized.compareTo(minimum) < 0) {
+                        throw new IllegalArgumentException(
+                                "Opening balance must be at least " + minimum.stripTrailingZeros().toPlainString() + " " + currency);
                 }
 
                 return normalized;

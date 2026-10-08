@@ -4,13 +4,11 @@ import { Component, computed, inject, linkedSignal, signal } from '@angular/core
 import { AccountOverviewStore } from '../../core/account-overview.store';
 import { AuthDialogService } from '../../core/auth-dialog.service';
 import { AuthService } from '../../core/auth.service';
-import { DialogService } from '../../core/dialog.service';
-import { describeError, errorCodeOf } from '../../core/errors/describe-error';
+import { describeError } from '../../core/errors/describe-error';
 import { NotificationService } from '../../core/notification.service';
 import {
   CATEGORY_OPTIONS,
   CHANNEL_OPTIONS,
-  CURRENCY_OPTIONS,
   DATE_FORMAT_VALUES,
   LANDING_PAGE_OPTIONS,
   NUMBER_FORMAT_OPTIONS,
@@ -46,8 +44,8 @@ const SAMPLE_MOMENT = new Date(2026, 9, 6, 15, 7, 9);
 const SAMPLE_AMOUNT = 1234567.891;
 
 /**
- * Settings: where a customer sets how they are alerted, which currency estimates are shown in, how dates, times and
- * numbers are written, whether the signal assistant appears on each quote, and a few display choices. One form, one Save: the whole
+ * Settings: where a customer sets how they are alerted, how dates, times and numbers are written (the account currency is
+ * shown, read-only: it was chosen when the account was opened), whether the signal assistant appears on each quote, and a few display choices. One form, one Save: the whole
  * document goes to the Trade API in a single `PUT`, and the rest of the app follows it as soon as it is stored.
  *
  * The form edits a draft; nothing changes anywhere else until Save. The preview under "Display" is drawn from the
@@ -65,7 +63,6 @@ export class Settings {
   private readonly authDialog = inject(AuthDialogService);
   private readonly auth = inject(AuthService);
   private readonly notifications = inject(NotificationService);
-  private readonly dialog = inject(DialogService);
 
   /** What the form is editing. It starts again from the stored values whenever those change (a load, a save). */
   protected readonly draft = linkedSignal<PreferenceValues>(() => this.store.current());
@@ -132,7 +129,6 @@ export class Settings {
     id: option.value,
     label: option.label,
   }));
-  protected readonly currencyOptions: readonly DropdownOption[] = CURRENCY_OPTIONS;
   protected readonly timeFormatOptions: readonly DropdownOption[] = TIME_FORMAT_OPTIONS;
   protected readonly numberFormatOptions: readonly DropdownOption[] = NUMBER_FORMAT_OPTIONS;
   protected readonly themeOptions: readonly DropdownOption[] = THEME_OPTIONS;
@@ -168,13 +164,7 @@ export class Settings {
     };
   });
 
-  /** True when saving would move the account to another currency, which is worth saying (and confirming). */
-  protected readonly differsFromAccount = computed(() => {
-    const account = this.accounts.linked()?.overview.balance.currency;
-    return !!account && account !== this.draft().preferredCurrency;
-  });
-  /** True while an order is still open: the account cannot change currency until it is filled or cancelled. */
-  protected readonly openOrders = computed(() => this.accounts.workingOrders());
+  /** The account's currency, fixed when the account was opened. Shown as a fact, never as a control. */
   protected readonly accountCurrency = computed(() => this.accounts.linked()?.overview.balance.currency ?? null);
 
   // ---- Edits -------------------------------------------------------------------------------------------------------
@@ -196,10 +186,6 @@ export class Settings {
 
   protected setCategories(ids: readonly (string | number)[]): void {
     this.patch({ categories: ids.map(String) as NotificationCategory[] });
-  }
-
-  protected setCurrency(value: string): void {
-    this.patch({ preferredCurrency: value as Currency });
   }
 
   protected setDateFormat(value: string): void {
@@ -239,53 +225,20 @@ export class Settings {
     if (this.saving() || !this.dirty()) {
       return;
     }
-    const from = this.accountCurrency();
-    const to = this.draft().preferredCurrency;
-    if (from && from !== to && !(await this.confirmCurrencyChange(from, to))) {
-      return;
-    }
     this.saving.set(true);
     this.saveError.set('');
     try {
       await this.store.save(valuesOf(this.draft()));
-      this.notifications.success(
-        from && from !== to ? `Settings saved. Your account is now in ${to}.` : 'Settings saved',
-      );
+      this.notifications.success('Settings saved');
     } catch (error) {
-      this.saveError.set(saveErrorMessage(error));
+      this.saveError.set(describeError(error));
     } finally {
       this.saving.set(false);
     }
   }
 
-  /** Moving the account to another currency converts real amounts, so it is never done without a yes. */
-  private confirmCurrencyChange(from: string, to: string): Promise<boolean> {
-    return this.dialog.confirm({
-      title: 'Change your account currency?',
-      type: 'warning',
-      message:
-        `Your account will move from ${from} to ${to}. Your cash balance, your purchasing power and the prices on ` +
-        `your orders and holdings are converted at today's exchange rate. Market prices stay in the currency they ` +
-        `are quoted in. Changing back later uses that day's rate, so the amounts will not return exactly.`,
-      confirmText: 'Change currency',
-      cancelText: `Keep ${from}`,
-    });
-  }
-
   protected openAccountSetup(): void {
     this.authDialog.open('account');
-  }
-}
-
-/** The sentences for what saving can be refused for. Anything else is worded by the shared error map. */
-function saveErrorMessage(error: unknown): string {
-  switch (errorCodeOf(error)) {
-    case 'ACC-409':
-      return 'You still have open orders. Your account can change currency once they are filled or cancelled.';
-    case 'FX-503':
-      return 'We cannot get an exchange rate right now, so nothing was changed. Please try again shortly.';
-    default:
-      return describeError(error);
   }
 }
 

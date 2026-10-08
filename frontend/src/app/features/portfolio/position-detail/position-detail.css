@@ -134,3 +134,11 @@
     text-align: left;
   }
 }
+
+.position-chart {
+  margin-top: 16px;
+}
+
+.position-chart .section-heading {
+  margin-bottom: 8px;
+}

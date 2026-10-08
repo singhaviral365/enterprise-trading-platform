@@ -11,6 +11,7 @@ import {
   navPoint,
   performanceBody,
 } from '../../../testing/portfolio-http';
+import { provideFakeHighcharts } from '../../../testing/highcharts';
 import { TEST_TOKENS, answerLinkedAccount } from '../../../testing/trade-http';
 import { PortfolioPerformance } from './portfolio-performance';
 
@@ -21,6 +22,21 @@ const longHistory = () => {
     navPoint(new Date(start + i * 86_400_000).toISOString().slice(0, 10), 1000 + i, 10_000 + i * 10, {
       netFlow: i === 0 ? 10_000 : 0,
       dayPnl: i === 0 ? 0 : 10,
+    }),
+  );
+  return performanceBody({ points, availableFrom: points[0].date });
+};
+
+const splitHistory = () => {
+  const start = Date.parse('2026-08-01T00:00:00Z');
+  const points = Array.from({ length: 40 }, (_, i) =>
+    navPoint(new Date(start + i * 86_400_000).toISOString().slice(0, 10), 1000 + (i % 7 === 3 ? -20 : i), 10_000 + i * 10, {
+      netFlow: i === 0 ? 10_000 : 0,
+      dayPnl: i % 5 === 0 ? -10 : 10,
+      cash: 4000 - i * 10,
+      holdingsValue: 6000 + i * 20,
+      costBasis: 6000,
+      realisedPnlCumulative: i * 2,
     }),
   );
   return performanceBody({ points, availableFrom: points[0].date });
@@ -47,7 +63,7 @@ describe('PortfolioPerformance', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [PortfolioPerformance],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients(), provideRouter([])],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideApiClients(), provideRouter([]), ...provideFakeHighcharts()],
     }).compileComponents();
     TestBed.inject(SessionService).start('alice.trader', TEST_TOKENS);
     http = TestBed.inject(HttpTestingController);
@@ -220,6 +236,50 @@ describe('PortfolioPerformance', () => {
       await render();
 
       expect(byTestId('performance-benchmark-missing')).toBeNull();
+    });
+  });
+
+  describe('layouts', () => {
+    it('full (the Performance tab) adds cash against holdings, day by day, the fall from the peak and the months, with takeaways', async () => {
+      await start(splitHistory());
+
+      expect(byTestId('performance-analysis')).not.toBeNull();
+      expect(text('performance-invested')).toMatch(/^\d+% of your account is working in the market, the rest is cash\.$/);
+      expect(text('performance-daily-takeaway')).toMatch(/^\d+ of 40 days made money\./);
+      expect(text('performance-drawdown-takeaway')).toContain('The deepest fall was');
+      expect(root.querySelector('[data-testid="performance-value-split"] app-area-chart')).not.toBeNull();
+      expect(root.querySelector('[data-testid="performance-daily"] app-bar-chart')).not.toBeNull();
+      expect(root.querySelector('[data-testid="performance-drawdown-card"] app-area-chart')).not.toBeNull();
+      expect(root.querySelector('[data-testid="performance-monthly"] app-monthly-returns')).not.toBeNull();
+      expect(byTestId('performance-statements')).not.toBeNull();
+    });
+
+    it('compact (the Overview) keeps the ranges, the figures and the chart, and leaves the analyses and statements to the tab', async () => {
+      fixture.componentRef.setInput('layout', 'compact');
+      await start(splitHistory());
+
+      expect(byTestId('performance-stats')).not.toBeNull();
+      expect(root.querySelector('app-line-chart')).not.toBeNull();
+      expect(byTestId('performance-range-1M')).not.toBeNull();
+      expect(byTestId('performance-analysis')).toBeNull();
+      expect(byTestId('performance-statements')).toBeNull();
+    });
+
+    it('leaves cash against holdings out when the server did not send the split', async () => {
+      await start(longHistory());
+
+      expect(byTestId('performance-analysis')).not.toBeNull();
+      expect(byTestId('performance-value-split')).toBeNull();
+      expect(byTestId('performance-daily')).not.toBeNull();
+    });
+
+    it('follows the range: the analyses cover only the days chosen', async () => {
+      await start(splitHistory());
+
+      byTestId<HTMLButtonElement>('performance-range-1M')!.click();
+      await render();
+
+      expect(text('performance-daily-takeaway')).toMatch(/of 3\d days made money|of 31 days made money/);
     });
   });
 });

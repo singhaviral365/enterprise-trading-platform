@@ -14,6 +14,7 @@ model/changePasswordRequest.ts
 model/errorResponse.ts
 model/forgotPasswordRequest.ts
 model/forgotPasswordResponse.ts
+model/getJwks200Response.ts
 model/healthResponse.ts
 model/loginRequest.ts
 model/loginResponse.ts

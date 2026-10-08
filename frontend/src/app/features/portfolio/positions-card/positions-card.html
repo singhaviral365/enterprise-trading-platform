@@ -1,4 +1,4 @@
-<ul class="position-grid" data-testid="positions-card-view">
+<ul class="position-grid" [class.is-compact]="compact()" data-testid="positions-card-view">
   @for (row of rows(); track row.symbol) {
     <li>
       <button
@@ -19,13 +19,16 @@
             [size]="40"
           />
           @if (row.pricing; as pricing) {
-            <app-price-status
-              [status]="pricing.status"
-              [asOf]="pricing.priceAsOf"
-              [attr.data-testid]="'holding-status-' + row.symbol"
-            />
+            @if (!compact()) {
+              <app-price-status
+                [status]="pricing.status"
+                [asOf]="pricing.priceAsOf"
+                [attr.data-testid]="'holding-status-' + row.symbol"
+              />
+            }
           }
         </span>
+        @if (!compact()) {
         <span class="position-card-basis">
           @if (row.pricing?.marketValue !== null && row.pricing?.marketValue !== undefined) {
             <span class="position-basis-label">Market value</span>
@@ -54,6 +57,7 @@
         <span class="position-card-qty">
           {{ row.quantity | number }} @if (row.pricing?.lastPrice != null) { × {{ row.pricing!.lastPrice | currency: currency() ?? 'USD' }} }
         </span>
+        }
       </button>
     </li>
   }

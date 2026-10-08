@@ -29,7 +29,7 @@ describe('app routes', () => {
   it('sends the old positions address to the portfolio page', async () => {
     await RouterTestingHarness.create('/positions');
 
-    expect(TestBed.inject(AuthDialogService).returnUrl()).toBe('/portfolio');
+    expect(TestBed.inject(AuthDialogService).returnUrl()).toBe('/portfolio/holdings');
   });
 
   it.each(['/dashboard', '/market', '/orders', '/portfolio', '/settings', '/showcase'])(

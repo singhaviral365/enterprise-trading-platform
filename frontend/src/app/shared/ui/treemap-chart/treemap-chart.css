@@ -1,0 +1,55 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. The shared chrome is `.hc` in
+   styles.css; this only colours the blocks, by how they moved, from the data tokens. Colour index: 0 strong fall, 1 fall,
+   2 flat or unknown, 3 rise, 4 strong rise. The block's text is in the page text colour on the light steps and white on the strong ones. */
+
+.treemap-chart .highcharts-point {
+  stroke: var(--surface-background-bright);
+  stroke-width: 2px;
+}
+
+.treemap-chart .highcharts-point-hover {
+  opacity: 0.85;
+}
+
+.treemap-chart .highcharts-color-0 {
+  fill: var(--data-mono-red-4);
+}
+
+.treemap-chart .highcharts-color-1 {
+  fill: var(--data-mono-red-2);
+}
+
+.treemap-chart .highcharts-color-2 {
+  fill: var(--data-mono-neutral-2);
+}
+
+.treemap-chart .highcharts-color-3 {
+  fill: var(--data-mono-green-2);
+}
+
+.treemap-chart .highcharts-color-4 {
+  fill: var(--data-mono-green-4);
+}
+
+/* Labels sit on the blocks: dark text on the light steps, white on the strong ones, so every pair keeps its contrast. */
+.treemap-chart .highcharts-data-label text,
+.treemap-chart .highcharts-data-label tspan {
+  fill: var(--data-mono-neutral-5);
+  font-size: 12px;
+  font-weight: 700;
+  stroke: none;
+  paint-order: normal;
+}
+
+.treemap-chart .highcharts-data-label.highcharts-color-0 text,
+.treemap-chart .highcharts-data-label.highcharts-color-0 tspan,
+.treemap-chart .highcharts-data-label.highcharts-color-4 text,
+.treemap-chart .highcharts-data-label.highcharts-color-4 tspan {
+  fill: var(--data-mono-neutral-1);
+}
+
+/* The label's own box must not paint over the block. */
+.treemap-chart .highcharts-data-label-box {
+  fill: none;
+  stroke: none;
+}

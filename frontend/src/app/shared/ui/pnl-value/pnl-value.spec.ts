@@ -42,8 +42,8 @@ describe('PnlValue', () => {
 
     expect(root.textContent).toContain('$0.00');
     expect(root.textContent).not.toContain('+');
-    expect(root.textContent).not.toContain('-');
-    expect(root.querySelector('.fa-minus')).not.toBeNull();
+    expect(root.querySelector('.fa-minus')).toBeNull();
+    expect(root.querySelector('.zero-mark')?.textContent).toBe('-');
     expect(root.querySelector('.is-gain, .is-loss')).toBeNull();
   });
 
@@ -51,7 +51,7 @@ describe('PnlValue', () => {
     await show(null);
 
     expect(root.querySelector('.visually-hidden')?.textContent).toBe('Not available');
-    expect(root.querySelector('[aria-hidden="true"]')?.textContent).toBe('—');
+    expect(root.querySelector('[aria-hidden="true"]')?.textContent).toBe('-');
     expect(root.textContent).not.toContain('$0');
   });
 

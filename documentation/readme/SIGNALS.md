@@ -7,7 +7,7 @@ screen, not a separate chatbot.
 It is information about a chart. It is not advice, it places no order, and it says so beside every signal.
 
 Contract: [`contracts/signals-api.yaml`](../../contracts/signals-api.yaml). Code: `org.example.backend.signals` (order-service),
-`features/market/signal-advisor` (frontend).
+`features/market/signal-card` and `features/market/assistant-chat` (frontend).
 
 ## The method
 
