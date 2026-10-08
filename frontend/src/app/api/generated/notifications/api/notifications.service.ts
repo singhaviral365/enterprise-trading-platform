@@ -19,6 +19,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { ErrorResponse } from '../model/errorResponse';
 // @ts-ignore
+import { InboxStatus } from '../model/inboxStatus';
+// @ts-ignore
 import { Notification } from '../model/notification';
 // @ts-ignore
 import { NotificationCategory } from '../model/notificationCategory';
@@ -46,21 +48,24 @@ export class NotificationsService extends BaseService implements NotificationsSe
 
     /**
      * List the account\&#39;s inbox
-     * Newest first. &#x60;q&#x60; matches the title and the message (case-insensitive substring; &#x60;%&#x60; and &#x60;_&#x60; are literal). &#x60;category&#x60; may repeat to select several categories. 
+     * Newest first. &#x60;q&#x60; matches the title and the message (case-insensitive substring; &#x60;%&#x60; and &#x60;_&#x60; are literal). &#x60;category&#x60; may repeat to select several categories.  &#x60;status&#x60; (repeatable, &#x60;UNREAD&#x60; / &#x60;READ&#x60;) chooses the read states. **Without &#x60;status&#x60;** the list is the original one: unread notifications plus ones read within the last hour, so a message just opened does not vanish. **With &#x60;status&#x60;** the one-hour read retention no longer applies: &#x60;READ&#x60; returns every read notification, whatever its age. &#x60;from&#x60; and &#x60;to&#x60; (ISO 8601 date-time, both inclusive, either optional) bound the notification\&#39;s created time; when both are given &#x60;from&#x60; must not be after &#x60;to&#x60; and the span is at most 366 days (otherwise &#x60;422&#x60;).  &#x60;unreadCount&#x60; in the response is always the account\&#39;s total unread count, never the count of the filtered page. 
      * @endpoint get /api/v1/accounts/{accountId}/notifications
      * @param accountId The numeric account key. Must be the account the token belongs to.
      * @param q Text to look for in the title or message.
      * @param category Only these categories. Repeat the parameter for several. Omit for all.
+     * @param status Only these read states. Repeat for both. Omit for the original list (unread plus read within the hour).
+     * @param from Only notifications created at or after this time (inclusive).
+     * @param to Only notifications created at or before this time (inclusive).
      * @param page Zero-based page.
      * @param size 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, page?: number, size?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<NotificationPage>;
-    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, page?: number, size?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<NotificationPage>>;
-    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, page?: number, size?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<NotificationPage>>;
-    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, page?: number, size?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, status?: Array<InboxStatus>, from?: string, to?: string, page?: number, size?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<NotificationPage>;
+    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, status?: Array<InboxStatus>, from?: string, to?: string, page?: number, size?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<NotificationPage>>;
+    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, status?: Array<InboxStatus>, from?: string, to?: string, page?: number, size?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<NotificationPage>>;
+    public listNotifications(accountId: number, q?: string, category?: Array<NotificationCategory>, status?: Array<InboxStatus>, from?: string, to?: string, page?: number, size?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (accountId === null || accountId === undefined) {
             throw new Error('Required parameter accountId was null or undefined when calling listNotifications.');
         }
@@ -80,6 +85,33 @@ export class NotificationsService extends BaseService implements NotificationsSe
             localVarQueryParameters,
             'category',
             <any>category,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'status',
+            <any>status,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'from',
+            <any>from,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'to',
+            <any>to,
             QueryParamStyle.Form,
             true,
         );

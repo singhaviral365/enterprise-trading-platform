@@ -7,6 +7,7 @@ configuration.ts
 encoder.ts
 index.ts
 model/errorResponse.ts
+model/inboxStatus.ts
 model/models.ts
 model/notification.ts
 model/notificationCategory.ts
