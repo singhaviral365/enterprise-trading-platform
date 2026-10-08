@@ -32,7 +32,7 @@ public class SignalProperties {
             @Value("${signals.cache-ttl-minutes:${SIGNAL_CACHE_TTL_MINUTES:5}}") long signalTtlMinutes,
             @Value("${signals.lookback-days:90}") int defaultLookbackDays,
             @Value("${gemini.api-key:${GEMINI_API_KEY:}}") String geminiApiKey,
-            @Value("${gemini.model:${GEMINI_MODEL:gemini-flash-latest}}") String geminiModel,
+            @Value("${gemini.model:${GEMINI_MODEL:gemini-flash-lite-latest}}") String geminiModel,
             @Value("${gemini.base-url:https://generativelanguage.googleapis.com}") String geminiBaseUrl,
             @Value("${gemini.timeout-millis:8000}") long geminiTimeoutMillis,
             @Value("${gemini.max-output-tokens:400}") int geminiMaxOutputTokens,

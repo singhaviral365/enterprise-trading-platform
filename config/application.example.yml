@@ -87,10 +87,12 @@ external:
     base-url: https://v6.exchangerate-api.com/v6
     api-key: ""
   # The assistant explains a trade signal. Without a key the platform's own wording is used. https://aistudio.google.com/apikey
+  # model: a name can be retired for new keys (gemini-2.5-flash answers 404 now), so the -latest alias is used. rate-limit-rpm: set it to the
+  # requests per minute your key is allowed (AI Studio > usage); above it the chat answers "busy" instead of calling Google.
   gemini:
     api-key: ""
-    model: gemini-flash-latest
-    rate-limit-rpm: 60
+    model: gemini-flash-lite-latest
+    rate-limit-rpm: 10
 
 signals:
   candle-cache-ttl-minutes: 10

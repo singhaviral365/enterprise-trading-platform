@@ -81,7 +81,7 @@ refused server-side (`AST-403`), and nothing about the customer reaches the assi
 | Setting | Default | |
 |---|---|---|
 | `GEMINI_API_KEY` | (none) | Without it every explanation is the platform's own wording and the chat says the assistant is not set up |
-| `external.gemini.model` (config/application.yml) | `gemini-flash-latest` | A named model is retired for new keys over time (`gemini-2.5-flash` now answers HTTP 404); the `-latest` alias follows the current one. List what your key can use with `GET https://generativelanguage.googleapis.com/v1beta/models` |
+| `external.gemini.model` (config/application.yml) | `gemini-flash-lite-latest` | A named model is retired for new keys over time (`gemini-2.5-flash` now answers HTTP 404); the `-latest` alias follows the current one; lite is fast (about 0.6 s) and has the higher free-tier request limit. List what your key can use with `GET https://generativelanguage.googleapis.com/v1beta/models` |
 | `GEMINI_RATE_LIMIT_RPM` | 60 | Per order-service instance |
 | `CANDLE_CACHE_TTL_MINUTES` | 10 | |
 | `SIGNAL_CACHE_TTL_MINUTES` | 5 | Also the explanation cache |
