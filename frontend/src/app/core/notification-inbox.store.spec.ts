@@ -4,10 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { provideApiClients } from '../api/api.config';
-import { NotificationCategory } from '../api/generated/notifications';
+import { InboxStatus, NotificationCategory } from '../api/generated/notifications';
 import { NOTIFICATIONS_URL, answerInbox, inboxPage, notification } from '../testing/notifications-http';
 import { TEST_TOKENS, answerLinkedAccount, answerUnlinkedAccount } from '../testing/trade-http';
-import { INBOX_REFRESH_MS, NotificationInboxStore, READ_RETENTION_MS } from './notification-inbox.store';
+import { DEFAULT_STATUSES, INBOX_REFRESH_MS, NotificationInboxStore } from './notification-inbox.store';
 import { NotificationService } from './notification.service';
 import { SessionService } from './session.service';
 
@@ -134,12 +134,96 @@ describe('NotificationInboxStore', () => {
     expect(store.unreadCount()).toBe(7);
   });
 
-  it('drops a notification that was read more than an hour ago, and keeps one read a moment ago', async () => {
-    const longAgo = new Date(Date.now() - READ_RETENTION_MS - 60_000).toISOString();
-    const justNow = new Date(Date.now() - 60_000).toISOString();
-    await load(inboxPage([notification(1, { readAt: longAgo }), notification(2, { readAt: justNow }), notification(3)]));
+  it('asks for unread notifications only until told otherwise', async () => {
+    const request = await load();
 
-    await vi.waitFor(() => expect(store.items().map((n) => n.notificationId)).toEqual([2, 3]));
+    expect(request.request.params.getAll('status')).toEqual(['UNREAD']);
+    expect(request.request.params.has('from')).toBe(false);
+    expect(request.request.params.has('to')).toBe(false);
+    expect(store.isDefaultFilters()).toBe(true);
+  });
+
+  it('lists a read notification of any age when the server returns it, with no client-side retention', async () => {
+    const longAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    await load(inboxPage([notification(1, { readAt: longAgo }), notification(2)]));
+
+    await vi.waitFor(() => expect(store.items().map((n) => n.notificationId)).toEqual([1, 2]));
+  });
+
+  it('sends the chosen statuses, goes back to page 1, and falls back to unread when none is left', async () => {
+    await load();
+    store.page.set(3);
+
+    store.setStatuses([InboxStatus.Unread, InboxStatus.Read]);
+    const both = await answerInbox(http, inboxPage([]));
+    expect(both.request.params.getAll('status')).toEqual(['UNREAD', 'READ']);
+    expect(both.request.params.get('page')).toBe('0');
+    expect(store.isDefaultFilters()).toBe(false);
+
+    store.setStatuses([InboxStatus.Read]);
+    const readOnly = await answerInbox(http, inboxPage([]));
+    expect(readOnly.request.params.getAll('status')).toEqual(['READ']);
+
+    store.setStatuses([]);
+    const fallback = await answerInbox(http, inboxPage([]));
+    expect(fallback.request.params.getAll('status')).toEqual(['UNREAD']);
+    expect(store.statuses()).toEqual(DEFAULT_STATUSES);
+  });
+
+  it('sends the first and last instant of the chosen days in the local time zone', async () => {
+    await load();
+
+    store.setDateRange({ from: '2026-09-01', to: '2026-09-30' });
+    const request = await answerInbox(http, inboxPage([]));
+
+    expect(decodeURIComponent(request.request.params.get('from')!)).toBe(new Date(2026, 8, 1, 0, 0, 0, 0).toISOString());
+    expect(decodeURIComponent(request.request.params.get('to')!)).toBe(new Date(2026, 8, 30, 23, 59, 59, 999).toISOString());
+    expect(store.page()).toBe(1);
+  });
+
+  it('ignores a date range that cannot be used', async () => {
+    await load();
+
+    store.setDateRange({ from: '2026-09-30', to: '2026-09-01' });
+    store.setDateRange({ from: '2025-01-01', to: '2026-09-01' });
+
+    http.expectNone((r) => r.url === NOTIFICATIONS_URL);
+    expect(store.dateRange()).toEqual({ from: '', to: '' });
+  });
+
+  it('resets every filter to its start in one step', async () => {
+    await load();
+    store.setQuery('AAPL');
+    await answerInbox(http, inboxPage([]));
+    store.setCategories([NotificationCategory.WatchlistAlerts]);
+    await answerInbox(http, inboxPage([]));
+    store.setStatuses([InboxStatus.Read]);
+    await answerInbox(http, inboxPage([]));
+    store.setDateRange({ from: '2026-09-01', to: '' });
+    await answerInbox(http, inboxPage([]));
+    expect(store.isDefaultFilters()).toBe(false);
+
+    store.resetFilters();
+    const request = await answerInbox(http, inboxPage([]));
+
+    expect(request.request.params.has('q')).toBe(false);
+    expect(request.request.params.has('category')).toBe(false);
+    expect(request.request.params.getAll('status')).toEqual(['UNREAD']);
+    expect(request.request.params.has('from')).toBe(false);
+    expect(store.isDefaultFilters()).toBe(true);
+  });
+
+  it('keeps the badge at the account total whatever the page is filtered to', async () => {
+    await load(inboxPage([notification(1)], { unreadCount: 7 }));
+    await vi.waitFor(() => expect(store.unreadCount()).toBe(7));
+
+    store.setStatuses([InboxStatus.Read]);
+    await answerInbox(http, inboxPage([], { unreadCount: 7, totalItems: 0 }));
+    store.setDateRange({ from: '2026-09-01', to: '2026-09-02' });
+    await answerInbox(http, inboxPage([], { unreadCount: 7, totalItems: 0 }));
+
+    expect(store.items()).toEqual([]);
+    expect(store.unreadCount()).toBe(7);
   });
 
   it('never lets the badge go below zero', async () => {

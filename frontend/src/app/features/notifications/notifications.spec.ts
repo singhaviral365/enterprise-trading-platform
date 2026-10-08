@@ -160,4 +160,91 @@ describe('Notifications page', () => {
     expect(byTestId('notification-error')).toBeNull();
     expect(rows()).toHaveLength(1);
   });
+
+  describe('status, date range and reset', () => {
+    const tick = (testId: string, value: string, checked: boolean) => {
+      const box = root.querySelector<HTMLInputElement>(`[data-testid="${testId}"] input[data-value="${value}"]`)!;
+      box.checked = checked;
+      box.dispatchEvent(new Event('change'));
+    };
+    const reset = () => byTestId<HTMLButtonElement>('notification-reset')!;
+    const statusSummary = () =>
+      root.querySelector('[data-testid="notification-status"] .multi-summary')?.textContent?.trim();
+
+    it('starts on unread only: the first request asks for UNREAD and the dropdown says Unread', async () => {
+      await answerLinkedAccount(http);
+      const request = await answerInbox(http, inboxPage([notification(1)]));
+      await fixture.whenStable();
+
+      expect(request.request.params.getAll('status')).toEqual(['UNREAD']);
+      expect(statusSummary()).toBe('Unread');
+    });
+
+    it('also shows read notifications once Read is ticked, and cannot be left with neither', async () => {
+      await boot(inboxPage([notification(1)]));
+
+      tick('notification-status', 'READ', true);
+      const both = await answerInbox(http, inboxPage([notification(1)]));
+      expect(both.request.params.getAll('status')).toEqual(['UNREAD', 'READ']);
+
+      tick('notification-status', 'READ', false);
+      await answerInbox(http, inboxPage([notification(1)]));
+      tick('notification-status', 'UNREAD', false);
+      await fixture.whenStable();
+      http.expectNone((r) => r.url === NOTIFICATIONS_URL);
+      expect(root.querySelector<HTMLInputElement>('[data-testid="notification-status"] input[data-value="UNREAD"]')!.checked).toBe(true);
+    });
+
+    it('limits by date from the presets and shows an error for a backwards range', async () => {
+      await boot(inboxPage([notification(1)]));
+
+      byTestId<HTMLButtonElement>('date-range-7')!.click();
+      const request = await answerInbox(http, inboxPage([]));
+      expect(request.request.params.get('from')).not.toBeNull();
+      expect(request.request.params.get('to')).not.toBeNull();
+
+      const from = byTestId<HTMLInputElement>('date-range-from')!;
+      from.value = '2999-01-01';
+      from.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+      http.expectNone((r) => r.url === NOTIFICATIONS_URL);
+      expect(byTestId('date-range-error')).not.toBeNull();
+    });
+
+    it('keeps the reset button off at the defaults, turns it on after any change, and puts everything back', async () => {
+      await boot(inboxPage([notification(1)]));
+      expect(reset().disabled).toBe(true);
+      expect(reset().getAttribute('aria-label')).toBe('Reset filters');
+
+      tick('notification-status', 'READ', true);
+      await answerInbox(http, inboxPage([]));
+      await fixture.whenStable();
+      expect(reset().disabled).toBe(false);
+
+      reset().click();
+      const request = await answerInbox(http, inboxPage([notification(1)]));
+      await fixture.whenStable();
+
+      expect(request.request.params.getAll('status')).toEqual(['UNREAD']);
+      expect(reset().disabled).toBe(true);
+      expect(statusSummary()).toBe('Unread');
+    });
+
+    it('says "no unread" at the defaults and "no match" when anything is filtered', async () => {
+      await boot(inboxPage([]));
+      expect(byTestId('notification-empty')?.textContent).toContain('You have no unread notifications');
+
+      tick('notification-status', 'READ', true);
+      await answerInbox(http, inboxPage([]));
+      await fixture.whenStable();
+      expect(byTestId('notification-empty')?.textContent).toContain('No notifications match');
+    });
+
+    it('labels each row with its category', async () => {
+      await boot(inboxPage([notification(1), notification(2, { category: 'STRATEGY_EXECUTION' })]));
+
+      expect(byTestId('notification-1')!.querySelector('.ni-chip')?.textContent).toContain('Order update');
+      expect(byTestId('notification-2')!.querySelector('.ni-chip')?.textContent).toContain('Strategy');
+    });
+  });
 });

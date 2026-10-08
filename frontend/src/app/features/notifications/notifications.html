@@ -9,28 +9,51 @@
   </p>
 </header>
 
-<div class="ni-toolbar">
-  <div class="ni-search">
-    <label class="visually-hidden" for="notification-search">Search notifications</label>
-    <i class="fas fa-search" aria-hidden="true"></i>
-    <input
-      id="notification-search"
-      class="form-input"
-      type="search"
-      autocomplete="off"
-      placeholder="Search notifications"
-      data-testid="notification-search"
-      [value]="searchDraft()"
-      (input)="onSearch($event)"
+<div class="ni-filters">
+  <div class="ni-toolbar">
+    <div class="ni-search">
+      <label class="visually-hidden" for="notification-search">Search notifications</label>
+      <i class="fas fa-search" aria-hidden="true"></i>
+      <input
+        id="notification-search"
+        class="form-input"
+        type="search"
+        autocomplete="off"
+        placeholder="Search notifications"
+        data-testid="notification-search"
+        [value]="searchDraft()"
+        (input)="onSearch($event)"
+      />
+    </div>
+    <app-multi-dropdown
+      data-testid="notification-category"
+      label="Category"
+      [options]="categoryOptions"
+      [selected]="categories()"
+      (selectedChange)="onCategories($event)"
     />
+    <app-multi-dropdown
+      data-testid="notification-status"
+      label="Status"
+      [options]="statusOptions"
+      [selected]="statuses()"
+      [atLeastOne]="true"
+      (selectedChange)="onStatuses($event)"
+    />
+    <app-tooltip position="bottom" text="Reset filters">
+      <button
+        type="button"
+        class="btn is-secondary is-icon-only"
+        aria-label="Reset filters"
+        data-testid="notification-reset"
+        [disabled]="store.isDefaultFilters()"
+        (click)="resetFilters()"
+      >
+        <i class="fas fa-rotate-left" aria-hidden="true"></i>
+      </button>
+    </app-tooltip>
   </div>
-  <app-multi-dropdown
-    data-testid="notification-category"
-    label="Category"
-    [options]="categoryOptions"
-    [selected]="categories()"
-    (selectedChange)="onCategories($event)"
-  />
+  <app-date-range data-testid="notification-dates" label="Created between" [range]="dateDraft()" (rangeChange)="onDateRange($event)" />
 </div>
 
 @if (store.data.isLoading() && !store.data.hasValue()) {
@@ -47,7 +70,7 @@
 } @else if (store.items().length === 0) {
   <div class="ni-state" data-testid="notification-empty">
     <i class="fas fa-bell-slash" aria-hidden="true"></i>
-    @if (filtering()) {
+    @if (!store.isDefaultFilters()) {
       <p>No notifications match.</p>
     } @else {
       <p>You have no unread notifications.</p>
@@ -68,17 +91,16 @@
         >
           <span class="ni-icon" aria-hidden="true"><i [class]="iconOf(item)"></i></span>
           <span class="ni-body">
-            <span class="ni-line">
-              <span class="ni-item-title">{{ item.title }}</span>
-              @if (item.readAt) {
-                <span class="ni-read">Read</span>
-              } @else {
-                <span class="ni-dot" aria-hidden="true"></span>
-              }
-            </span>
+            <span class="ni-item-title">{{ item.title }}</span>
             <span class="ni-message">{{ item.message }}</span>
-            <time class="ni-time" [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'medium' }}</time>
           </span>
+          <span class="ni-chip">{{ categoryLabel(item) }}</span>
+          <time class="ni-time" [attr.datetime]="item.createdAt">{{ item.createdAt | date: 'medium' }}</time>
+          @if (item.readAt) {
+            <span class="ni-read">Read</span>
+          } @else {
+            <span class="ni-dot" aria-hidden="true"></span>
+          }
         </button>
       </li>
     }
