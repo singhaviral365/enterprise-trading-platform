@@ -40,7 +40,8 @@ class AuthAccountsControllerTest {
                         1001L,
                         "AC0000001001",
                         "ACTIVE",
-                        "Account created successfully"));
+                        "Account created successfully",
+                        "USD"));
 
         mockMvc.perform(post("/api/v1/accounts/create")
                         .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 1000L)
@@ -57,7 +58,8 @@ class AuthAccountsControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountId").value(1001))
                 .andExpect(jsonPath("$.accountNumber").value("AC0000001001"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.currency").value("USD"));
     }
 
     @Test

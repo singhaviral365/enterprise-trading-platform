@@ -5,7 +5,7 @@ info:
   version: 1.0.0
   summary: One settings document per customer account.
   description: |
-    Where a customer's choices live: how they want to be alerted, which currency to show estimates in, how dates and
+    Where a customer's choices live: how they want to be alerted, which currency the account is in (read-only), how dates and
     numbers are written, and a few display extras. It is a module inside the Trade REST API
     (`services/order-service`), in its own package, and its routes are served by the same service.
 
@@ -13,12 +13,12 @@ info:
 
     A customer has one preferences document, addressed by their account. `GET` always answers: an account that has
     never saved anything gets the defaults (`updatedAt` is then null), so the settings screen never has to handle
-    "not found". `PUT` replaces the whole document; every field is required, so a half-sent request cannot quietly
-    reset the rest.
+    "not found". `PUT` replaces the whole document; every field is required (except `preferredCurrency`, below), so a
+    half-sent request cannot quietly reset the rest.
 
     | Setting | Values | Default |
     |---|---|---|
-    | `preferredCurrency` | one of the supported currencies; this **is the account's currency** | the account's own currency |
+    | `preferredCurrency` | one of the supported currencies; this **is the account's currency**, fixed when the account was opened and read-only here | the account's own currency |
     | `channels` | any of `SMS`, `EMAIL`, `IN_APP`; an empty array means "No notifications" | `IN_APP` |
     | `categories` | any of `ORDER_STATUS`, `WATCHLIST_ALERTS`, `STRATEGY_EXECUTION` | all three |
     | `dateFormat` | see the schema | `MON_DD_YYYY` (Oct 6, 2026) |
@@ -29,19 +29,14 @@ info:
     | `landingPage` | `DASHBOARD`, `MARKET`, `POSITIONS`, `ORDERS` | `DASHBOARD` |
     | `defaultOrderType` | `MARKET`, `LIMIT` | `MARKET` |
 
-    ## Changing the currency
+    ## The currency is fixed
 
-    `preferredCurrency` and the account's currency are the same thing. `GET` always returns the account's currency,
-    and a `PUT` with a different one **converts the account** in a single transaction: the balance, the purchasing
-    power, the price of every order and the purchase price of every holding are multiplied by one exchange factor
-    (taken once, from the live rate, to four decimal places). Market data is not touched: quotes stay in the
-    currency their instrument is quoted in, and an order converts them to the account currency when it is placed or
-    filled, as before.
-
-    * An account with an order still `NEW` cannot change currency: `ACC-409`, 409. Nothing is changed.
-    * No exchange rate available: `FX-503`, 503. Nothing is changed.
-    * Each change uses that day's rate, so going from one currency to another and back does not return exactly the
-      original amounts.
+    `preferredCurrency` and the account's currency are the same thing, and it is chosen **once, when the account is opened**
+    (`POST /api/v1/accounts/create` in the trade contract). `GET` always returns it. In a `PUT` it is optional: left out, or
+    equal to the account's currency, it changes nothing; **any other value is refused with `CUR-409` (409)** and nothing is
+    saved. There is no conversion, no open-order check and no exchange-rate error on this route. Market data is not touched:
+    quotes stay in the currency their instrument is quoted in, and an order converts them to the account currency when it is
+    placed or filled.
 
     ## What is deliberately not here
 
@@ -101,7 +96,7 @@ paths:
     put:
       operationId: replacePreferences
       tags: [Preferences]
-      summary: Replace the account's preferences (a different currency converts the account)
+      summary: Replace the account's preferences (the currency cannot be changed)
       requestBody:
         required: true
         content:
@@ -122,11 +117,9 @@ paths:
         '404':
           $ref: '#/components/responses/AccountNotFound'
         '409':
-          $ref: '#/components/responses/CurrencyChangeBlocked'
+          $ref: '#/components/responses/CurrencyFixed'
         '422':
           $ref: '#/components/responses/InvalidInput'
-        '503':
-          $ref: '#/components/responses/ExchangeRateUnavailable'
 
 components:
 
@@ -182,32 +175,22 @@ components:
               value:
                 errorCode: ACC-404
                 message: Account not found
-    CurrencyChangeBlocked:
+    CurrencyFixed:
       description: |
-        The currency differs from the account's, and an order is still `NEW`. Wait until it is filled or cancel it.
+        `preferredCurrency` was sent and is not the account's currency. The currency is set when the account is opened and
+        cannot be changed. Nothing was saved.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
           examples:
-            blocked:
+            fixed:
               value:
-                errorCode: ACC-409
-                message: Account currency cannot be changed while orders are open
-    ExchangeRateUnavailable:
-      description: The currency differs from the account's and there is no exchange rate to convert it with.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorResponse'
-          examples:
-            unavailable:
-              value:
-                errorCode: FX-503
-                message: Exchange rate unavailable
+                errorCode: CUR-409
+                message: The account currency is set when the account is opened and cannot be changed.
     InvalidInput:
       description: |
-        A field is missing, is not one of its allowed values, or the currency is not supported. The message never
+        A field is missing or is not one of its allowed values. The message never
         says which, so a caller cannot probe the validation.
       content:
         application/json:
@@ -279,7 +262,6 @@ components:
       type: object
       additionalProperties: false
       required:
-        - preferredCurrency
         - channels
         - categories
         - dateFormat
@@ -292,6 +274,7 @@ components:
       properties:
         preferredCurrency:
           $ref: '#/components/schemas/Currency'
+          description: Optional. If present it must equal the account's currency (otherwise `CUR-409`); it is read-only.
         channels:
           type: array
           items:

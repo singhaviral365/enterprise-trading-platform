@@ -4,9 +4,8 @@ import org.example.backend.controller.ApiExceptionHandler;
 import org.example.backend.exceptions.AccountNotFoundException;
 import org.example.backend.preferences.dto.PreferencesResponse;
 import org.example.backend.preferences.dto.UpdatePreferencesRequest;
-import org.example.backend.preferences.exceptions.CurrencyChangeBlockedException;
+import org.example.backend.preferences.exceptions.AccountCurrencyFixedException;
 import org.example.backend.preferences.exceptions.PreferencesAccessDeniedException;
-import org.example.backend.preferences.exceptions.UnsupportedCurrencyException;
 import org.example.backend.preferences.model.CustomerPreferences;
 import org.example.backend.preferences.service.PreferencesService;
 import org.example.backend.security.AuthContext;
@@ -116,15 +115,14 @@ class PreferencesControllerTest {
     }
 
     @Test
-    void anUnsupportedCurrencyIs422() throws Exception {
-        when(service.update(anyLong(), anyLong(), any())).thenThrow(new UnsupportedCurrencyException("XXX"));
+    void aBodyWithoutACurrencyIsAccepted() throws Exception {
+        when(service.update(anyLong(), anyLong(), any())).thenReturn(sample());
 
         mockMvc.perform(put(URL)
                         .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 7L)
                         .contentType("application/json")
-                        .content(VALID_BODY.replace("EUR", "XXX")))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.errorCode").value("VAL-422"));
+                        .content(VALID_BODY.replace("\"preferredCurrency\": \"EUR\",", "")))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -146,14 +144,15 @@ class PreferencesControllerTest {
     }
 
     @Test
-    void changingTheCurrencyWhileOrdersAreOpenIs409() throws Exception {
-        when(service.update(anyLong(), anyLong(), any())).thenThrow(new CurrencyChangeBlockedException(1001L, 1L));
+    void changingTheAccountCurrencyIs409WithCur409() throws Exception {
+        when(service.update(anyLong(), anyLong(), any())).thenThrow(new AccountCurrencyFixedException(1001L));
 
         mockMvc.perform(put(URL)
                         .requestAttr(AuthContext.USER_ID_ATTRIBUTE, 7L)
                         .contentType("application/json")
                         .content(VALID_BODY))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.errorCode").value("ACC-409"));
+                .andExpect(jsonPath("$.errorCode").value("CUR-409"))
+                .andExpect(jsonPath("$.message").value("The account currency is set when the account is opened and cannot be changed."));
     }
 }

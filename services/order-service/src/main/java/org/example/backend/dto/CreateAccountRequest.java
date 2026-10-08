@@ -28,6 +28,10 @@ public record CreateAccountRequest(
 
         LocalDate dob,
 
-        BigDecimal balance) {
+        BigDecimal balance,
+
+        /** ISO 4217 code of the account currency, chosen once. Optional: USD when left out. */
+        @Pattern(regexp = "^[A-Z]{3}$")
+        String currency) {
 }
 

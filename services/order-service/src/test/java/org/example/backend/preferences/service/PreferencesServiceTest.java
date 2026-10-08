@@ -3,17 +3,11 @@ package org.example.backend.preferences.service;
 import org.example.backend.entities.Account;
 import org.example.backend.enums.AccountStatus;
 import org.example.backend.exceptions.AccountNotFoundException;
-import org.example.backend.fx.CurrencyConversionService;
-import org.example.backend.fx.ExchangeRateUnavailableException;
-import org.example.backend.exceptions.FxRateUnavailableException;
-import org.example.backend.exceptions.OptimisticLockException;
 import org.example.backend.mapper.AccountMapper;
-import org.example.backend.preferences.exceptions.CurrencyChangeBlockedException;
-import org.example.backend.preferences.model.AccountMoney;
 import org.example.backend.preferences.dto.PreferencesResponse;
+import org.example.backend.preferences.exceptions.AccountCurrencyFixedException;
 import org.example.backend.preferences.dto.UpdatePreferencesRequest;
 import org.example.backend.preferences.exceptions.PreferencesAccessDeniedException;
-import org.example.backend.preferences.exceptions.UnsupportedCurrencyException;
 import org.example.backend.preferences.mapper.PreferencesMapper;
 import org.example.backend.preferences.model.CustomerPreferences;
 import org.example.backend.preferences.model.DateFormatOption;
@@ -44,7 +38,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,14 +55,11 @@ class PreferencesServiceTest {
     @Mock
     private AccountMapper accountMapper;
 
-    @Mock
-    private CurrencyConversionService currencyConversionService;
-
     private PreferencesService service;
 
     @BeforeEach
     void setUp() {
-        service = new PreferencesService(preferencesMapper, accountMapper, currencyConversionService);
+        service = new PreferencesService(preferencesMapper, accountMapper);
     }
 
     private void accountOwnedBy(int ownerId, String currency) {
@@ -117,7 +107,7 @@ class PreferencesServiceTest {
     @Test
     void aSavedRowIsReturnedAsStored() {
         accountOwnedBy((int) USER_ID, "USD");
-        CustomerPreferences saved = request("INR").toPreferences();
+        CustomerPreferences saved = request("INR").toPreferences("INR");
         when(preferencesMapper.selectByAccountId(ACCOUNT_ID))
                 .thenReturn(Optional.of(rowOf(saved, SAVED_AT)));
 
@@ -134,9 +124,8 @@ class PreferencesServiceTest {
     @Test
     void updateStoresTheDocumentAndAnswersWithWhatWasStored() {
         accountOwnedBy((int) USER_ID, "USD");
-        accountHolds("USD");
         when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenAnswer(invocation ->
-                Optional.of(rowOf(request("USD").toPreferences(), SAVED_AT)));
+                Optional.of(rowOf(request("USD").toPreferences("USD"), SAVED_AT)));
 
         PreferencesResponse response = service.update(USER_ID, ACCOUNT_ID, request("USD"));
 
@@ -156,12 +145,11 @@ class PreferencesServiceTest {
     @Test
     void emptyChannelsMeansNoNotificationsAndIsStoredAsThree_falseColumns() {
         accountOwnedBy((int) USER_ID, "USD");
-        accountHolds("USD");
         UpdatePreferencesRequest silent = new UpdatePreferencesRequest(
                 "USD", Set.of(), Set.of(), DateFormatOption.YYYY_MM_DD, TimeFormatOption.H12, NumberFormatOption.US,
                 false, ThemeOption.SYSTEM, LandingPage.DASHBOARD, OrderTypeOption.MARKET);
         when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenAnswer(invocation ->
-                Optional.of(rowOf(silent.toPreferences(), SAVED_AT)));
+                Optional.of(rowOf(silent.toPreferences("USD"), SAVED_AT)));
 
         PreferencesResponse response = service.update(USER_ID, ACCOUNT_ID, silent);
 
@@ -174,12 +162,52 @@ class PreferencesServiceTest {
     }
 
     @Test
-    void aCurrencyOutsideTheSupportedListIsRejectedBeforeAnythingIsWritten() {
-        accountOwnedBy((int) USER_ID, "USD");
+    void aDifferentCurrencyIsRefusedWithCur409AndNothingIsWritten() {
+        accountOwnedBy((int) USER_ID, "EUR");
 
-        assertThrows(UnsupportedCurrencyException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("XXX")));
+        AccountCurrencyFixedException refused = assertThrows(
+                AccountCurrencyFixedException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("USD")));
+        assertThrows(AccountCurrencyFixedException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("XYZ")));
 
+        assertEquals("CUR-409", refused.getErrorCode());
+        assertEquals(ACCOUNT_ID, refused.getAccountId());
         verify(preferencesMapper, never()).upsert(any());
+    }
+
+    @Test
+    void savingTheSameCurrencyIsFineAndStoresTheAccountsCurrency() {
+        accountOwnedBy((int) USER_ID, "EUR");
+        when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenAnswer(invocation ->
+                Optional.of(rowOf(request("EUR").toPreferences("EUR"), SAVED_AT)));
+
+        PreferencesResponse response = service.update(USER_ID, ACCOUNT_ID, request("EUR"));
+
+        ArgumentCaptor<PreferenceRow> stored = ArgumentCaptor.forClass(PreferenceRow.class);
+        verify(preferencesMapper).upsert(stored.capture());
+        assertEquals("EUR", stored.getValue().preferredCurrency());
+        assertEquals("EUR", response.preferredCurrency());
+    }
+
+    @Test
+    void aSaveWithNoCurrencyKeepsTheAccountsCurrency() {
+        accountOwnedBy((int) USER_ID, "JPY");
+        when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenAnswer(invocation ->
+                Optional.of(rowOf(request(null).toPreferences("JPY"), SAVED_AT)));
+
+        PreferencesResponse response = service.update(USER_ID, ACCOUNT_ID, request(null));
+
+        ArgumentCaptor<PreferenceRow> stored = ArgumentCaptor.forClass(PreferenceRow.class);
+        verify(preferencesMapper).upsert(stored.capture());
+        assertEquals("JPY", stored.getValue().preferredCurrency());
+        assertEquals("JPY", response.preferredCurrency());
+    }
+
+    @Test
+    void theAccountsCurrencyIsAlwaysReadFromTheAccountEvenIfAnOlderRowSaysOtherwise() {
+        accountOwnedBy((int) USER_ID, "GBP");
+        when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenReturn(Optional.of(rowOf(request("USD").toPreferences("USD"), SAVED_AT)));
+
+        assertEquals("GBP", service.get(USER_ID, ACCOUNT_ID).preferredCurrency());
     }
 
     @Test
@@ -199,95 +227,6 @@ class PreferencesServiceTest {
 
         assertThrows(AccountNotFoundException.class, () -> service.get(USER_ID, ACCOUNT_ID));
         assertThrows(AccountNotFoundException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("USD")));
-    }
-
-    // ---- changing the account currency ------------------------------------------------------------------------------
-
-    private void accountHolds(String currency) {
-        when(preferencesMapper.selectAccountMoneyForUpdate(ACCOUNT_ID)).thenReturn(Optional.of(
-                new AccountMoney(currency, new BigDecimal("25000.0000"), new BigDecimal("18000.0000"), 7L)));
-    }
-
-    private void storedAfterSave(String currency) {
-        when(preferencesMapper.selectByAccountId(ACCOUNT_ID)).thenAnswer(invocation ->
-                Optional.of(rowOf(request(currency).toPreferences(), SAVED_AT)));
-    }
-
-    @Test
-    void keepingTheAccountCurrencyConvertsNothingAndNeverAsksForARate() {
-        accountOwnedBy((int) USER_ID, "EUR");
-        accountHolds("EUR");
-        storedAfterSave("EUR");
-
-        service.update(USER_ID, ACCOUNT_ID, request("EUR"));
-
-        verify(preferencesMapper, never()).updateAccountCurrency(anyLong(), any(), any(), any(), anyLong());
-        verify(preferencesMapper, never()).convertOrderPrices(anyLong(), any());
-        verify(currencyConversionService, never()).convert(any(), any(), any());
-    }
-
-    @Test
-    void anotherCurrencyConvertsTheBalanceOrdersAndHoldingsByOneFactor() {
-        accountOwnedBy((int) USER_ID, "EUR");
-        accountHolds("EUR");
-        storedAfterSave("USD");
-        when(preferencesMapper.countOpenOrders(ACCOUNT_ID)).thenReturn(0L);
-        when(currencyConversionService.convert(BigDecimal.ONE, "EUR", "USD")).thenReturn(new BigDecimal("1.1"));
-        when(preferencesMapper.updateAccountCurrency(anyLong(), any(), any(), any(), anyLong())).thenReturn(1);
-
-        PreferencesResponse response = service.update(USER_ID, ACCOUNT_ID, request("USD"));
-
-        // 25000 EUR and 18000 EUR at 1.1, to 4 decimal places, against the version that was read
-        verify(preferencesMapper).updateAccountCurrency(
-                ACCOUNT_ID, "USD", new BigDecimal("27500.0000"), new BigDecimal("19800.0000"), 7L);
-        verify(preferencesMapper).convertOrderPrices(ACCOUNT_ID, new BigDecimal("1.1"));
-        verify(preferencesMapper).convertHoldingPrices(ACCOUNT_ID, new BigDecimal("1.1"));
-        assertEquals("USD", response.preferredCurrency());
-    }
-
-    @Test
-    void openOrdersBlockTheChangeAndNothingIsConverted() {
-        accountOwnedBy((int) USER_ID, "EUR");
-        accountHolds("EUR");
-        when(preferencesMapper.countOpenOrders(ACCOUNT_ID)).thenReturn(2L);
-
-        CurrencyChangeBlockedException blocked = assertThrows(
-                CurrencyChangeBlockedException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("USD")));
-
-        assertEquals("ACC-409", blocked.getErrorCode());
-        assertEquals(2L, blocked.getOpenOrders());
-        verify(preferencesMapper, never()).updateAccountCurrency(anyLong(), any(), any(), any(), anyLong());
-        verify(preferencesMapper, never()).upsert(any());
-    }
-
-    @Test
-    void noExchangeRateMeansNothingChangesAndTheCallerGetsFx503() {
-        accountOwnedBy((int) USER_ID, "EUR");
-        accountHolds("EUR");
-        when(preferencesMapper.countOpenOrders(ACCOUNT_ID)).thenReturn(0L);
-        when(currencyConversionService.convert(any(), any(), any()))
-                .thenThrow(new ExchangeRateUnavailableException("down"));
-
-        FxRateUnavailableException unavailable = assertThrows(
-                FxRateUnavailableException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("USD")));
-
-        assertEquals("FX-503", unavailable.getErrorCode());
-        verify(preferencesMapper, never()).updateAccountCurrency(anyLong(), any(), any(), any(), anyLong());
-        verify(preferencesMapper, never()).upsert(any());
-    }
-
-    @Test
-    void anAccountChangedUnderneathIsAConflictNotAnOverwrite() {
-        accountOwnedBy((int) USER_ID, "EUR");
-        accountHolds("EUR");
-        when(preferencesMapper.countOpenOrders(ACCOUNT_ID)).thenReturn(0L);
-        when(currencyConversionService.convert(any(), any(), any())).thenReturn(new BigDecimal("1.1"));
-        when(preferencesMapper.updateAccountCurrency(anyLong(), any(), any(), any(), anyLong())).thenReturn(0);
-
-        assertThrows(OptimisticLockException.class, () -> service.update(USER_ID, ACCOUNT_ID, request("USD")));
-
-        verify(preferencesMapper, never()).convertOrderPrices(anyLong(), any());
-        verify(preferencesMapper, never()).upsert(any());
     }
 
     private static PreferenceRow rowOf(CustomerPreferences preferences, OffsetDateTime updatedAt) {

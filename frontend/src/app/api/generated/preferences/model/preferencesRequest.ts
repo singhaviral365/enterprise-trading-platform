@@ -19,7 +19,10 @@ import { NumberFormat } from './numberFormat';
 
 
 export interface PreferencesRequest { 
-    preferredCurrency: Currency;
+    /**
+     * Optional. If present it must equal the account\'s currency (otherwise `CUR-409`); it is read-only.
+     */
+    preferredCurrency?: Currency;
     /**
      * An empty array means \"No notifications\". Duplicates are ignored.
      */

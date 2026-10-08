@@ -26,5 +26,9 @@ export interface CreateAccountResponse {
      * For display only. Never branch on this string.
      */
     message: string;
+    /**
+     * The currency the account was opened in.
+     */
+    currency: string;
 }
 

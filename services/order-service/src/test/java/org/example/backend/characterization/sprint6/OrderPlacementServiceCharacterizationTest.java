@@ -79,7 +79,8 @@ class OrderPlacementServiceCharacterizationTest {
                 instrumentMapper,
                 orderMapper,
                 orderPlacedAfterCommitListener,
-                currencyConversionService);
+                currencyConversionService,
+            new org.example.backend.service.OpeningBalanceMinimums(new org.springframework.mock.env.MockEnvironment()));
     }
 
     @Test

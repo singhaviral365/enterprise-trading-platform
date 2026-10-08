@@ -18,8 +18,26 @@ export interface CreateAccountRequest {
      */
     dob?: string;
     /**
-     * Optional opening cash balance. Defaults to the service minimum.
+     * Optional opening cash balance, in the account\'s currency. Defaults to, and may not be below, the minimum for that currency (a per-currency table in the service\'s configuration: 20,000 USD, 18,000 EUR, 16,000 GBP, 1,600,000 INR, 3,000,000 JPY and so on; the error message names the currency and the amount). 
      */
     balance?: number;
+    /**
+     * The account currency, chosen once here and read-only afterwards. Omit for USD. An unsupported code is a `422`. 
+     */
+    currency?: CreateAccountRequestCurrencyEnum;
 }
+export enum CreateAccountRequestCurrencyEnum {
+    Usd = 'USD',
+    Eur = 'EUR',
+    Gbp = 'GBP',
+    Inr = 'INR',
+    Jpy = 'JPY',
+    Cad = 'CAD',
+    Aud = 'AUD',
+    Chf = 'CHF',
+    Sgd = 'SGD',
+    Cny = 'CNY'
+};
+
+
 
