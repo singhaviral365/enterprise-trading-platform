@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutorTokenMinter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy</a> &gt; <span class="el_source">ExecutorTokenMinter.java</span></div><h1>ExecutorTokenMinter.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy;
+
+import io.jsonwebtoken.Jwts;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
+import java.util.UUID;
+
+/**
+ * Mints the token a strategy's order is placed with. The identity decision, in one place.
+ *
+ * &lt;p&gt;A strategy runs when nobody is logged in, so there is no customer token to use, and a standing &quot;robot&quot; login that can
+ * trade for anyone would be the most valuable credential on the platform. Instead each order gets a token of its own:
+ * &lt;ul&gt;
+ *   &lt;li&gt;{@code sub} is the &lt;b&gt;strategy's owner&lt;/b&gt;, so the order route's ordinary ownership check is the one that runs;&lt;/li&gt;
+ *   &lt;li&gt;{@code act=strategy-executor} and {@code strategy_id} say who is acting and for which strategy, and the order route
+ *       refuses to let such a token do anything but place that strategy's one order while it holds its claim;&lt;/li&gt;
+ *   &lt;li&gt;it expires in about a minute, long enough for one HTTP call and not for anything else.&lt;/li&gt;
+ * &lt;/ul&gt;
+ * It is signed with the same secret and issuer the order-service verifies the Auth service's tokens with, so there is nothing
+ * new to configure and no second key to protect. The token is never stored and never logged.
+ */
+@Component
+public class ExecutorTokenMinter {
+
+    static final long MAX_TTL_SECONDS = 120;
+
+    private final SecretKey key;
+    private final String issuer;
+    private final Duration ttl;
+    private final Clock clock;
+
+    @Autowired
+    public ExecutorTokenMinter(
+            @Value(&quot;${strategy.token.secret}&quot;) String secret,
+            @Value(&quot;${strategy.token.issuer:${JWT_ISSUER:auth-service}}&quot;) String issuer,
+            @Value(&quot;${strategy.token.ttl-seconds:60}&quot;) long ttlSeconds) {
+<span class="fc" id="L46">        this(secret, issuer, ttlSeconds, Clock.systemUTC());</span>
+<span class="fc" id="L47">    }</span>
+
+<span class="fc" id="L49">    ExecutorTokenMinter(String secret, String issuer, long ttlSeconds, Clock clock) {</span>
+<span class="fc" id="L50">        this.key = keyFrom(secret);</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        this.issuer = issuer == null ? &quot;&quot; : issuer.trim();</span>
+<span class="fc" id="L52">        this.ttl = Duration.ofSeconds(Math.max(10, Math.min(ttlSeconds, MAX_TTL_SECONDS)));</span>
+<span class="fc" id="L53">        this.clock = clock;</span>
+<span class="fc" id="L54">    }</span>
+
+    /** False when no usable secret is configured: the worker then claims nothing, rather than claim and fail. */
+    public boolean isConfigured() {
+<span class="fc bfc" id="L58" title="All 4 branches covered.">        return key != null &amp;&amp; !issuer.isEmpty();</span>
+    }
+
+    /** A token for {@code userId}, valid for one strategy's order and for {@link #MAX_TTL_SECONDS} seconds at most. */
+    public String mint(long userId, long strategyId) {
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (!isConfigured()) {</span>
+<span class="fc" id="L64">            throw new IllegalStateException(&quot;The strategy token secret is not configured&quot;);</span>
+        }
+<span class="fc" id="L66">        Instant now = clock.instant();</span>
+<span class="fc" id="L67">        return Jwts.builder()</span>
+<span class="fc" id="L68">                .issuer(issuer)</span>
+<span class="fc" id="L69">                .subject(String.valueOf(userId))</span>
+<span class="fc" id="L70">                .claim(&quot;act&quot;, &quot;strategy-executor&quot;)</span>
+<span class="fc" id="L71">                .claim(&quot;strategy_id&quot;, strategyId)</span>
+<span class="fc" id="L72">                .id(UUID.randomUUID().toString())</span>
+<span class="fc" id="L73">                .issuedAt(Date.from(now))</span>
+<span class="fc" id="L74">                .expiration(Date.from(now.plus(ttl)))</span>
+<span class="fc" id="L75">                .signWith(key, Jwts.SIG.HS256)</span>
+<span class="fc" id="L76">                .compact();</span>
+    }
+
+    /** Same reading of the secret as the order-service's JwtConfiguration: surrounding quotes dropped, 32 bytes at least. */
+    private static SecretKey keyFrom(String secret) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (secret == null) {</span>
+<span class="fc" id="L82">            return null;</span>
+        }
+<span class="fc" id="L84">        String trimmed = secret.trim();</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (trimmed.length() &gt;= 2</span>
+<span class="pc bpc" id="L86" title="1 of 4 branches missed.">                &amp;&amp; ((trimmed.startsWith(&quot;\&quot;&quot;) &amp;&amp; trimmed.endsWith(&quot;\&quot;&quot;))</span>
+<span class="pc bpc" id="L87" title="3 of 4 branches missed.">                || (trimmed.startsWith(&quot;'&quot;) &amp;&amp; trimmed.endsWith(&quot;'&quot;)))) {</span>
+<span class="fc" id="L88">            trimmed = trimmed.substring(1, trimmed.length() - 1).trim();</span>
+        }
+<span class="fc" id="L90">        byte[] bytes = trimmed.getBytes(StandardCharsets.UTF_8);</span>
+<span class="fc bfc" id="L91" title="All 2 branches covered.">        if (bytes.length &lt; 32) {</span>
+<span class="fc" id="L92">            return null;</span>
+        }
+<span class="fc" id="L94">        return new SecretKeySpec(bytes, &quot;HmacSHA256&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

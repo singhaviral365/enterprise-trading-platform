@@ -72,7 +72,8 @@ enterprise-trading-platform/
 ├── infra/kafka/               create-topics.sh (the three topics)
 ├── etl/                       Python ETL into an analytics store
 ├── documentation/             Guides, ER diagrams, API (Bruno) collections
-└── run-app.ps1                One command: opens each service in its own terminal, with encryption and real email
+├── scripts/                   run-app.ps1 (one command: every service in its own terminal, with encryption and real email), sonar-scan.ps1
+└── scripts.sh                 Creates the trading database and loads the sample data
 ```
 
 ---
@@ -153,7 +154,7 @@ docker compose exec -T postgres psql -U postgres -d trading_db < ../db/migration
 
 Kafka normally runs in your Linux environment, and you start it there. Put its address in `kafka.bootstrap-servers`. Three topics are needed, `orders`, `trade-events` and `market-data` ([`infra/kafka/create-topics.sh`](infra/kafka/create-topics.sh)).
 
-To run it in Docker on this machine instead: `.\run-app.ps1 --windows` does it for you, or by hand:
+To run it in Docker on this machine instead: `.\scripts\run-app.ps1 --windows` does it for you, or by hand:
 
 ```bash
 node config/cli.js compose-env
@@ -166,18 +167,18 @@ docker compose --env-file .env up -d kafka kafka-init
 ### Step 3: Run everything with one command
 
 ```powershell
-.\run-app.ps1
+.\scripts\run-app.ps1
 ```
 
 This opens four terminals: the frontend (4200), auth-service (3000), order-service (8081) and executor-service (8082), **with payload encryption and real (prod) email enabled, exactly as `config/application.yml` says** (`encryption.mode`, `auth.email.mode`, `order.email.mode`). It checks the configuration first and tells you what is missing. Open <http://localhost:4200>, register, sign in, open an account from the dashboard, and trade.
 
 | Command | What it does |
 |---|---|
-| `.\run-app.ps1` | the four services; encryption and real email as configured |
-| `.\run-app.ps1 --windows` | the same, and starts Kafka with docker compose |
-| `.\run-app.ps1 --dev-mail` | email goes to MailHog (run it yourself, SMTP and web ports in `services.mailhog`) instead of the real account |
-| `.\run-app.ps1 --no-email` | no email at all (set `auth.verification-enabled: false` or registration cannot send its code) |
-| `.\run-app.ps1 --no-encryption` | encryption off for this run |
+| `.\scripts\run-app.ps1` | the four services; encryption and real email as configured |
+| `.\scripts\run-app.ps1 --windows` | the same, and starts Kafka with docker compose |
+| `.\scripts\run-app.ps1 --dev-mail` | email goes to MailHog (run it yourself, SMTP and web ports in `services.mailhog`) instead of the real account |
+| `.\scripts\run-app.ps1 --no-email` | no email at all (set `auth.verification-enabled: false` or registration cannot send its code) |
+| `.\scripts\run-app.ps1 --no-encryption` | encryption off for this run |
 
 Kafka and the databases must be running first (Steps 1 and 2).
 
@@ -223,7 +224,7 @@ Reports (git-ignored): `frontend/test-reports/html/index.html` (view with `npm r
 
 ### Frontend (end-to-end, Playwright)
 
-These drive a real browser against the **running stack** (`run-app.ps1` running). Fill in the `e2e:` block of `config/application.yml` first (a user with an active account, a user with a suspended one, and a symbol; the order test buys one share each run).
+These drive a real browser against the **running stack** (`scriptsun-app.ps1` running). Fill in the `e2e:` block of `config/application.yml` first (a user with an active account, a user with a suspended one, and a symbol; the order test buys one share each run).
 
 ```bash
 cd frontend

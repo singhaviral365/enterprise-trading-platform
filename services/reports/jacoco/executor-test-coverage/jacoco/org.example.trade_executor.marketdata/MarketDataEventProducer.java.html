@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MarketDataEventProducer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.marketdata</a> &gt; <span class="el_source">MarketDataEventProducer.java</span></div><h1>MarketDataEventProducer.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.marketdata;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.backend.dto.kafka.KafkaEventEnvelope;
+import org.example.trade_executor.client.LiveQuote;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.stereotype.Component;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class MarketDataEventProducer {
+
+<span class="fc" id="L24">    private static final Logger LOGGER = LoggerFactory.getLogger(MarketDataEventProducer.class);</span>
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final ObjectMapper objectMapper;
+    private final String marketDataTopic;
+    private final String source;
+    private final int schemaVersion;
+
+    public MarketDataEventProducer(
+            @Qualifier(&quot;deadLetterKafkaTemplate&quot;) KafkaTemplate&lt;String, String&gt; kafkaTemplate,
+            ObjectMapper objectMapper,
+            @Value(&quot;${trading.kafka.market-data-topic:market-data}&quot;) String marketDataTopic,
+            @Value(&quot;${trading.kafka.execution-source:trade-executor}&quot;) String source,
+<span class="fc" id="L37">            @Value(&quot;${trading.kafka.schema-version:1}&quot;) int schemaVersion) {</span>
+
+<span class="fc" id="L39">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L40">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L41">        this.marketDataTopic = marketDataTopic;</span>
+<span class="fc" id="L42">        this.source = source;</span>
+<span class="fc" id="L43">        this.schemaVersion = schemaVersion;</span>
+<span class="fc" id="L44">    }</span>
+
+    public void publish(LiveQuote quote, OffsetDateTime quotedAt) {
+<span class="fc" id="L47">        KafkaEventEnvelope&lt;MarketDataQuoteMessage&gt; envelope = new KafkaEventEnvelope&lt;&gt;(</span>
+<span class="fc" id="L48">                UUID.randomUUID().toString(),</span>
+                &quot;QUOTE&quot;,
+<span class="fc" id="L50">                OffsetDateTime.now(ZoneOffset.UTC).toString(),</span>
+                source,
+                schemaVersion,
+<span class="fc" id="L53">                MarketDataQuoteMessage.from(quote, quotedAt));</span>
+
+        final String payload;
+        try {
+<span class="fc" id="L57">            payload = objectMapper.writeValueAsString(envelope);</span>
+<span class="nc" id="L58">        } catch (JsonProcessingException ex) {</span>
+<span class="nc" id="L59">            throw new KafkaException(&quot;Failed to serialize market data quote event&quot;, ex);</span>
+<span class="fc" id="L60">        }</span>
+
+        try {
+<span class="fc" id="L63">            SendResult&lt;String, String&gt; result = kafkaTemplate.send(</span>
+                    marketDataTopic,
+<span class="fc" id="L65">                    quote.symbol(),</span>
+<span class="fc" id="L66">                    payload).get(5, TimeUnit.SECONDS);</span>
+
+<span class="pc bpc" id="L68" title="3 of 4 branches missed.">            if (result != null &amp;&amp; result.getRecordMetadata() != null) {</span>
+<span class="nc" id="L69">                LOGGER.info(</span>
+                        &quot;Published QUOTE event for symbol {} to {}-{}@{}&quot;,
+<span class="nc" id="L71">                        quote.symbol(),</span>
+<span class="nc" id="L72">                        result.getRecordMetadata().topic(),</span>
+<span class="nc" id="L73">                        result.getRecordMetadata().partition(),</span>
+<span class="nc" id="L74">                        result.getRecordMetadata().offset());</span>
+            } else {
+<span class="fc" id="L76">                LOGGER.info(&quot;Published QUOTE event for symbol {} to topic {}&quot;, quote.symbol(), marketDataTopic);</span>
+            }
+<span class="nc" id="L78">        } catch (Exception ex) {</span>
+<span class="nc" id="L79">            LOGGER.error(</span>
+                    &quot;Failed to publish QUOTE event for symbol {} to topic {}&quot;,
+<span class="nc" id="L81">                    quote.symbol(),</span>
+                    marketDataTopic,
+                    ex);
+<span class="nc" id="L84">            throw new KafkaException(&quot;Failed to publish market data quote event&quot;, ex);</span>
+<span class="fc" id="L85">        }</span>
+<span class="fc" id="L86">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

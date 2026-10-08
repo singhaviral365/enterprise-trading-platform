@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RunOutcome.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy.model</a> &gt; <span class="el_source">RunOutcome.java</span></div><h1>RunOutcome.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy.model;
+
+/** What came of one attempt to run a strategy, as written to {@code strategy_run}. The order-service reads the same values. */
+<span class="fc" id="L4">public enum RunOutcome {</span>
+    /** The order was placed. */
+<span class="fc" id="L6">    ORDERED,</span>
+    /** The order had already been placed by an earlier attempt of the same run. */
+<span class="fc" id="L8">    DUPLICATE,</span>
+    /** One of the strategy's own limits stopped the order before it was placed. */
+<span class="fc" id="L10">    BLOCKED_LIMIT,</span>
+    /** The order route refused the order. */
+<span class="fc" id="L12">    REJECTED,</span>
+    /** The order route could not be reached, or answered with a server error. */
+<span class="fc" id="L14">    API_ERROR,</span>
+    /** The quote was too old to act on. */
+<span class="fc" id="L16">    STALE,</span>
+    /** The strategy was switched off before the order was sent. */
+<span class="fc" id="L18">    DISABLED</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

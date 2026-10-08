@@ -135,7 +135,7 @@ Built, and decoupled so it can only run on a developer's machine.
 
 ```bash
 # 1. start MailHog (a local SMTP catcher) on your machine, then the order-service with the dev profile
-.\run-app.ps1 --windows --mail
+.\scripts\run-app.ps1 --windows --dev-mail
 #    or by hand:
 cd services/order-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 

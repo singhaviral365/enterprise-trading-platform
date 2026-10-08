@@ -75,11 +75,11 @@ Gmail limits a personal account to about 500 recipients a day and rewrites the F
        from: you@gmail.com
        from-domains: gmail.com
    ```
-3. `.\run-app.ps1` starts everything in these modes (it turns `order.email.mode` into the Spring profile of the same name). By hand, add
+3. `.\scripts\run-app.ps1` starts everything in these modes (it turns `order.email.mode` into the Spring profile of the same name). By hand, add
    `-Dspring-boot.run.profiles=prod` to the order-service command.
 4. A wrong or missing value stops the service at start-up with a message naming the key. `node config/cli.js check` finds most of them first.
 
-`.\run-app.ps1 --dev-mail` sends to MailHog instead for a run, and `--no-email` sends nothing. The executor sends no email. If the account is
+`.\scripts\run-app.ps1 --dev-mail` sends to MailHog instead for a run, and `--no-email` sends nothing. The executor sends no email. If the account is
 later replaced by a company domain, only these values change.
 
 ## Choosing a provider (a decision for the team, not made in code)

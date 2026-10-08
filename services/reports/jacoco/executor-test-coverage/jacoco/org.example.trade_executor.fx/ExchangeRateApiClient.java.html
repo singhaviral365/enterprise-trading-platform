@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExchangeRateApiClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.fx</a> &gt; <span class="el_source">ExchangeRateApiClient.java</span></div><h1>ExchangeRateApiClient.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.fx;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Clock;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Calls ExchangeRate-API's standard endpoint: {@code GET {baseUrl}/{apiKey}/latest/{base}}.
+ *
+ * &lt;p&gt;The API key is part of the URL, so the URL is never logged. Configuration:
+ * {@code EXCHANGE_RATE_API_URL} (e.g. https://v6.exchangerate-api.com/v6) and {@code EXCHANGE_RATE_API_KEY}.
+ */
+@Component
+public class ExchangeRateApiClient implements ExchangeRateClient {
+
+<span class="fc" id="L31">    private static final Logger LOGGER = LoggerFactory.getLogger(ExchangeRateApiClient.class);</span>
+
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final String baseUrl;
+    private final String apiKey;
+    private final Duration requestTimeout;
+    private final Clock clock;
+
+    @Autowired
+    public ExchangeRateApiClient(
+            @Value(&quot;${trading.fx.base-url:https://v6.exchangerate-api.com/v6}&quot;) String baseUrl,
+            @Value(&quot;${trading.fx.api-key:}&quot;) String apiKey,
+            @Value(&quot;${trading.fx.request-timeout-millis:3000}&quot;) long requestTimeoutMillis) {
+
+<span class="fc" id="L46">        this(HttpClient.newBuilder().connectTimeout(Duration.ofMillis(requestTimeoutMillis)).build(),</span>
+                new ObjectMapper(),
+                baseUrl,
+                apiKey,
+<span class="fc" id="L50">                Duration.ofMillis(requestTimeoutMillis),</span>
+<span class="fc" id="L51">                Clock.systemUTC());</span>
+<span class="fc" id="L52">    }</span>
+
+    ExchangeRateApiClient(
+            HttpClient httpClient,
+            ObjectMapper objectMapper,
+            String baseUrl,
+            String apiKey,
+            Duration requestTimeout,
+<span class="fc" id="L60">            Clock clock) {</span>
+
+<span class="fc" id="L62">        this.httpClient = httpClient;</span>
+<span class="fc" id="L63">        this.objectMapper = objectMapper;</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        this.baseUrl = baseUrl == null ? &quot;&quot; : baseUrl.replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">        this.apiKey = apiKey == null ? &quot;&quot; : apiKey.trim();</span>
+<span class="fc" id="L66">        this.requestTimeout = requestTimeout;</span>
+<span class="fc" id="L67">        this.clock = clock;</span>
+<span class="fc" id="L68">    }</span>
+
+    @Override
+    public ExchangeRates fetchLatest(String baseCode) {
+<span class="fc bfc" id="L72" title="All 2 branches covered.">        if (apiKey.isEmpty()) {</span>
+<span class="fc" id="L73">            throw new ExchangeRateUnavailableException(&quot;EXCHANGE_RATE_API_KEY is not configured&quot;);</span>
+        }
+
+<span class="fc" id="L76">        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + &quot;/&quot; + apiKey + &quot;/latest/&quot; + baseCode))</span>
+<span class="fc" id="L77">                .timeout(requestTimeout)</span>
+<span class="fc" id="L78">                .GET()</span>
+<span class="fc" id="L79">                .build();</span>
+
+        try {
+<span class="fc" id="L82">            HttpResponse&lt;String&gt; response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());</span>
+<span class="fc" id="L83">            return parse(baseCode, response.statusCode(), response.body());</span>
+<span class="fc" id="L84">        } catch (IOException ex) {</span>
+            // The message is deliberately generic: exception text from the HTTP client can contain the URL (and key).
+<span class="fc" id="L86">            throw new ExchangeRateUnavailableException(&quot;Exchange rate lookup failed (I/O error)&quot;, ex);</span>
+<span class="nc" id="L87">        } catch (InterruptedException ex) {</span>
+<span class="nc" id="L88">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L89">            throw new ExchangeRateUnavailableException(&quot;Exchange rate lookup interrupted&quot;, ex);</span>
+        }
+    }
+
+    private ExchangeRates parse(String baseCode, int statusCode, String body) {
+        JsonNode root;
+        try {
+<span class="pc bpc" id="L96" title="2 of 4 branches missed.">            root = body == null || body.isBlank() ? null : objectMapper.readTree(body);</span>
+<span class="fc" id="L97">        } catch (IOException ex) {</span>
+<span class="fc" id="L98">            throw new ExchangeRateUnavailableException(</span>
+                    &quot;Exchange rate response was not valid JSON (HTTP &quot; + statusCode + &quot;)&quot;, ex);
+<span class="fc" id="L100">        }</span>
+
+<span class="pc bpc" id="L102" title="1 of 4 branches missed.">        if (root == null || !&quot;success&quot;.equals(root.path(&quot;result&quot;).asText())) {</span>
+            // error-type is one of unsupported-code, malformed-request, invalid-key, inactive-account, quota-reached.
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">            String errorType = root == null ? &quot;no-body&quot; : root.path(&quot;error-type&quot;).asText(&quot;unknown&quot;);</span>
+<span class="fc" id="L105">            LOGGER.warn(&quot;ExchangeRate-API refused the request: {} (HTTP {})&quot;, errorType, statusCode);</span>
+<span class="fc" id="L106">            throw new ExchangeRateUnavailableException(&quot;Exchange rate service error: &quot; + errorType);</span>
+        }
+
+<span class="fc" id="L109">        JsonNode conversionRates = root.path(&quot;conversion_rates&quot;);</span>
+<span class="pc bpc" id="L110" title="2 of 4 branches missed.">        if (!conversionRates.isObject() || conversionRates.isEmpty()) {</span>
+<span class="nc" id="L111">            throw new ExchangeRateUnavailableException(&quot;Exchange rate response had no conversion_rates&quot;);</span>
+        }
+
+<span class="fc" id="L114">        Map&lt;String, BigDecimal&gt; rates = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L115">        conversionRates.fields().forEachRemaining(entry -&gt; {</span>
+<span class="pc bpc" id="L116" title="2 of 4 branches missed.">            if (entry.getValue().isNumber() &amp;&amp; entry.getValue().decimalValue().signum() &gt; 0) {</span>
+<span class="fc" id="L117">                rates.put(entry.getKey().toUpperCase(), entry.getValue().decimalValue());</span>
+            }
+<span class="fc" id="L119">        });</span>
+
+<span class="fc" id="L121">        String responseBase = root.path(&quot;base_code&quot;).asText(baseCode).toUpperCase();</span>
+<span class="fc" id="L122">        return new ExchangeRates(responseBase, rates, clock.instant());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

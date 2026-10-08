@@ -172,6 +172,12 @@ executor:
   strategy-execution-enabled: true
   strategy-demo-delay-millis: 0
 
+# SonarQube (scripts/sonar-scan.ps1 and documentation/readme/SONARQUBE.md). The server runs on the Linux VM; the token is made in SonarQube
+# (My Account > Security).
+sonar:
+  host-url: http://{LINUX_IP}:9000
+  token: ""
+
 # End-to-end tests (frontend/e2e, Playwright) run against the live stack. Real accounts, real credentials: keep them in the git-ignored file.
 e2e:
   # A user with a LINKED, ACTIVE trading account and enough cash to buy one share of `symbol`.

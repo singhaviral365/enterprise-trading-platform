@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PriceHistoryService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.market</a> &gt; <span class="el_source">PriceHistoryService.java</span></div><h1>PriceHistoryService.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.market;
+
+import org.example.trade_executor.client.PriceHistory;
+import org.example.trade_executor.client.QuoteClient;
+import org.example.trade_executor.client.QuoteUnavailableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+
+/**
+ * One year of daily closing prices for a symbol, up to today (UTC), from Fauxnance's /candles endpoint. Daily
+ * candles change at most once a day, so each symbol's history is cached for a while to spare the upstream API.
+ */
+@Service
+public class PriceHistoryService {
+
+    static final String INTERVAL = &quot;1d&quot;;
+
+<span class="fc" id="L32">    private static final Logger LOGGER = LoggerFactory.getLogger(PriceHistoryService.class);</span>
+    /** Tickers, FX pairs and indices: letters, digits and . - _ : ^ = (e.g. BRK.B, FX:EURUSD, ^GSPC). */
+<span class="fc" id="L34">    private static final Pattern SYMBOL = Pattern.compile(&quot;[A-Za-z0-9.\\-_:^=]{1,32}&quot;);</span>
+
+    private final QuoteClient quoteClient;
+    private final Duration cacheTtl;
+    private final Clock clock;
+<span class="fc" id="L39">    private final Map&lt;String, Snapshot&gt; cache = new ConcurrentHashMap&lt;&gt;();</span>
+
+    @Autowired
+    public PriceHistoryService(
+            QuoteClient quoteClient,
+            @Value(&quot;${trading.market.history-cache-ttl-seconds:900}&quot;) long cacheTtlSeconds) {
+
+<span class="fc" id="L46">        this(quoteClient, cacheTtlSeconds, Clock.systemUTC());</span>
+<span class="fc" id="L47">    }</span>
+
+<span class="fc" id="L49">    PriceHistoryService(QuoteClient quoteClient, long cacheTtlSeconds, Clock clock) {</span>
+<span class="fc" id="L50">        this.quoteClient = quoteClient;</span>
+<span class="fc" id="L51">        this.cacheTtl = Duration.ofSeconds(Math.max(1L, cacheTtlSeconds));</span>
+<span class="fc" id="L52">        this.clock = clock;</span>
+<span class="fc" id="L53">    }</span>
+
+    public PriceHistory getLastYear(String rawSymbol) {
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">        String symbol = rawSymbol == null ? &quot;&quot; : rawSymbol.trim();</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (!SYMBOL.matcher(symbol).matches()) {</span>
+<span class="fc" id="L58">            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, &quot;Invalid symbol&quot;);</span>
+        }
+<span class="fc" id="L60">        String key = symbol.toUpperCase();</span>
+
+<span class="fc" id="L62">        Instant now = clock.instant();</span>
+<span class="fc" id="L63">        Snapshot cached = cache.get(key);</span>
+<span class="fc bfc" id="L64" title="All 4 branches covered.">        if (cached != null &amp;&amp; Duration.between(cached.fetchedAt(), now).compareTo(cacheTtl) &lt; 0) {</span>
+<span class="fc" id="L65">            return cached.history();</span>
+        }
+
+<span class="fc" id="L68">        LocalDate to = LocalDate.ofInstant(now, ZoneOffset.UTC);</span>
+<span class="fc" id="L69">        LocalDate from = to.minusYears(1);</span>
+        try {
+<span class="fc" id="L71">            PriceHistory history = quoteClient.getCandles(key, from, to, INTERVAL);</span>
+<span class="fc" id="L72">            cache.put(key, new Snapshot(history, now));</span>
+<span class="fc" id="L73">            return history;</span>
+<span class="fc" id="L74">        } catch (QuoteUnavailableException ex) {</span>
+<span class="fc" id="L75">            LOGGER.warn(&quot;Price history lookup failed for {}&quot;, key, ex);</span>
+<span class="fc bfc" id="L76" title="All 2 branches covered.">            if (cached != null) {</span>
+<span class="fc" id="L77">                return cached.history();</span>
+            }
+<span class="fc" id="L79">            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, &quot;Price history unavailable&quot;, ex);</span>
+        }
+    }
+
+<span class="fc" id="L83">    private record Snapshot(PriceHistory history, Instant fetchedAt) {</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

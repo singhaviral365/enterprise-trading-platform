@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DemoInstrumentQuoteClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.demo</a> &gt; <span class="el_source">DemoInstrumentQuoteClient.java</span></div><h1>DemoInstrumentQuoteClient.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.demo;
+
+import org.example.trade_executor.client.FauxnanceQuoteClient;
+import org.example.trade_executor.client.LiveQuote;
+import org.example.trade_executor.client.PriceHistory;
+import org.example.trade_executor.client.QuoteClient;
+import org.example.trade_executor.client.QuoteDetails;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * DEMO ONLY. Adds one instrument that Fauxnance does not know, whose price swings between two values (295 and 305 US dollars by default)
+ * on a fixed beat, so a price alert and an automatic strategy can be shown firing again and again.
+ *
+ * &lt;p&gt;It wraps the real quote client: every other symbol is answered by Fauxnance exactly as before, and the demo symbol is taken out of
+ * the request so Fauxnance is never asked about it. The market poller, the market board, the candles route and order pricing all go
+ * through {@link QuoteClient}, so the demo instrument appears in each of them with no other change.
+ *
+ * &lt;p&gt;The price depends on the clock, not on who asks: the value flips every {@code period-seconds} (set it to the poll interval, 60 by
+ * default), low in even periods and high in odd ones.
+ *
+ * &lt;p&gt;&lt;b&gt;To remove it:&lt;/b&gt; set {@code executor.demo-instrument.enabled: false} in config/application.yml (this class and
+ * {@link DemoInstrumentSeeder} are then not created), and run databases/PostgreSQL/demo/remove-demo-instrument.sql to delete the row. Or delete
+ * this package, the three {@code demo.instrument.*} lines in application.properties and the yml block: nothing else refers to it.
+ */
+@Component
+@Primary
+@ConditionalOnProperty(name = &quot;demo.instrument.enabled&quot;, havingValue = &quot;true&quot;)
+public class DemoInstrumentQuoteClient implements QuoteClient {
+
+    static final String CURRENCY = &quot;USD&quot;;
+
+    private final QuoteClient real;
+    private final String symbol;
+    private final BigDecimal low;
+    private final BigDecimal high;
+    private final long periodSeconds;
+    private final Clock clock;
+
+    @Autowired
+    public DemoInstrumentQuoteClient(
+            FauxnanceQuoteClient real,
+            @Value(&quot;${demo.instrument.symbol}&quot;) String symbol,
+            @Value(&quot;${demo.instrument.low}&quot;) BigDecimal low,
+            @Value(&quot;${demo.instrument.high}&quot;) BigDecimal high,
+            @Value(&quot;${demo.instrument.period-seconds}&quot;) long periodSeconds) {
+<span class="fc" id="L62">        this(real, symbol, low, high, periodSeconds, Clock.systemUTC());</span>
+<span class="fc" id="L63">    }</span>
+
+<span class="fc" id="L65">    DemoInstrumentQuoteClient(QuoteClient real, String symbol, BigDecimal low, BigDecimal high, long periodSeconds, Clock clock) {</span>
+<span class="fc" id="L66">        this.real = real;</span>
+<span class="fc" id="L67">        this.symbol = symbol.trim().toUpperCase(Locale.ROOT);</span>
+<span class="fc" id="L68">        this.low = low;</span>
+<span class="fc" id="L69">        this.high = high;</span>
+<span class="fc" id="L70">        this.periodSeconds = Math.max(1L, periodSeconds);</span>
+<span class="fc" id="L71">        this.clock = clock;</span>
+<span class="fc" id="L72">    }</span>
+
+    public String symbol() {
+<span class="nc" id="L75">        return symbol;</span>
+    }
+
+    /** The price now: low in even periods, high in odd ones. */
+    BigDecimal priceAt(Instant moment) {
+<span class="fc" id="L80">        long period = Math.floorDiv(moment.getEpochSecond(), periodSeconds);</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        return Math.floorMod(period, 2L) == 0 ? low : high;</span>
+    }
+
+    private boolean isDemo(String candidate) {
+<span class="pc bpc" id="L85" title="1 of 4 branches missed.">        return candidate != null &amp;&amp; symbol.equals(candidate.trim().toUpperCase(Locale.ROOT));</span>
+    }
+
+    private LiveQuote demoQuote() {
+<span class="fc" id="L89">        return new LiveQuote(symbol, priceAt(clock.instant()), CURRENCY);</span>
+    }
+
+    @Override
+    public Optional&lt;LiveQuote&gt; getQuote(String requested) {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        return isDemo(requested) ? Optional.of(demoQuote()) : real.getQuote(requested);</span>
+    }
+
+    @Override
+    public Map&lt;String, LiveQuote&gt; getQuotes(Collection&lt;String&gt; symbols) {
+<span class="fc" id="L99">        Map&lt;String, LiveQuote&gt; quotes = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L100">        boolean wanted = false;</span>
+<span class="fc" id="L101">        List&lt;String&gt; others = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">        if (symbols != null) {</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">            for (String candidate : symbols) {</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">                if (isDemo(candidate)) {</span>
+<span class="fc" id="L105">                    wanted = true;</span>
+                } else {
+<span class="fc" id="L107">                    others.add(candidate);</span>
+                }
+<span class="fc" id="L109">            }</span>
+        }
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (!others.isEmpty()) {</span>
+<span class="fc" id="L112">            quotes.putAll(real.getQuotes(others));</span>
+        }
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        if (wanted) {</span>
+<span class="fc" id="L115">            quotes.put(symbol, demoQuote());</span>
+        }
+<span class="fc" id="L117">        return quotes;</span>
+    }
+
+    @Override
+    public Map&lt;String, QuoteDetails&gt; getQuoteDetails(Collection&lt;String&gt; symbols) {
+<span class="fc" id="L122">        Map&lt;String, QuoteDetails&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L123">        boolean wanted = false;</span>
+<span class="fc" id="L124">        List&lt;String&gt; others = new ArrayList&lt;&gt;();</span>
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">        if (symbols != null) {</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">            for (String candidate : symbols) {</span>
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">                if (isDemo(candidate)) {</span>
+<span class="fc" id="L128">                    wanted = true;</span>
+                } else {
+<span class="nc" id="L130">                    others.add(candidate);</span>
+                }
+<span class="fc" id="L132">            }</span>
+        }
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">        if (!others.isEmpty()) {</span>
+<span class="nc" id="L135">            details.putAll(real.getQuoteDetails(others));</span>
+        }
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        if (wanted) {</span>
+<span class="fc" id="L138">            Instant now = clock.instant();</span>
+<span class="fc" id="L139">            BigDecimal price = priceAt(now);</span>
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">            BigDecimal previous = price.equals(low) ? high : low;</span>
+<span class="fc" id="L141">            Map&lt;String, Object&gt; fields = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L142">            fields.put(&quot;symbol&quot;, symbol);</span>
+<span class="fc" id="L143">            fields.put(&quot;price&quot;, price);</span>
+<span class="fc" id="L144">            fields.put(&quot;currency&quot;, CURRENCY);</span>
+<span class="fc" id="L145">            fields.put(&quot;previousClose&quot;, previous);</span>
+<span class="fc" id="L146">            fields.put(&quot;change&quot;, price.subtract(previous));</span>
+<span class="fc" id="L147">            fields.put(&quot;changePercent&quot;, price.subtract(previous).multiply(BigDecimal.valueOf(100)).divide(previous, 4, java.math.RoundingMode.HALF_UP));</span>
+<span class="fc" id="L148">            fields.put(&quot;bid&quot;, price);</span>
+<span class="fc" id="L149">            fields.put(&quot;ask&quot;, price);</span>
+<span class="fc" id="L150">            fields.put(&quot;marketState&quot;, &quot;REGULAR&quot;);</span>
+<span class="fc" id="L151">            fields.put(&quot;source&quot;, &quot;demo&quot;);</span>
+<span class="fc" id="L152">            fields.put(&quot;stale&quot;, false);</span>
+<span class="fc" id="L153">            fields.put(&quot;asOf&quot;, now.toString());</span>
+<span class="fc" id="L154">            details.put(symbol, new QuoteDetails(symbol, price, fields));</span>
+        }
+<span class="fc" id="L156">        return details;</span>
+    }
+
+    @Override
+    public PriceHistory getCandles(String requested, LocalDate from, LocalDate to, String interval) {
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        if (!isDemo(requested)) {</span>
+<span class="fc" id="L162">            return real.getCandles(requested, from, to, interval);</span>
+        }
+        // A year of daily candles that swing between the two prices, so the chart has something to draw.
+<span class="fc" id="L165">        List&lt;PriceHistory.Candle&gt; candles = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L166">        BigDecimal previous = low;</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">            BigDecimal close = (day.toEpochDay() % 2 == 0) ? low : high;</span>
+<span class="fc" id="L169">            candles.add(new PriceHistory.Candle(day.toString(), previous, previous.max(close), previous.min(close), close, 1_000L, false));</span>
+<span class="fc" id="L170">            previous = close;</span>
+        }
+<span class="fc" id="L172">        return new PriceHistory(symbol, CURRENCY, interval, candles);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

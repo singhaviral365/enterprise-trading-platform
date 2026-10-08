@@ -126,6 +126,40 @@ This is the same scan with one additional flag:
 
 - `-Dsonar.qualitygate.wait=true`
 
+## 8) The whole platform in one scan
+
+One SonarQube project, `enterprise-trading-platform`, covers the Angular app, the auth-service and both Spring services. The Maven plugin in
+sections 4 to 7 can only see one Java service, so the whole-platform scan uses the SonarScanner (run through `npx`) with the root
+[`sonar-project.properties`](../../sonar-project.properties), which declares each part as a module and points at the coverage file its own tool writes:
+
+| Part | Tests with coverage | Coverage file |
+|---|---|---|
+| frontend | `npm run test:ci` | `frontend/coverage/frontend/lcov.info` |
+| auth-service | `npx jest --coverage` | `services/auth-service/coverage/lcov.info` |
+| order-service | `.\mvnw.cmd clean verify` | `services/order-service/target/site/jacoco/jacoco.xml` |
+| executor-service | `.\mvnw.cmd clean verify` | `services/executor-service/target/site/jacoco/jacoco.xml` |
+
+Put the server and your token in `config/application.yml` (`sonar.host-url`, `sonar.token`), then from the repository root:
+
+```powershell
+.\scripts\sonar-scan.ps1                # all tests with coverage, then the scan
+.\scripts\sonar-scan.ps1 -SkipTests     # scan only, reusing the last coverage files
+.\scripts\sonar-scan.ps1 -QualityGate   # also wait for the quality gate
+```
+
+The script keeps going when a test fails (it passes `-Dmaven.test.failure.ignore=true` to Maven) so the coverage of what ran is still sent, and it prints each
+part's exit code and any coverage file that is missing.
+
+### One coverage score for the whole platform
+
+`node scripts/coverage-summary.js` (the sonar script runs it too) reads the four coverage files and prints each part and a **WHOLE PLATFORM** line, both as
+plain line coverage and with SonarQube's own formula, `(covered lines + covered branches) / (lines + branches)`. It needs no server, and its total should
+match the project's Coverage on the SonarQube dashboard.
+
+On the dashboard itself, open the **Overall Code** tab. The default **New Code** tab shows only changed code, so on a first analysis it shows no coverage.
+If Overall Code shows 0 or nothing for a part, the report path for that module did not match (the scan prints "No coverage information"), and the
+summary script's "Missing" line tells you which file is absent.
+
 ## Troubleshooting
 
 - If `docker run ... --name sonarqube` fails with name conflict, do not create a new container. Start the existing one with `docker start sonarqube`.

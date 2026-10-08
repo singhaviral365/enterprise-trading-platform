@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExchangeRates.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.fx</a> &gt; <span class="el_source">ExchangeRates.java</span></div><h1>ExchangeRates.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.fx;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * One snapshot of ExchangeRate-API's &quot;latest&quot; response: how many units of each currency one unit of
+ * {@code baseCode} buys, plus when we fetched it.
+ */
+public record ExchangeRates(
+        String baseCode,
+        Map&lt;String, BigDecimal&gt; rates,
+        Instant fetchedAt) {
+
+<span class="fc" id="L17">    public ExchangeRates {</span>
+<span class="fc" id="L18">        Objects.requireNonNull(baseCode, &quot;baseCode is required&quot;);</span>
+<span class="fc" id="L19">        Objects.requireNonNull(fetchedAt, &quot;fetchedAt is required&quot;);</span>
+<span class="pc bpc" id="L20" title="1 of 2 branches missed.">        rates = rates == null ? Map.of() : Map.copyOf(rates);</span>
+<span class="fc" id="L21">    }</span>
+
+    public boolean supports(String currency) {
+<span class="pc bpc" id="L24" title="1 of 4 branches missed.">        return currency != null &amp;&amp; rates.containsKey(currency);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

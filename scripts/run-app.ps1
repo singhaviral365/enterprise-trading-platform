@@ -22,7 +22,8 @@ if ($args -contains "--dev-mail") { $devMail = $true }
 if ($args -contains "--no-email") { $noEmail = $true }
 if ($args -contains "--no-encryption") { $noEncryption = $true }
 
-$rootDir = $PSScriptRoot
+# This file lives in scripts/; the repository root is its parent.
+$rootDir = Split-Path -Parent $PSScriptRoot
 $cli = Join-Path $rootDir "config\cli.js"
 
 # ---- configuration -----------------------------------------------------------------------------------------------------------
