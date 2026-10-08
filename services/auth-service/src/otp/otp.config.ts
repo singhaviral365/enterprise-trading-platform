@@ -63,7 +63,7 @@ export function assertEmailCanBeSent(otp: OtpSettings, mail: MailSettings): void
   if (otp.emailVerificationEnabled && !mail.enabled) {
     throw new Error(
       'Email verification at registration is on (the default) but email is not enabled, so no code could be delivered. ' +
-        'For development set AUTH_EMAIL_ENABLED=true (MailHog on localhost:1025), or turn the check off with ' +
+        'For development set AUTH_EMAIL_MODE=dev (MailHog on localhost:1025), for real delivery AUTH_EMAIL_MODE=prod, or turn the check off with ' +
         'AUTH_EMAIL_VERIFICATION_ENABLED=false.',
     );
   }

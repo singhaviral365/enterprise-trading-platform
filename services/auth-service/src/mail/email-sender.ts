@@ -6,8 +6,9 @@ export interface EmailSender {
   enabled(): boolean;
 
   /**
-   * Sends one plain-text message. Rejects when the mail server does not accept it. The subject is one line (any line
-   * break is removed) so a header cannot be injected through it.
+   * Sends one message: the plain text, and a small HTML version of it (made from the text unless `html` is given). Rejects when the
+   * mail server does not accept it, or when the recipient is not on the allow-list of a staging deployment. The subject is one line
+   * (any line break is removed) so a header cannot be injected through it. The body is never logged: it holds one-time codes.
    */
-  send(to: string, subject: string, body: string): Promise<void>;
+  send(to: string, subject: string, body: string, html?: string): Promise<void>;
 }

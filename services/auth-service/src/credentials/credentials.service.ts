@@ -26,8 +26,8 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
 @Injectable()
 export class CredentialsService {
   // Argon2id configuration - defensive against both GPU and ASIC attacks
-  private readonly ARGON2_OPTIONS = {
-    type: argon2.argon2id,
+  private readonly ARGON2_OPTIONS: argon2.HashOptions = {
+    type: 2,
     timeCost: 3, // iterations - balance between security and DoS resistance
     memoryCost: 65536, // 64 MiB - high memory requirement for GPU resistance
     parallelism: 2, // adjust based on CPU cores available

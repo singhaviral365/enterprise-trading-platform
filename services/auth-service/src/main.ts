@@ -6,26 +6,39 @@ import { AppModule } from './app.module';
 import { AuthModule } from './auth/auth.module';
 import { configuration } from './config/configuration';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { assertMailIsDevOnly, mailSettings } from './mail/mail.config';
+import { assertMailSettings, mailSettings } from './mail/mail.config';
 import { assertEmailCanBeSent, otpSettings } from './otp/otp.config';
+import { encryptionMiddleware } from './encryption/encryption.middleware';
+import { Envelope, assertEncryptionSettings, encryptionSettings } from './encryption/envelope';
 
 async function bootstrap() {
   // Load and validate configuration at startup
   const config = configuration();
 
-  // Email is for development only, and the registration check needs it: refuse to start with either set up wrongly,
-  // rather than let the first person to sign in find out.
-  assertMailIsDevOnly(mailSettings());
+  // Each email mode has safety rules (dev: local host only; prod: a real provider over TLS with credentials), and the registration
+  // check needs email: refuse to start with either set up wrongly, rather than let the first person to sign in find out.
+  assertMailSettings(mailSettings());
   assertEmailCanBeSent(otpSettings(), mailSettings());
+
+  // Payload encryption (documentation/todo/02): off by default; when on it needs its private key, and refuses to start without it.
+  const enc = encryptionSettings();
+  assertEncryptionSettings(enc);
+  const envelope = enc.mode === 'off' ? null : await Envelope.create(enc);
 
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
     origin: ['http://localhost:4200', 'http://127.0.0.1:5500/'], 
     methods: 'GET, POST ,PUT, DELETE', 
-    allowedHeaders: 'Content-Type, Authorization, X-Requested-With',
+    allowedHeaders: 'Content-Type, Authorization, X-Requested-With, X-Envelope',
+    exposedHeaders: 'Date',
     credentials: true
   });
+
+  // After CORS (so its headers are on every answer, the key's included) and before the routes and the body parsers.
+  for (const handler of encryptionMiddleware(enc, envelope)) {
+    app.use(handler);
+  }
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Auth service')
