@@ -128,19 +128,17 @@ Built, and decoupled so it can only run on a developer's machine.
 **To try it.**
 
 ```bash
-# 1. start MailHog (a local SMTP catcher) and the order-service with the dev profile
+# 1. start MailHog (a local SMTP catcher) on your machine, then the order-service with the dev profile
 .\run-app.ps1 --windows --mail
 #    or by hand:
-docker compose -f services/docker-compose.yml --profile dev-mail up -d mailhog
 cd services/order-service && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 2. read the mail at http://localhost:8025
 ```
 
-**From IntelliJ.** The repository ships two shared run configurations in `.run/` (they appear in the run-configuration
-drop-down by themselves): **OrderService (dev + MailHog)** is the Spring Boot application with the active profile `dev`; it
-first runs **MailHog (docker)**, which starts the MailHog container (`docker compose --profile dev-mail up -d mailhog`).
-Choose the first and press Run; read the mail at http://localhost:8025. Docker must be running. It needs the same environment
+**From IntelliJ.** The repository ships a shared run configuration in `.run/` (they appear in the run-configuration
+drop-down by themselves): **OrderService (dev + MailHog)** is the Spring Boot application with the active profile `dev`; MailHog
+must already be running on your machine. Press Run; read the mail at http://localhost:8025. It needs the same environment
 variables as your normal order-service run (`DB_PASSWORD`, `JWT_SECRET`, `JWT_ISSUER`, `KAFKA_BOOTSTRAP_SERVERS`, ...): if you
 supply them through an EnvFile or the configuration's *Environment variables*, edit **OrderService (dev + MailHog)** and add the
 same. Without the plugin or the shared configs: duplicate your usual run configuration, set *Active profiles* to `dev`, and start
@@ -167,7 +165,7 @@ UPDATE account SET email = 'alice@example.com', phone_no = '+353 1 555 0100' WHE
 | Off by default | `notifications.email.enabled=false` in `application.properties`. Only `application-dev.properties` turns it on |
 | Different bean | When off, `DisabledEmailSender` is wired and email deliveries are recorded `SKIPPED` with the reason. `MailHogEmailSender` is not even created |
 | Start-up guard | `DevOnlyEmailGuard` stops the application if email is enabled without a `dev`/`local` profile, alongside a `prod`/`production`/`staging` profile, or with an SMTP host other than `localhost`/`127.0.0.1`/`::1`/`mailhog` |
-| Compose | `mailhog` is in its own profile (`dev-mail`), never started by `--profile platform` |
+| Compose | MailHog is not in `docker-compose.yml`; run it on your machine |
 
 To switch it off in any environment: do nothing. To switch it off in a dev environment: unset the profile or set
 `notifications.email.enabled=false`.

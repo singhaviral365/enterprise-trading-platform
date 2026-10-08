@@ -84,7 +84,8 @@ services:
     profiles: [platform]
     container_name: auth-service
     environment:
-      # Set AUTH_NODE_ENV=development to use MailHog for the sign-in code (see below); production refuses to send mail.
+      # Set AUTH_NODE_ENV=development to send the sign-in code through a local SMTP catcher (MailHog, run on the host, not
+      # in this compose file); production refuses to send mail.
       NODE_ENV: ${AUTH_NODE_ENV:-production}
       PORT: 3000
       DATABASE_HOST: auth-db
@@ -101,11 +102,11 @@ services:
       # start with it on under NODE_ENV=production or with a non-local SMTP host. So this stack, which is production-like by
       # default, runs with the registration email check and two-step sign-in OFF unless you opt in for development:
       #   AUTH_NODE_ENV=development  AUTH_EMAIL_ENABLED=true  AUTH_EMAIL_VERIFICATION_ENABLED=true  AUTH_TWO_FACTOR_ENABLED=true
-      #   (and --profile dev-mail)
+      #   (and MailHog running on your machine)
       AUTH_EMAIL_VERIFICATION_ENABLED: ${AUTH_EMAIL_VERIFICATION_ENABLED:-false}
       AUTH_TWO_FACTOR_ENABLED: ${AUTH_TWO_FACTOR_ENABLED:-false}
       AUTH_EMAIL_ENABLED: ${AUTH_EMAIL_ENABLED:-false}
-      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-mailhog}
+      AUTH_EMAIL_SMTP_HOST: ${AUTH_EMAIL_SMTP_HOST:-localhost}
       AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
       JWT_ACCESS_TOKEN_EXPIRES_IN: 900
       JWT_REFRESH_TOKEN_EXPIRES_IN: 604800
@@ -152,7 +153,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       # Email is development-only and off unless BOTH of these are set (see documentation/readme/NOTIFICATIONS.md):
-      #   BACKEND_SPRING_PROFILES_ACTIVE=dev   NOTIFICATIONS_EMAIL_SMTP_HOST=mailhog
+      #   BACKEND_SPRING_PROFILES_ACTIVE=dev   NOTIFICATIONS_EMAIL_SMTP_HOST=localhost
       SPRING_PROFILES_ACTIVE: ${BACKEND_SPRING_PROFILES_ACTIVE:-}
       NOTIFICATIONS_EMAIL_SMTP_HOST: ${NOTIFICATIONS_EMAIL_SMTP_HOST:-localhost}
     ports:
@@ -172,20 +173,6 @@ services:
       timeout: 5s
       retries: 15
       start_period: 20s
-    networks:
-      - trading-net
-
-  # DEVELOPMENT ONLY. A local SMTP catcher: the order-service sends "email" here and nothing leaves the machine.
-  # Never started by the platform profile; start it on purpose with:  docker compose --profile dev-mail up -d mailhog
-  # Read the mail at http://localhost:8025. The order-service only talks to it when run with the dev profile (see
-  # documentation/readme/NOTIFICATIONS.md); DevOnlyEmailGuard refuses any other combination.
-  mailhog:
-    image: mailhog/mailhog:v1.0.1
-    profiles: [dev-mail]
-    container_name: mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
     networks:
       - trading-net
 
