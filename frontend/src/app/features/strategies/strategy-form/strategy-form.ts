@@ -1,9 +1,10 @@
 import { Component, computed, inject, output, resource, signal } from '@angular/core';
-import { FormField, form, required, submit, validate } from '@angular/forms/signals';
+import { FormField, form, submit, validate } from '@angular/forms/signals';
 
 import { OrderSide as TradeOrderSide } from '../../../api/generated/trade';
 import { OrderSide, Strategy, TriggerDirection } from '../../../api/generated/strategies';
 import { describeError } from '../../../core/errors/describe-error';
+import { FormatPreferences } from '../../../core/format-preferences';
 import { convertCurrency, MarketService } from '../../../core/market.service';
 import { NotificationService } from '../../../core/notification.service';
 import { StrategiesStore } from '../../../core/strategies.store';
@@ -15,10 +16,11 @@ import { Spinner } from '../../../shared/ui/spinner/spinner';
 interface StrategyModel {
   trigger: string;
   quantity: string;
+  /** Empty means "let the platform work it out". */
   maxOrderValue: string;
+  /** Empty means "let the platform work it out". */
   maxPosition: string;
   maxExecutions: string;
-  maxFailures: string;
   /** A calendar date (yyyy-mm-dd) or empty for "no end date". */
   validUntil: string;
 }
@@ -29,16 +31,20 @@ const MAX_ORDER_VALUE = 10_000_000;
 const MAX_POSITION = 10_000_000;
 const MAX_TRIGGER = 1_000_000_000;
 const MAX_WINDOW_DAYS = 366;
+/** Mirrors `strategy.limits.default-buffer-percent` in the order-service, which stays the authority. */
+const DEFAULT_BUFFER = 1.15;
 
 const WHOLE_NUMBER = /^\d+$/;
 const PRICE = /^\d+(\.\d{1,4})?$/;
 const MONEY = /^\d+(\.\d{1,2})?$/;
 
 /**
- * Creates one strategy: the rule (instrument, buy or sell, the price level to watch, how many), the limits that bound what
- * it may do unattended, and an optional end date. The limits are required, not defaulted: a strategy that trades while
- * nobody is watching must have had its damage bounded by a decision somebody made, and the form helps with that by showing
- * what the order would cost at the trigger.
+ * Creates one strategy from five inputs: the instrument, buy or sell, which way the price has to move, the price level and
+ * the quantity. A live sentence under them says what the rule will do, how many times, and the worst case it can spend.
+ *
+ * A strategy that trades while nobody is watching must have its damage bounded, but the customer is not asked to invent the
+ * bounds: the spending cap and the largest holding are worked out by the platform when they are left empty, and "More options"
+ * shows them as "auto" values that can be overwritten, together with how many times it may repeat and an end date.
  *
  * Nothing is placed from here. This only creates the rule; the platform trades it later, through the ordinary order route.
  */
@@ -52,12 +58,11 @@ export class StrategyForm {
   private readonly store = inject(StrategiesStore);
   private readonly market = inject(MarketService);
   private readonly notifications = inject(NotificationService);
+  private readonly formats = inject(FormatPreferences);
 
   /** The new strategy, once it exists. */
   readonly created = output<Strategy>();
   readonly cancelled = output<void>();
-
-  protected readonly maxQuantity = MAX_QUANTITY;
 
   /** Instruments and their latest price, from the same board the market page shows. */
   protected readonly board = resource({ loader: () => this.market.getBoard() });
@@ -78,16 +83,14 @@ export class StrategyForm {
     maxOrderValue: '',
     maxPosition: '',
     maxExecutions: '1',
-    maxFailures: '3',
     validUntil: '',
   });
 
   protected readonly strategy = form(this.model, (path) => {
-    required(path.trigger, { message: 'Enter the price to watch for.' });
     validate(path.trigger, ({ value }) => {
       const raw = value().replace(/,/g, '').trim();
       if (!raw) {
-        return undefined;
+        return { kind: 'required', message: 'Enter the price to watch for.' };
       }
       if (!PRICE.test(raw) || Number(raw) <= 0) {
         return { kind: 'price', message: 'Enter a price above 0 with up to 4 decimal places.' };
@@ -95,11 +98,10 @@ export class StrategyForm {
       return Number(raw) > MAX_TRIGGER ? { kind: 'price', message: 'That price is too large.' } : undefined;
     });
 
-    required(path.quantity, { message: 'Enter a quantity.' });
     validate(path.quantity, ({ value }) => {
       const raw = value().trim();
       if (!raw) {
-        return undefined;
+        return { kind: 'required', message: 'Enter a quantity.' };
       }
       if (!WHOLE_NUMBER.test(raw) || Number(raw) < 1) {
         return { kind: 'quantity', message: 'Quantity must be a whole number of at least 1.' };
@@ -109,7 +111,6 @@ export class StrategyForm {
         : undefined;
     });
 
-    required(path.maxOrderValue, { message: 'Set the most one order may cost.' });
     validate(path.maxOrderValue, ({ value }) => {
       const raw = value().replace(/,/g, '').trim();
       if (!raw) {
@@ -123,7 +124,6 @@ export class StrategyForm {
         : undefined;
     });
 
-    required(path.maxPosition, { message: 'Set the largest holding it may build.' });
     validate(path.maxPosition, ({ value }) => {
       const raw = value().trim();
       if (!raw) {
@@ -146,12 +146,6 @@ export class StrategyForm {
       return WHOLE_NUMBER.test(raw) && Number(raw) >= 1 && Number(raw) <= 20
         ? undefined
         : { kind: 'executions', message: 'Enter a whole number from 1 to 20.' };
-    });
-    validate(path.maxFailures, ({ value }) => {
-      const raw = value().trim();
-      return WHOLE_NUMBER.test(raw) && Number(raw) >= 1 && Number(raw) <= 10
-        ? undefined
-        : { kind: 'failures', message: 'Enter a whole number from 1 to 10.' };
     });
 
     validate(path.validUntil, ({ value }) => {
@@ -190,34 +184,49 @@ export class StrategyForm {
 
   private readonly quantityValue = computed(() => {
     const raw = this.model().quantity.trim();
-    return WHOLE_NUMBER.test(raw) ? Number(raw) : null;
+    return WHOLE_NUMBER.test(raw) && Number(raw) >= 1 ? Number(raw) : null;
   });
   private readonly triggerValue = computed(() => {
     const raw = this.model().trigger.replace(/,/g, '').trim();
     const value = Number(raw);
     return PRICE.test(raw) && value > 0 ? value : null;
   });
+  private readonly executionsValue = computed(() => {
+    const raw = this.model().maxExecutions.trim();
+    return WHOLE_NUMBER.test(raw) && Number(raw) >= 1 && Number(raw) <= 20 ? Number(raw) : 1;
+  });
 
   /** What the order would cost at the trigger, in the instrument's currency. */
-  protected readonly costAtTrigger = computed(() => {
+  private readonly costAtTrigger = computed(() => {
     const quantity = this.quantityValue();
     const trigger = this.triggerValue();
     return quantity !== null && trigger !== null ? quantity * trigger : null;
   });
 
   /**
-   * A starting point for the order limit: the cost at the trigger plus a tenth, rounded up, in the account's currency
-   * when the board has the rate to convert (the limit is checked in the account's currency).
+   * The spending cap the platform will use, in the account's currency: the customer's own number when one is typed, otherwise
+   * the cost at the trigger plus the buffer rounded up, as the order-service works it out. Null while it cannot be known
+   * (nothing to price yet, or no rate to convert with).
    */
-  protected readonly suggestedOrderLimit = computed(() => {
+  protected readonly spendingCap = computed(() => {
+    const own = this.model().maxOrderValue.replace(/,/g, '').trim();
+    if (own !== '' && MONEY.test(own) && Number(own) > 0) {
+      return Number(own);
+    }
+    return this.autoSpendingCap();
+  });
+
+  /** What "auto" means for the spending cap, shown in the field as a placeholder. */
+  protected readonly autoSpendingCap = computed(() => {
     const cost = this.costAtTrigger();
     if (cost === null) {
       return null;
     }
     const quoted = this.currency();
     const account = this.store.accountCurrency();
-    const inAccount = quoted && account && quoted !== account ? convertCurrency(this.market.fxRates(), cost, quoted, account) : cost;
-    return inAccount === null ? null : Math.ceil(inAccount * 1.1);
+    const inAccount =
+      quoted && account && quoted !== account ? convertCurrency(this.market.fxRates(), cost, quoted, account) : cost;
+    return inAccount === null ? null : Math.min(MAX_ORDER_VALUE, Math.max(1, Math.ceil(inAccount * DEFAULT_BUFFER)));
   });
 
   /** The price has already reached the trigger, so the strategy would be refused: say so before the server does. */
@@ -230,6 +239,34 @@ export class StrategyForm {
     return this.direction() === TriggerDirection.Below ? price <= trigger : price >= trigger;
   });
 
+  /** The rule in words, as the live summary says it. Empty until the five inputs make a rule. */
+  protected readonly summary = computed(() => {
+    const quantity = this.quantityValue();
+    const trigger = this.triggerValue();
+    const symbol = this.symbol();
+    if (symbol === '' || quantity === null || trigger === null) {
+      return '';
+    }
+    const buying = this.tradeSide() === TradeOrderSide.Buy;
+    const way = this.direction() === TriggerDirection.Below ? 'falls to' : 'rises to';
+    const level = this.money(trigger, this.currency(), 2, 4);
+    const runs = this.executionsValue();
+    const cap = this.spendingCap();
+    const account = this.store.accountCurrency();
+
+    const parts = [
+      `${buying ? 'Buy' : 'Sell'} ${quantity.toLocaleString('en-US')} ${symbol} when the price ${way} ${level}.`,
+      runs === 1 ? 'Runs once.' : `Runs up to ${runs} times, each time the price crosses the level again.`,
+    ];
+    if (cap !== null) {
+      const amount = this.money(cap, account, 0, 2);
+      parts.push(
+        `${buying ? 'Worst case about' : 'The order is capped at about'} ${amount}${runs === 1 ? '' : ' per order'} (the order is placed at the market price, so it can differ).`,
+      );
+    }
+    return parts.join(' ');
+  });
+
   protected readonly canSubmit = computed(
     () =>
       this.symbol() !== '' &&
@@ -238,21 +275,6 @@ export class StrategyForm {
       !this.alreadyReached() &&
       this.store.accountId() !== null,
   );
-
-  protected useSuggestedLimit(): void {
-    const suggestion = this.suggestedOrderLimit();
-    if (suggestion !== null) {
-      this.strategy.maxOrderValue().value.set(String(suggestion));
-    }
-  }
-
-  /** The position limit most people want: the quantity itself, or what they already hold plus it. */
-  protected useQuantityAsPosition(): void {
-    const quantity = this.quantityValue();
-    if (quantity !== null) {
-      this.strategy.maxPosition().value.set(String(quantity));
-    }
-  }
 
   protected async onSubmit(event: Event): Promise<void> {
     event.preventDefault();
@@ -263,6 +285,8 @@ export class StrategyForm {
     await submit(this.strategy, async () => {
       const values = this.model();
       const end = values.validUntil.trim() ? endOfDay(values.validUntil.trim()) : null;
+      const maxOrderValue = values.maxOrderValue.replace(/,/g, '').trim();
+      const maxPosition = values.maxPosition.trim();
       try {
         const created = await this.store.create({
           symbol: this.symbol(),
@@ -270,10 +294,9 @@ export class StrategyForm {
           quantity: Number(values.quantity.trim()),
           direction: this.direction(),
           triggerPrice: Number(values.trigger.replace(/,/g, '').trim()),
-          maxOrderValue: Number(values.maxOrderValue.replace(/,/g, '').trim()),
-          maxPositionQty: Number(values.maxPosition.trim()),
+          ...(maxOrderValue ? { maxOrderValue: Number(maxOrderValue) } : {}),
+          ...(maxPosition ? { maxPositionQty: Number(maxPosition) } : {}),
           maxExecutions: Number(values.maxExecutions.trim()),
-          maxFailures: Number(values.maxFailures.trim()),
           ...(end ? { validUntil: end.toISOString() } : {}),
         });
         this.notifications.success(`Strategy #${created.strategyId} is watching ${created.symbol}.`);
@@ -285,6 +308,14 @@ export class StrategyForm {
   }
 
   protected readonly TradeOrderSide = TradeOrderSide;
+
+  private money(value: number, currency: string | null | undefined, minimumFractionDigits: number, maximumFractionDigits: number): string {
+    const digits = { minimumFractionDigits, maximumFractionDigits };
+    if (!currency) {
+      return value.toLocaleString(this.formats.locale(), digits);
+    }
+    return new Intl.NumberFormat(this.formats.locale(), { style: 'currency', currency, ...digits }).format(value);
+  }
 }
 
 /** The last moment of a calendar day (yyyy-mm-dd) in the customer's own time zone, or null if it is not a date. */

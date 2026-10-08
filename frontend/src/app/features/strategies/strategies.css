@@ -150,15 +150,6 @@ app-strategy-form {
   color: var(--surface-foreground-subtle);
 }
 
-.limits-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  white-space: nowrap;
-  color: var(--surface-foreground-subtle);
-}
-
 .row-actions {
   display: flex;
   flex-wrap: wrap;

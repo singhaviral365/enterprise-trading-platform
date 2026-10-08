@@ -117,7 +117,7 @@ describe('StrategiesPage', () => {
     expect(safety).toContain('through');
   });
 
-  it('lists each strategy as a rule with its status in words, its runs and its limits', async () => {
+  it('lists each strategy as a rule with its status in words and its runs, with the limits left to the activity view', async () => {
     await create({
       answer: [
         strategy(1, 'ACTIVE'),
@@ -131,9 +131,8 @@ describe('StrategiesPage', () => {
     expect(text('strategy-row-1')).toContain('Buy 50 when the price is at or below $150.00');
     expect(text('strategy-status-1')).toBe('Watching');
     expect(text('strategy-row-1')).toContain('0 of 1');
-    expect(text('strategy-row-1')).toContain('Order up to 10,000');
-    expect(text('strategy-row-1')).toContain('Holding up to 200');
-    expect(text('strategy-row-1')).toContain('Stops after 3 failures');
+    expect(text('strategy-row-1')).not.toContain('Order up to');
+    expect(text('strategy-row-1')).not.toContain('Holding up to');
     expect(text('strategy-row-1')).toContain('No end');
 
     expect(text('strategy-row-2')).toContain('Sell 10 when the price is at or above $200.00');
@@ -276,6 +275,7 @@ describe('StrategiesPage', () => {
     await render();
 
     const activity = text('strategy-activity');
+    expect(text('strategy-limits')).toContain('Spends at most 10,000 per order, holds at most 200 units, stops after 3 failures');
     expect(activity).toContain('Order placed');
     expect(activity).toContain('149.8');
     expect(activity).toContain('#77');

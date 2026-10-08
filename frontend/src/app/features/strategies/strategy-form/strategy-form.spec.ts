@@ -45,13 +45,11 @@ describe('StrategyForm', () => {
     await settle();
   }
 
-  /** A valid strategy: buy 50 AAPL if it falls to 150, with limits. */
+  /** A valid strategy from the five inputs alone: buy 50 AAPL if it falls to 150. No limit is typed. */
   async function fillValid(): Promise<void> {
     await choose('#strategy-symbol', 'AAPL');
     await type('strategy-trigger', '150');
     await type('strategy-quantity', '50');
-    await type('strategy-max-order', '10000');
-    await type('strategy-max-position', '200');
   }
 
   beforeEach(async () => {
@@ -94,42 +92,98 @@ describe('StrategyForm', () => {
     expect(text('strategy-now')).toContain('$200.00');
   });
 
-  it('keeps Create disabled until the rule and every required limit are filled in', async () => {
+  it('keeps Create disabled until the five inputs make a rule, and enables it with no limit typed', async () => {
     expect(byTestId<HTMLButtonElement>('strategy-submit')!.disabled).toBe(true);
 
     await fillValid();
 
     expect(byTestId<HTMLButtonElement>('strategy-submit')!.disabled).toBe(false);
-  });
-
-  it('does not default the limits: they are the customers decision', async () => {
     expect(byTestId<HTMLInputElement>('strategy-max-order')!.value).toBe('');
     expect(byTestId<HTMLInputElement>('strategy-max-position')!.value).toBe('');
   });
 
-  it('says what is wrong with each field once it has been visited', async () => {
+  it('has five inputs in the main row, and the rest behind a closed More options', async () => {
+    const row = root.querySelector('.rule-row')!;
+    expect(row.querySelectorAll('select, input').length).toBeGreaterThanOrEqual(5);
+    const more = byTestId<HTMLDetailsElement>('strategy-more')!;
+    expect(more.open).toBe(false);
+    expect(more.querySelector('#strategy-max-executions')).not.toBeNull();
+    expect(more.querySelector('#strategy-valid-until')).not.toBeNull();
+    expect(more.querySelector('#strategy-max-order')).not.toBeNull();
+    expect(more.querySelector('#strategy-max-position')).not.toBeNull();
+    expect(root.querySelector('.strategy-form > fieldset')).toBeNull();
+    expect(root.textContent).not.toContain('1. The rule');
+  });
+
+  it('says in one live sentence what the rule does, how often, and the worst case', async () => {
+    await fillValid();
+
+    const summary = text('strategy-summary-text');
+    expect(summary).toContain('Buy 50 AAPL when the price falls to $150.00.');
+    expect(summary).toContain('Runs once.');
+    // 50 x 150 = 7,500 plus 15% = 8,625 in the account currency.
+    expect(summary).toContain('Worst case about $8,625');
+    expect(summary).toContain('can differ');
+    expect(byTestId('strategy-summary')!.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('follows the rule as it changes: sell, above, more runs', async () => {
+    await choose('#strategy-direction', 'ABOVE');
+    await fillValid();
+    await type('strategy-trigger', '260');
+    root.querySelector<HTMLInputElement>('[data-testid="order-side-sell"]')!.click();
+    await type('strategy-max-executions', '3');
+
+    const summary = text('strategy-summary-text');
+    expect(summary).toContain('Sell 50 AAPL when the price rises to $260.00.');
+    expect(summary).toContain('Runs up to 3 times');
+    expect(summary).toContain('capped at about');
+    expect(summary).toContain('per order');
+  });
+
+  it('asks what to do before there is a rule instead of showing a sentence', async () => {
+    expect(byTestId('strategy-summary-text')).toBeNull();
+    expect(text('strategy-summary')).toContain('Choose an instrument and a price');
+  });
+
+  it('says what is wrong with each field once it has been visited, and only then', async () => {
+    expect(root.querySelector('.form-error-text')).toBeNull();
+
     await type('strategy-trigger', '-5');
     await type('strategy-quantity', '0');
-    await type('strategy-max-order', '12.345');
-    await type('strategy-max-position', '0');
 
     const form = root.textContent ?? '';
     expect(form).toContain('Enter a price above 0 with up to 4 decimal places.');
     expect(form).toContain('Quantity must be a whole number of at least 1.');
-    expect(form).toContain('Enter an amount above 0 with up to 2 decimal places.');
-    expect(form).toContain('Enter a whole number of at least 1.');
     expect(byTestId('strategy-trigger')!.getAttribute('aria-invalid')).toBe('true');
+    expect(byTestId<HTMLButtonElement>('strategy-submit')!.disabled).toBe(true);
   });
 
-  it('keeps the platforms ceilings in front of the customer', async () => {
-    await type('strategy-quantity', '1000001');
+  it('has no permanent helper paragraphs under the inputs', async () => {
+    await fillValid();
+
+    expect(root.textContent).not.toContain("In the instrument's own currency");
+    expect(root.textContent).not.toContain('These are checked before every order');
+    expect(root.textContent).not.toContain('Use the quantity');
+    expect(root.querySelector('[data-testid="strategy-use-suggested"]')).toBeNull();
+  });
+
+  it('checks the limits only when they are typed in More options, and keeps the ceilings in front of the customer', async () => {
+    await fillValid();
+    await type('strategy-max-order', '12.345');
+    await type('strategy-max-position', '0');
+
+    expect(root.textContent).toContain('Enter an amount above 0 with up to 2 decimal places.');
+    expect(root.textContent).toContain('Enter a whole number of at least 1.');
+    expect(byTestId<HTMLButtonElement>('strategy-submit')!.disabled).toBe(true);
+
     await type('strategy-max-order', '10000001');
-
-    expect(root.textContent).toContain('Quantity can be at most 1,000,000.');
+    await type('strategy-quantity', '1000001');
     expect(root.textContent).toContain('The most one order may cost is 10,000,000.');
+    expect(root.textContent).toContain('Quantity can be at most 1,000,000.');
   });
 
-  it('wants a buys position limit to be at least the quantity', async () => {
+  it('wants a buys position limit, when typed, to be at least the quantity', async () => {
     await type('strategy-quantity', '50');
     await type('strategy-max-position', '10');
 
@@ -144,12 +198,13 @@ describe('StrategyForm', () => {
     expect(root.textContent).toContain('The end date must be in the future.');
   });
 
-  it('refuses a trigger the price has already reached, before the server has to', async () => {
+  it('refuses a trigger the price has already reached, in one short line, before the server has to', async () => {
     await fillValid();
     await type('strategy-trigger', '250');
 
     expect(byTestId('strategy-already-reached')).toBeTruthy();
-    expect(byTestId('strategy-already-reached')!.textContent).toContain('A strategy only trades when the price moves through its level');
+    expect(text('strategy-already-reached')).toBe('AAPL is already below that level, so this would trade now. Pick a lower price.');
+    expect(byTestId('strategy-summary-text')).toBeNull();
     expect(byTestId<HTMLButtonElement>('strategy-submit')!.disabled).toBe(true);
 
     await type('strategy-trigger', '150');
@@ -162,24 +217,23 @@ describe('StrategyForm', () => {
     await fillValid();
     await type('strategy-trigger', '150');
 
-    expect(byTestId('strategy-already-reached')).toBeTruthy();
+    expect(text('strategy-already-reached')).toContain('already above that level');
+    expect(text('strategy-already-reached')).toContain('Pick a higher price');
 
     await type('strategy-trigger', '260');
     expect(byTestId('strategy-already-reached')).toBeNull();
   });
 
-  it('shows what the order would cost at the trigger and can fill the limit from it', async () => {
+  it('shows what auto means for the spending cap as a placeholder, and a typed cap replaces it in the sentence', async () => {
     await fillValid();
-    await type('strategy-max-order', '');
 
-    expect(text('strategy-cost')).toContain('$7,500.00');
-    byTestId<HTMLButtonElement>('strategy-use-suggested')!.click();
-    await settle();
+    expect(byTestId<HTMLInputElement>('strategy-max-order')!.placeholder).toBe('auto: 8,625');
 
-    expect(byTestId<HTMLInputElement>('strategy-max-order')!.value).toBe('8250');
+    await type('strategy-max-order', '9000');
+    expect(text('strategy-summary-text')).toContain('Worst case about $9,000');
   });
 
-  it('creates the strategy with the limits and an end of day, then says so and hands it on', async () => {
+  it('creates the strategy from the five inputs, sending no limit, plus an end of day, then says so and hands it on', async () => {
     const created = vi.fn();
     fixture.componentInstance.created.subscribe(created);
     await fillValid();
@@ -198,11 +252,11 @@ describe('StrategyForm', () => {
       quantity: 50,
       direction: 'BELOW',
       triggerPrice: 150,
-      maxOrderValue: 10000,
-      maxPositionQty: 200,
       maxExecutions: 1,
-      maxFailures: 3,
     });
+    expect(request.request.body.maxOrderValue).toBeUndefined();
+    expect(request.request.body.maxPositionQty).toBeUndefined();
+    expect(request.request.body.maxFailures).toBeUndefined();
     const sent = new Date(request.request.body.validUntil);
     expect([sent.getFullYear(), sent.getMonth(), sent.getDate()]).toEqual([end.getFullYear(), end.getMonth(), end.getDate()]);
     expect([sent.getHours(), sent.getMinutes()]).toEqual([23, 59]);
@@ -224,11 +278,23 @@ describe('StrategyForm', () => {
     await settle();
   });
 
+  it('sends the limits that were typed in More options, and only those', async () => {
+    await fillValid();
+    await type('strategy-max-order', '10000');
+    await type('strategy-max-position', '200');
+
+    byTestId<HTMLFormElement>('strategy-form')!.dispatchEvent(new Event('submit'));
+    const request = await vi.waitFor(() => http.expectOne('/api/v1/strategies'));
+
+    expect(request.request.body).toMatchObject({ maxOrderValue: 10000, maxPositionQty: 200 });
+    request.flush({ strategyId: 1, symbol: 'AAPL' });
+    await settle();
+  });
+
   it('sells when the side is switched', async () => {
     await fillValid();
     root.querySelector<HTMLInputElement>('[data-testid="order-side-sell"]')!.click();
     await settle();
-    await type('strategy-max-position', '1');
 
     byTestId<HTMLFormElement>('strategy-form')!.dispatchEvent(new Event('submit'));
     const request = await vi.waitFor(() => http.expectOne('/api/v1/strategies'));

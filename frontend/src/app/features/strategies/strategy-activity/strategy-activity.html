@@ -1,5 +1,9 @@
 <section class="activity" [attr.aria-labelledby]="'activity-title-' + strategy().strategyId" data-testid="strategy-activity">
   <h3 class="activity-title" [id]="'activity-title-' + strategy().strategyId">Activity</h3>
+  <p class="activity-limits" data-testid="strategy-limits">
+    Spends at most {{ strategy().maxOrderValue | number: '1.0-2' }} per order, holds at most {{ strategy().maxPositionQty | number }}
+    units, stops after {{ strategy().maxFailures }} failures in a row.
+  </p>
 
   @if (runs.isLoading() && !runs.hasValue()) {
     <p class="activity-note" aria-live="polite">
@@ -43,7 +47,8 @@
                 @if (run.quotePrice !== null && run.quotePrice !== undefined) {
                   {{ run.quotePrice | number: '1.2-4' }} {{ strategy().currency }}
                 } @else {
-                  —
+                  <span class="no-value" aria-hidden="true">-</span>
+                  <span class="visually-hidden">No price</span>
                 }
               </td>
               <td>
@@ -55,7 +60,8 @@
                     <span class="settled">Working</span>
                   }
                 } @else {
-                  —
+                  <span class="no-value" aria-hidden="true">-</span>
+                  <span class="visually-hidden">No order</span>
                 }
               </td>
             </tr>

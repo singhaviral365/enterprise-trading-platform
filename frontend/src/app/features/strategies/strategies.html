@@ -1,10 +1,7 @@
 <header class="strategies-header">
   <div>
     <h1 class="page-title" data-testid="strategies-title">Automated strategies</h1>
-    <p class="lede">
-      Set a rule once, such as "buy 50 AAPL if it falls to 150", and the platform trades it for you, even while you are signed
-      out. Each order goes through the same order route as one you place yourself, and stays inside the limits you set.
-    </p>
+    <p class="lede">The platform places this order for you when the price reaches your level, even when you are signed out.</p>
   </div>
   @if (store.accountId() !== null) {
     <div class="header-actions">
@@ -39,7 +36,8 @@
       <i class="fas fa-chevron-down chevron" aria-hidden="true"></i>
     </summary>
     <ul class="safety-list">
-      <li>You choose the most one order may cost, the largest holding it may build, and how many failures stop it.</li>
+      <li>Every strategy has a spending cap and a largest holding. They are worked out for you unless you set your own in More options, and a strategy that would break one does not trade.</li>
+      <li>Each order goes through the same order route as one you place yourself.</li>
       <li>Switching a strategy off or cancelling it stops any order that has not been placed yet. It takes effect immediately.</li>
       <li>A strategy only trades when the price moves <em>through</em> its level, never the moment you create it.</li>
       <li>You are notified of every order it places, and when one is stopped or expires. You can turn these notices off in Settings.</li>
@@ -89,7 +87,6 @@
               <th scope="col">Rule</th>
               <th scope="col">Status</th>
               <th scope="col" class="is-numeric">Orders</th>
-              <th scope="col">Limits</th>
               <th scope="col">Ends</th>
               <th scope="col" class="actions-cell">Actions</th>
             </tr>
@@ -120,13 +117,6 @@
                   }
                 </td>
                 <td class="is-numeric">{{ s.executions }} of {{ s.maxExecutions }}</td>
-                <td>
-                  <div class="limits-cell">
-                    <span>Order up to {{ s.maxOrderValue | number: '1.0-2' }}</span>
-                    <span>Holding up to {{ s.maxPositionQty | number }}</span>
-                    <span>Stops after {{ s.maxFailures }} failures</span>
-                  </div>
-                </td>
                 <td>
                   @if (s.validUntil) {
                     {{ s.validUntil | date: 'mediumDate' }}
@@ -192,7 +182,7 @@
               </tr>
               @if (expanded() === s.strategyId) {
                 <tr class="detail-row">
-                  <td colspan="6" [id]="'activity-' + s.strategyId">
+                  <td colspan="5" [id]="'activity-' + s.strategyId">
                     <app-strategy-activity [strategy]="s" />
                   </td>
                 </tr>
