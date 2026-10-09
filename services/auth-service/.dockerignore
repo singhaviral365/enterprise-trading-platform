@@ -12,5 +12,3 @@ coverage
 .env.example
 test
 jest.config.js
-tsconfig.json
-tsconfig.build.json

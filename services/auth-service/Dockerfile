@@ -5,6 +5,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# argon2 is a native module; with no prebuilt binary for Alpine it is compiled here, so the build stage needs Python and a C++ toolchain.
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package*.json ./
 
@@ -18,6 +21,9 @@ COPY src ./src
 # Build the application
 RUN npm run build
 
+# Drop the dev dependencies; what is left (argon2 already compiled) is copied into the runtime image.
+RUN npm prune --omit=dev
+
 # Stage 2: Runtime
 FROM node:20-alpine
 
@@ -29,8 +35,8 @@ RUN apk add --no-cache dumb-init
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Production dependencies, compiled in the builder stage (no compiler needed here)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
