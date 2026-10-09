@@ -1,13 +1,10 @@
 # executor-service image: builds from source with Maven, runs the jar as a non-root user.
-# Context: services/ (the parent folder), because executor-service reuses classes from order-service, which is built and installed first.
+# Context: services/ (the parent folder), because the pom reads the local library repository in services/maven-repo.
 # The settings come from the environment (see the root .env and docker-compose.yml), not from this image.
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY maven-repo maven-repo
-COPY order-service/pom.xml order-service/pom.xml
 COPY executor-service/pom.xml executor-service/pom.xml
-COPY order-service/src order-service/src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q -f order-service/pom.xml -DskipTests -Djacoco.skip=true install
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -f executor-service/pom.xml -DskipTests -Djacoco.skip=true dependency:go-offline
 COPY executor-service/src executor-service/src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -f executor-service/pom.xml -DskipTests -Djacoco.skip=true package  && cp executor-service/target/executor-service-*-SNAPSHOT.jar /build/app.jar

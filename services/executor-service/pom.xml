@@ -38,11 +38,11 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- Reuse shared classes from order-service: run `mvn install -DskipTests` in services/order-service first (the Docker build does it) -->
+
+        <!-- REST controllers (MarketController) and the HTTP clients -->
         <dependency>
-            <groupId>org.example</groupId>
-            <artifactId>order-service</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
         <dependency>

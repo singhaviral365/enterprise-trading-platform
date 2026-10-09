@@ -212,7 +212,6 @@ cd services/auth-service && npm ci && npm run build && npm run start
 cd services/order-service && ./mvnw spring-boot:run
 
 # executor-service: consumes `orders`, settles fills, serves the market board at /api/v1/market/quotes
-# (it reuses classes from order-service, so install that once first: cd services/order-service && ./mvnw install -DskipTests)
 cd services/executor-service && ./mvnw spring-boot:run
 
 # frontend: npm start generates its config from application.yml, proxies /api to the order-service and /api/v1/market to the executor

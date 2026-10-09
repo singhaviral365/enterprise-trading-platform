@@ -75,7 +75,7 @@ Write-Host "Starting order-service ($(Get-Config 'services.order.url'))..."
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\order-service'; mvn spring-boot:run$orderProfile"
 
 Write-Host "Starting executor-service ($(Get-Config 'services.executor.url'))..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\order-service'; mvn -q install -DskipTests; cd '$rootDir\services\executor-service'; mvn spring-boot:run"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services\executor-service'; mvn spring-boot:run"
 
 if ($windows) {
     Write-Host "Starting Kafka (docker compose)..."

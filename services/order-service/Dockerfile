@@ -7,7 +7,7 @@ COPY order-service/pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests -Djacoco.skip=true dependency:go-offline
 COPY order-service/src ./src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests -Djacoco.skip=true package \
- && cp target/order-service-*-SNAPSHOT-exec.jar /build/app.jar
+ && cp target/order-service-*-SNAPSHOT.jar /build/app.jar
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S app && adduser -S -G app app

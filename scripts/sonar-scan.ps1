@@ -33,7 +33,7 @@ if (-not $SkipTests) {
     Push-Location (Join-Path $root 'services\auth-service'); npx jest --coverage; $authExit = $LASTEXITCODE; Pop-Location
 
     Step 'order-service: tests and JaCoCo report'
-    Push-Location (Join-Path $root 'services\order-service'); .\mvnw.cmd clean install '-Dmaven.test.failure.ignore=true'; $orderExit = $LASTEXITCODE; Pop-Location
+    Push-Location (Join-Path $root 'services\order-service'); .\mvnw.cmd clean verify '-Dmaven.test.failure.ignore=true'; $orderExit = $LASTEXITCODE; Pop-Location
 
     Step 'executor-service: tests and JaCoCo report'
     Push-Location (Join-Path $root 'services\executor-service'); .\mvnw.cmd clean verify '-Dmaven.test.failure.ignore=true'; $executorExit = $LASTEXITCODE; Pop-Location
