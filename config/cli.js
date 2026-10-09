@@ -6,8 +6,8 @@
  *   node config/cli.js frontend              write frontend/src/app/config/platform.config.ts and frontend/proxy.conf.json
  *   node config/cli.js serve                 the above, then `ng serve` on services.frontend.port with the proxy
  *   node config/cli.js contracts             write the `servers:` URLs of every contract in contracts/*.yaml
- *   node config/cli.js compose-env [file]    write the variables docker compose reads (default services/.env)
- *   node config/cli.js env                   print every key as KEY=VALUE shell lines (for scripts.sh and other shells)
+ *   node config/cli.js env-file              write the root .env (real values) and .env.example (the committed template) from the config
+ *   node config/cli.js env                   print every key as KEY=VALUE shell lines (for shell scripts)
  *   node config/cli.js check                 explain what is missing or unsafe, exit 1 on a problem
  *   node config/cli.js enc-key               print a new payload-encryption key as the two lines to paste into application.yml
  */
@@ -75,7 +75,8 @@ function writeIfChanged(file, content) {
 function frontend(config) {
   const urls = {
     frontendUrl: service(config, 'frontend').url,
-    authUrl: service(config, 'auth').url,
+    // PUBLIC_AUTH_URL: the address the BROWSER uses for the auth-service when it differs from services.auth (a container build)
+    authUrl: process.env.PUBLIC_AUTH_URL || service(config, 'auth').url,
     orderUrl: service(config, 'order').url,
     executorUrl: service(config, 'executor').url,
     mailhogWebUrl: `http://${config.services.mailhog.host}:${config.services.mailhog['web-port']}`,
@@ -153,23 +154,171 @@ function contracts(config) {
 
 // ------------------------------------------------------------------------------------------------------ compose / env
 
-function composeVariables(config) {
-  const g = (k) => text(get(config, k));
-  return {
-    POSTGRES_DB: g('database.trading.name'),
-    POSTGRES_USER: g('database.trading.user'),
-    POSTGRES_PASSWORD: g('database.trading.password'),
-    TRADING_DB_PORT: g('database.trading.port'),
-    AUTH_DB_NAME: g('database.auth.name'),
-    AUTH_DB_PORT: g('database.auth.port'),
-    KAFKA_PORT: g('kafka.external-port'),
-    KAFKA_EXTERNAL_HOST: g('kafka.external-host'),
-    AUTH_PORT: g('services.auth.port'),
-    ORDER_PORT: g('services.order.port'),
-    BACKEND_SPRING_PROFILES_ACTIVE: g('order.email.mode') === 'off' ? '' : g('order.email.mode'),
-    CORE_JAVA_REPO_URL: g('docker.core-java-repo-url'),
-    CORE_JAVA_REF: g('docker.core-java-ref'),
-  };
+/*
+ * Every environment variable the platform reads, by the part that reads it, and the application.yml key each comes from. `env-file` turns this
+ * list into the root .env (real values) and .env.example (the committed template: the same names, secrets blank), so the two cannot drift.
+ * A function instead of a key is a value worked out from several keys.
+ */
+const ENV_SPEC = [
+  ['Shared by the auth, order and executor services', [
+    ['JWT_SECRET', 'jwt.secret'],
+    ['JWT_ISSUER', 'jwt.issuer'],
+    ['KAFKA_BOOTSTRAP_SERVERS', 'kafka.bootstrap-servers'],
+  ]],
+  ['auth-service (NestJS)', [
+    ['NODE_ENV', 'environment'],
+    ['PORT', 'services.auth.port'],
+    ['LOG_LEVEL', 'auth.log-level'],
+    ['DATABASE_HOST', 'database.auth.host'],
+    ['DATABASE_PORT', 'database.auth.port'],
+    ['DATABASE_NAME', 'database.auth.name'],
+    ['DATABASE_USER', 'database.auth.user'],
+    ['DATABASE_PASSWORD', 'database.auth.password'],
+    ['JWT_ACCESS_TOKEN_EXPIRES_IN', 'jwt.access-token-expires-in'],
+    ['JWT_REFRESH_TOKEN_EXPIRES_IN', 'jwt.refresh-token-expires-in'],
+    ['AUTH_COOKIE_SECURE', 'auth.cookie.secure'],
+    ['AUTH_COOKIE_SAMESITE', 'auth.cookie.samesite'],
+    ['AUTH_CORS_ORIGINS', (c) => [service(c, 'frontend').url, ...((get(c, 'auth.cors.extra-origins') || []).map(String))].filter(Boolean).join(',')],
+    ['AUTH_EMAIL_VERIFICATION_ENABLED', 'auth.verification-enabled'],
+    ['AUTH_TWO_FACTOR_ENABLED', 'auth.two-factor-enabled'],
+    ['AUTH_OTP_SECRET', 'auth.otp.secret'],
+    ['AUTH_OTP_TTL_SECONDS', 'auth.otp.ttl-seconds'],
+    ['AUTH_OTP_RESET_TTL_SECONDS', 'auth.otp.reset-ttl-seconds'],
+    ['AUTH_OTP_MAX_ATTEMPTS', 'auth.otp.max-attempts'],
+    ['AUTH_OTP_RESEND_COOLDOWN_SECONDS', 'auth.otp.resend-cooldown-seconds'],
+    ['AUTH_OTP_MAX_SENDS', 'auth.otp.max-sends'],
+    ['AUTH_EMAIL_MODE', 'auth.email.mode'],
+    ['AUTH_EMAIL_SMTP_HOST', 'auth.email.smtp.host'],
+    ['AUTH_EMAIL_SMTP_PORT', 'auth.email.smtp.port'],
+    ['AUTH_EMAIL_SMTP_TLS', 'auth.email.smtp.tls'],
+    ['AUTH_EMAIL_SMTP_USER', 'auth.email.smtp.user'],
+    ['AUTH_EMAIL_SMTP_PASSWORD', 'auth.email.smtp.password'],
+    ['AUTH_EMAIL_FROM', 'auth.email.from'],
+    ['AUTH_EMAIL_FROM_DOMAINS', 'auth.email.from-domains'],
+    ['AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS', 'auth.email.allowed-recipient-domains'],
+    ['AUTH_EMAIL_REPLY_TO', 'auth.email.reply-to'],
+    ['MAILHOG_HOST', 'services.mailhog.host'],
+    ['MAILHOG_SMTP_PORT', 'services.mailhog.smtp-port'],
+    ['ENC_MODE', 'encryption.mode'],
+    ['ENC_KID', 'encryption.kid'],
+    ['ENC_PRIVATE_KEY_PEM', 'encryption.private-key-pem'],
+    ['ENC_MAX_AGE_SECONDS', 'encryption.max-age-seconds'],
+    ['ENC_LOG_PLAINTEXT', 'encryption.log-plaintext'],
+  ]],
+  ['order-service (Spring Boot)', [
+    ['SPRING_PROFILES_ACTIVE', (c) => (text(get(c, 'order.email.mode')) === 'off' ? '' : text(get(c, 'order.email.mode')))],
+    ['SERVICES_ORDER_PORT', 'services.order.port'],
+    ['SERVICES_MAILHOG_HOST', 'services.mailhog.host'],
+    ['SERVICES_MAILHOG_SMTP_PORT', 'services.mailhog.smtp-port'],
+    ['DATABASE_TRADING_HOST', 'database.trading.host'],
+    ['DATABASE_TRADING_PORT', 'database.trading.port'],
+    ['DATABASE_TRADING_NAME', 'database.trading.name'],
+    ['DATABASE_TRADING_USER', 'database.trading.user'],
+    ['DATABASE_TRADING_PASSWORD', 'database.trading.password'],
+    ['EXTERNAL_FAUXNANCE_BASE_URL', 'external.fauxnance.base-url'],
+    ['EXTERNAL_FAUXNANCE_API_KEY', 'external.fauxnance.api-key'],
+    ['EXTERNAL_EXCHANGE_RATE_BASE_URL', 'external.exchange-rate.base-url'],
+    ['EXTERNAL_EXCHANGE_RATE_API_KEY', 'external.exchange-rate.api-key'],
+    ['EXTERNAL_GEMINI_BASE_URL', 'external.gemini.base-url'],
+    ['EXTERNAL_GEMINI_API_KEY', 'external.gemini.api-key'],
+    ['EXTERNAL_GEMINI_MODEL', 'external.gemini.model'],
+    ['EXTERNAL_GEMINI_RATE_LIMIT_RPM', 'external.gemini.rate-limit-rpm'],
+    ['SIGNALS_CANDLE_CACHE_TTL_MINUTES', 'signals.candle-cache-ttl-minutes'],
+    ['SIGNALS_SIGNAL_CACHE_TTL_MINUTES', 'signals.signal-cache-ttl-minutes'],
+    ['ORDER_EMAIL_SMTP_HOST', 'order.email.smtp.host'],
+    ['ORDER_EMAIL_SMTP_PORT', 'order.email.smtp.port'],
+    ['ORDER_EMAIL_SMTP_TLS', 'order.email.smtp.tls'],
+    ['ORDER_EMAIL_SMTP_USERNAME', 'order.email.smtp.username'],
+    ['ORDER_EMAIL_SMTP_PASSWORD', 'order.email.smtp.password'],
+    ['ORDER_EMAIL_FROM', 'order.email.from'],
+    ['ORDER_EMAIL_FROM_DOMAINS', 'order.email.from-domains'],
+    ['ORDER_EMAIL_ALLOWED_RECIPIENT_DOMAINS', 'order.email.allowed-recipient-domains'],
+    ['ORDER_EMAIL_REPLY_TO', 'order.email.reply-to'],
+    ['ORDER_EMAIL_MAX_PER_MINUTE', 'order.email.max-per-minute'],
+  ]],
+  ['executor-service (Spring Boot)', [
+    ['SERVICES_EXECUTOR_PORT', 'services.executor.port'],
+    ['SERVICES_ORDER_HOST', 'services.order.host'],
+    ['SERVICES_ORDER_PORT', 'services.order.port'],
+    ['EXECUTOR_POLL_INTERVAL_SECONDS', 'executor.poll-interval-seconds'],
+    ['EXECUTOR_WATCH_SYMBOLS', 'executor.watch-symbols'],
+    ['EXECUTOR_STRATEGY_EXECUTION_ENABLED', 'executor.strategy-execution-enabled'],
+    ['EXECUTOR_STRATEGY_DEMO_DELAY_MILLIS', 'executor.strategy-demo-delay-millis'],
+  ]],
+  ['frontend and the Playwright journeys', [
+    ['E2E_BASE_URL', (c) => service(c, 'frontend').url],
+    ['E2E_MAILHOG_URL', (c) => `http://${get(c, 'services.mailhog.host')}:${get(c, 'services.mailhog.web-port')}`],
+    ['E2E_USERNAME', 'e2e.username'],
+    ['E2E_PASSWORD', 'e2e.password'],
+    ['E2E_READONLY_USERNAME', 'e2e.readonly-username'],
+    ['E2E_READONLY_PASSWORD', 'e2e.readonly-password'],
+    ['E2E_SYMBOL', 'e2e.symbol'],
+  ]],
+  ['docker compose (ports and the database containers)', [
+    ['FRONTEND_PORT', 'services.frontend.port'],
+    ['AUTH_PORT', 'services.auth.port'],
+    ['ORDER_PORT', 'services.order.port'],
+    ['EXECUTOR_PORT', 'services.executor.port'],
+    ['POSTGRES_USER', 'database.trading.user'],
+    ['POSTGRES_PASSWORD', 'database.trading.password'],
+    ['POSTGRES_DB', 'database.trading.name'],
+    ['TRADING_DB_PORT', 'database.trading.port'],
+    ['AUTH_POSTGRES_USER', 'database.auth.user'],
+    ['AUTH_POSTGRES_PASSWORD', 'database.auth.password'],
+    ['AUTH_POSTGRES_DB', 'database.auth.name'],
+    ['AUTH_DB_PORT', 'database.auth.port'],
+    ['KAFKA_PORT', 'kafka.external-port'],
+    ['KAFKA_EXTERNAL_HOST', 'kafka.external-host'],
+    ['PUBLIC_AUTH_URL', () => ''],
+  ]],
+];
+
+const SECRET_NAME = /PASSWORD|SECRET|API_KEY|PRIVATE_KEY|^E2E_(READONLY_)?USERNAME$/;
+
+function envValue(config, source) {
+  return typeof source === 'function' ? text(source(config)) : text(get(config, source));
+}
+
+function envQuote(value) {
+  if (value === '') return '';
+  if (value.includes('\n')) return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+  if (/^[A-Za-z0-9_@%+=:,./-]*$/.test(value)) return value;
+  return value.includes("'") ? `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"` : `'${value}'`;
+}
+
+function envFileText(config, withSecrets, headerLines) {
+  const out = [...headerLines, ''];
+  const seen = new Set();
+  for (const [section, entries] of ENV_SPEC) {
+    out.push(`# ---- ${section}`);
+    for (const [name, source] of entries) {
+      if (seen.has(name)) {
+        continue; // a name shared by two parts is written once, under the first
+      }
+      seen.add(name);
+      const value = !withSecrets && SECRET_NAME.test(name) ? '' : envValue(config, source);
+      out.push(`${name}=${envQuote(value)}`);
+    }
+    out.push('');
+  }
+  return out.join('\n');
+}
+
+function writeEnvFiles() {
+  const { config } = load();
+  const example = yamlParser().load(fs.readFileSync(EXAMPLE, 'utf8')) || {};
+  const real = envFileText(config, true, [
+    '# Generated by `node config/cli.js env-file` from config/application.yml. Git-ignored: it holds secrets. Edit application.yml, not this file.',
+    '# docker compose reads it from here; the services also read application.yml, and a variable set here overrides its key.',
+  ]);
+  const template = envFileText(example, false, [
+    '# Every environment variable the platform uses, by the part that reads it. Copy it to .env and fill in the blanks (or let',
+    '# `node config/cli.js env-file` write .env from config/application.yml). Generated from config/application.example.yml, so it stays in step.',
+    '# Blank = a secret or an account you must supply: passwords, API keys, the JWT secret, the encryption key, the SMTP account.',
+  ]);
+  fs.writeFileSync(path.join(ROOT, '.env'), real + '\n');
+  fs.writeFileSync(path.join(ROOT, '.env.example'), template + '\n');
+  return ENV_SPEC.reduce((n, [, e]) => n + e.length, 0);
 }
 
 function flatten(node, prefix, out) {
@@ -266,13 +415,10 @@ function main() {
     case 'contracts':
       contracts(config);
       break;
+    case 'env-file':
     case 'compose-env': {
-      const file = arg ? path.resolve(arg) : path.join(ROOT, 'services/.env');
-      const lines = Object.entries(composeVariables(config)).map(([k, v]) => `${k}=${quote(v)}`);
-      fs.writeFileSync(
-        file,
-        '# Generated by config/cli.js compose-env from config/application.yml. Do not edit; it is git-ignored.\n' + lines.join('\n') + '\n',
-      );
+      const n = writeEnvFiles();
+      console.log(`config: wrote .env and .env.example (${n} variables)`);
       break;
     }
     case 'env': {
@@ -292,7 +438,7 @@ function main() {
       break;
     }
     default:
-      console.error('usage: node config/cli.js get|frontend|serve|contracts|compose-env|env|check|enc-key');
+      console.error('usage: node config/cli.js get|frontend|serve|contracts|env-file|env|check|enc-key');
       process.exit(2);
   }
 }

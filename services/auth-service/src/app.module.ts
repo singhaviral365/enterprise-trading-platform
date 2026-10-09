@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { configuration } from './config/configuration';
+import { accessTokenTtlSeconds, jwtIssuer, jwtSecret, requiredInt } from './config/required-settings';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { User } from './users/user.entity';
@@ -18,14 +19,15 @@ import { DatabaseInitService } from './database/database-init.service';
     ConfigModule.forRoot({
       load: [configuration],
       isGlobal: true,
-      envFilePath: ['.env.local', '.env', '../.env', '../../.env'],
+      // Every setting comes from config/application.yml (config/central-config.ts); no .env file is read.
+      ignoreEnvFile: true,
     }),
 
     // Database connection configuration
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DATABASE_HOST,
-      port: parseInt(process.env.DATABASE_PORT || '5432', 10),
+      port: requiredInt('DATABASE_PORT', 'database.auth.port'),
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
@@ -39,11 +41,11 @@ import { DatabaseInitService } from './database/database-init.service';
     // JWT module for token signing
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_SECRET || 'dev-only-change-me-this-secret-is-not-for-production-use',
+      secret: jwtSecret(),
       signOptions: {
-        issuer: process.env.JWT_ISSUER || 'auth-service',
+        issuer: jwtIssuer(),
         algorithm: 'HS256',
-        expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '900', 10),
+        expiresIn: accessTokenTtlSeconds(),
       },
     }),
 

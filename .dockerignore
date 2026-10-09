@@ -1,0 +1,13 @@
+# Keeps secrets and build output out of every image built from the repository root
+.git
+.env
+config/application.yml
+config/node_modules
+**/node_modules
+**/target
+**/dist
+**/.angular
+**/coverage
+**/test-results
+**/test-reports
+**/*.log

@@ -56,11 +56,11 @@ keep being used (retry after 1 minute); with no rates at all, conversion fails a
 
 (`trading.fx.*` in each `application.properties`: `base-url`, `api-key`, `base-currency`, `cache-ttl-minutes`,
 `request-timeout-millis`.) The key is part of the URL, so the services never log the URL or the HTTP client's
-exception text. See `services/.env.example`.
+exception text. See `external.exchange-rate` in `config/application.example.yml`.
 
 ## Database
 
-`instrument` gained two columns (`db/migrations/create_schema.sql`, `sample_data.sql`):
+`instrument` gained two columns (`databases/PostgreSQL/trading/schema.sql`, `seed_data.sql`):
 
 - `currency CHAR(3) NOT NULL DEFAULT 'USD'` - what the instrument is quoted in;
 - `icon_url VARCHAR(255)` - the logo path, `/assets/icons/<TICKER>.svg` in upper case.
@@ -73,7 +73,7 @@ icon paths.
 
 - **Old data is not converted.** Orders and holdings written before this change hold whatever number was stored then
   (e.g. an INFY.NS buy recorded as 1,100 "dollars"). Nothing rewrites them. For a demo database, reload
-  `sample_data.sql` or place fresh orders.
+  `trading/seed_data.sql` or place fresh orders.
 - **Sample data** has EUR and GBP accounts with USD instruments. Those accounts now convert on every trade and need a
   working key.
 - **Rounding:** converted prices are rounded to 4 decimals (the column scale), fills to 2 decimals as before, and a

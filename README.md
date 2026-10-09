@@ -56,24 +56,25 @@ More detail lives in [`documentation/readme`](documentation/readme): [design sys
 
 ```
 enterprise-trading-platform/
-├── frontend/                  Angular 22 app (Vitest unit tests, Playwright e2e)
+├── frontend/                  Angular 22 app (Vitest unit tests, Playwright e2e), with its Dockerfile
 │   ├── src/app/api/generated  Typed API clients generated from /contracts (do not edit)
 │   ├── src/app/shared/ui      Reusable components (pagination, dropdown, dialogs, charts...)
 │   └── public/assets/icons    Company logos, <TICKER>.svg in upper case
 ├── services/
-│   ├── auth-service/          NestJS: register, login, refresh, logout (port 3000)
-│   ├── order-service/         Spring Boot: accounts and orders REST API (port 8081)
-│   ├── executor-service/      Spring Boot: Kafka order executor, market board (port 8082)
-│   ├── reports/               Committed test and coverage reports
-│   └── docker-compose.yml     Postgres, Kafka, auth DB (and containerised services)
-├── db/migrations/             create_schema.sql, sample_data.sql, incremental migrations
+│   ├── auth-service/          NestJS: register, login, refresh, logout (port 3000), with its Dockerfile
+│   ├── order-service/         Spring Boot: accounts and orders REST API (port 8081), with its Dockerfile
+│   ├── executor-service/      Spring Boot: Kafka order executor, market board (port 8082), with its Dockerfile
+│   └── reports/               Committed test and coverage reports
+├── databases/PostgreSQL/      schema.sql and seed_data.sql (both databases), plus trading/ and auth/ for one database at a time
 ├── config/                    application.yml: the one place for every URL, port and secret (see config/README.md)
-├── contracts/                 OpenAPI contracts (auth-api.yaml, trade-api.yaml) + change log
+├── .env.example, .env         Every environment variable, generated from the config (.env is git-ignored)
+├── docker-compose.yml         The whole platform in containers: two databases, Kafka, the three services and the frontend
+├── contracts/                 OpenAPI contracts + change log
 ├── infra/kafka/               create-topics.sh (the three topics)
+├── docker/nginx/              nginx template for the frontend container
 ├── etl/                       Python ETL into an analytics store
 ├── documentation/             Guides, ER diagrams, API (Bruno) collections
-├── scripts/                   run-app.ps1 (one command: every service in its own terminal, with encryption and real email), sonar-scan.ps1
-└── scripts.sh                 Creates the trading database and loads the sample data
+└── scripts/                   run-app.ps1 (every service in its own terminal), setup-db.sh, sonar-scan.ps1, coverage-summary.js
 ```
 
 ---
@@ -130,25 +131,28 @@ Open `config/application.yml` and fill in at least:
 
 `node config/cli.js check` tells you what is still missing.
 
+**`.env` and `.env.example`** (repository root). Every environment variable the platform uses, by the part that reads it (auth-service, order-service, executor-service, frontend and e2e, docker compose). `.env.example` is committed with the secrets blank; `.env` is git-ignored and holds your real values. Both are written from the config, so they cannot drift:
+
+```bash
+node config/cli.js env-file       # writes .env (from config/application.yml) and .env.example (from config/application.example.yml)
+```
+
+You can also skip `application.yml` entirely: `cp .env.example .env` and fill in the blanks. docker compose reads `.env`; the services read `application.yml` and, when a variable is set in the environment, let it override the matching key.
+
 ### Step 1: Databases
 
-Two databases are needed: `trading_db` (order and executor services) and `auth_db` (auth-service). With Docker, Compose starts both Postgres containers from the same file (the script writes the `services/.env` it needs):
+Two databases are needed: `trading_db` (order and executor services) and `auth_db` (auth-service). Two files create them, with all tables, and load the sample data, whichever way PostgreSQL runs (installed, or in Docker):
 
 ```bash
-node config/cli.js compose-env
-cd services
-docker compose --env-file .env up -d postgres auth-db
+psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/schema.sql       # both databases and all their tables
+psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/seed_data.sql    # the sample data in both
+# or, reading the host, port and password from config/application.yml:
+bash scripts/setup-db.sh
 ```
 
-Create the `trading_db` tables and sample data (run once, from `services/`):
+In pgAdmin, which cannot run psql commands, create the two empty databases and run `trading/schema.sql` and `trading/seed_data.sql` on `trading_db`, then `auth/schema.sql` and `auth/seed_data.sql` on `auth_db` (all under `databases/PostgreSQL/`). The schema files are for empty databases; run them once. [More in `databases/README.md`](databases/README.md).
 
-```bash
-docker compose exec -T postgres psql -U postgres -d trading_db < ../db/migrations/create_schema.sql
-docker compose exec -T postgres psql -U postgres -d trading_db < ../db/migrations/sample_data.sql
-```
-
-- `auth_db`'s tables (`users`, `refresh_tokens`) are created by auth-service on first start. Alternatively run [`services/auth-service/auth_setup.sql`](services/auth-service/auth_setup.sql).
-- Using a local Postgres instead of Docker? Create both databases and set `database.*.host/port` in `config/application.yml`.
+The sample users (`alice.trader`, `yuvaraj.k`, ... ten in all) sign in with the password `Sample@12345`; change or delete them before a real deployment.
 
 ### Step 2: Kafka (start it yourself)
 
@@ -157,9 +161,8 @@ Kafka normally runs in your Linux environment, and you start it there. Put its a
 To run it in Docker on this machine instead: `.\scripts\run-app.ps1 --windows` does it for you, or by hand:
 
 ```bash
-node config/cli.js compose-env
-cd services
-docker compose --env-file .env up -d kafka kafka-init
+node config/cli.js env-file       # writes the root .env that compose reads
+docker compose up -d kafka kafka-init
 ```
 
 (`kafka-init` creates the topics and exits; that is normal.)
@@ -206,6 +209,56 @@ On Windows PowerShell use `.\mvnw.cmd spring-boot:run`. The dev proxy means no C
 **Company logos** are plain files named after the ticker, e.g. `frontend/public/assets/icons/AAPL.svg`. A missing file falls back to the symbol's initials.
 
 **Stopping:** `Ctrl+C` in each terminal, then `docker compose stop` in `services/` if you started containers.
+
+### Running everything with Docker Compose
+
+One command starts the whole platform in containers: both databases (created from `databases/PostgreSQL/`, with the sample data), Kafka and its topics, the auth, order and executor services, and the frontend behind nginx. You need Docker with Compose v2 and nothing else (no Node, no JDK, no PostgreSQL).
+
+```bash
+git clone <this repository> && cd <it>
+cp .env.example .env              # then fill in the blanks below (or: node config/cli.js env-file, if you have config/application.yml)
+docker compose up --build
+```
+
+**Compose reads `.env`, not `config/application.yml`** (`application.yml` is git-ignored and is never copied into an image). On a Linux server either copy `.env.example` to `.env` and fill it in, or bring your `config/application.yml` with you and let the helper write `.env` from it and start everything:
+
+```bash
+bash scripts/docker-up.sh -d      # .env exists: use it; else write it from config/application.yml (Node, or a throwaway node container); then docker compose up --build -d
+```
+
+Fill in at least these in `.env` (everything else has a working default):
+
+| Variable | Value |
+|---|---|
+| `JWT_SECRET` | a long random string (32+ characters) |
+| `POSTGRES_PASSWORD`, `DATABASE_TRADING_PASSWORD` | one password for the trading database |
+| `AUTH_POSTGRES_PASSWORD`, `DATABASE_PASSWORD` | one password for the auth database |
+| `EXTERNAL_FAUXNANCE_BASE_URL`, `EXTERNAL_FAUXNANCE_API_KEY` | the programme's market data URL and key |
+| `EXTERNAL_EXCHANGE_RATE_API_KEY` | your ExchangeRate-API key |
+
+Optional: `EXTERNAL_GEMINI_API_KEY` (the assistant), the `AUTH_EMAIL_*` and `ORDER_EMAIL_*` mail account with the modes set to `prod` (see [email](documentation/readme/EMAIL.md)), and `ENC_MODE`, `ENC_KID`, `ENC_PRIVATE_KEY_PEM` (payload encryption; `node config/cli.js enc-key` makes a key).
+
+When it is up (the first start takes a few minutes while the images build):
+
+| What | Where |
+|---|---|
+| The app | <http://localhost:4200> (`FRONTEND_PORT`) |
+| auth-service | <http://localhost:3000/api-docs> (`AUTH_PORT`) |
+| order-service | <http://localhost:8081/actuator/health> (`ORDER_PORT`) |
+| executor-service | `EXECUTOR_PORT` (8082) |
+| trading database | `localhost:5432` (`TRADING_DB_PORT`); the auth database is not published |
+| Kafka (from your machine) | `localhost:9092` (`KAFKA_PORT`, advertised as `KAFKA_EXTERNAL_HOST`) |
+
+Sign in as a sample user (`alice.trader` with `Sample@12345`) or register. Useful commands:
+
+```bash
+docker compose ps                         # state and health of each container
+docker compose logs -f order-service      # follow one service
+docker compose down                       # stop (the databases keep their data)
+docker compose down -v                    # stop and delete the data: the next start re-creates and re-seeds the databases
+```
+
+The databases load `schema.sql` and `seed_data.sql` only on an empty volume. To change a port, edit `.env` (or `config/application.yml` and run `node config/cli.js env-file`) and run `docker compose up -d` again. If the app is served from somewhere other than `localhost` (a server), set `AUTH_CORS_ORIGINS` to the address people open it at and `PUBLIC_AUTH_URL` to the address of the auth-service as the browser sees it (default `http://localhost:<AUTH_PORT>`), then `docker compose build frontend`.
 
 ---
 

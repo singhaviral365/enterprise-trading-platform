@@ -23,6 +23,7 @@ module.exports = {
   },
   coverageReporters: ['text-summary', 'html', 'lcov', 'cobertura'],
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/../test/jest-env.ts'],
   roots: ['<rootDir>', '<rootDir>/../test'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',

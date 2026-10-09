@@ -8,6 +8,11 @@ const REQUIRED = {
   DATABASE_NAME: 'auth_db',
   DATABASE_USER: 'postgres',
   DATABASE_PASSWORD: 'pw',
+  PORT: '3000',
+  LOG_LEVEL: 'debug',
+  JWT_ACCESS_TOKEN_EXPIRES_IN: '900',
+  JWT_REFRESH_TOKEN_EXPIRES_IN: '604800',
+  AUTH_COOKIE_SAMESITE: 'strict',
 };
 
 describe('configuration', () => {
@@ -15,20 +20,16 @@ describe('configuration', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv, ...REQUIRED };
-    delete process.env.PORT;
     delete process.env.NODE_ENV;
-    delete process.env.LOG_LEVEL;
-    delete process.env.JWT_ACCESS_TOKEN_EXPIRES_IN;
-    delete process.env.JWT_REFRESH_TOKEN_EXPIRES_IN;
   });
 
   afterEach(() => {
     process.env = { ...originalEnv };
   });
 
-  it('reads the settings and applies the documented defaults', () => {
+  it('reads the settings, with no fallback in code', () => {
     expect(configuration()).toEqual({
-      nodeEnv: 'development',
+      nodeEnv: '',
       port: 3000,
       database: { host: 'db.local', port: 5433, name: 'auth_db', username: 'postgres', password: 'pw' },
       jwt: { secret: 'secret', issuer: 'auth-service', accessTokenExpiresIn: 900, refreshTokenExpiresIn: 604800 },
@@ -36,7 +37,7 @@ describe('configuration', () => {
     });
   });
 
-  it('takes overrides for the optional settings', () => {
+  it('takes other values for the same settings', () => {
     process.env.NODE_ENV = 'production';
     process.env.PORT = '4000';
     process.env.LOG_LEVEL = 'warn';

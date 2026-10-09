@@ -1,3 +1,4 @@
+import { jwtIssuer, jwtSecret } from '../config/required-settings';
 import {
   CanActivate,
   ExecutionContext,
@@ -7,7 +8,6 @@ import * as jsonwebtoken from 'jsonwebtoken';
 import { UnauthorisedException } from '../common/exceptions';
 import { ACCESS_TOKEN_COOKIE, readCookie } from './auth-cookies';
 
-const DEFAULT_JWT_ISSUER = 'auth-service';
 
 type AccessTokenClaims = {
   sub: string | number;
@@ -79,9 +79,9 @@ export class JwtAuthGuard implements CanActivate {
 
   private verifyAccessToken(token: string): AccessTokenClaims {
     try {
-      const payload = jsonwebtoken.verify(token, process.env.JWT_SECRET || '', {
+      const payload = jsonwebtoken.verify(token, jwtSecret(), {
         algorithms: ['HS256'],
-        issuer: process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER,
+        issuer: jwtIssuer(),
       });
 
       this.assertContractClaims(payload);

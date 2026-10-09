@@ -1,5 +1,35 @@
 # README — PostgreSQL Trading Database Constraints
 
+## 0. Creating the databases (the files to run)
+
+Two databases, both created by these files under `databases/PostgreSQL/`:
+
+| File | What it does |
+|---|---|
+| `schema.sql` | Creates `trading_db` and `auth_db` if they do not exist, then all their tables. A psql script (it uses `\connect` and `\ir`). |
+| `seed_data.sql` | Loads the sample data into both. A psql script. |
+| `trading/schema.sql`, `trading/seed_data.sql` | The same for `trading_db` alone, as plain SQL: run them in pgAdmin's Query Tool on that database. |
+| `auth/schema.sql`, `auth/seed_data.sql` | The same for `auth_db` alone. |
+
+```bash
+psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/schema.sql
+psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/seed_data.sql
+# or:  bash scripts/setup-db.sh        (reads the host, port, user and password from config/application.yml)
+```
+
+In pgAdmin, which cannot run psql commands: create two empty databases (`CREATE DATABASE trading_db; CREATE DATABASE auth_db;`), then run
+`trading/schema.sql` and `trading/seed_data.sql` on `trading_db`, and `auth/schema.sql` and `auth/seed_data.sql` on `auth_db`.
+
+The schema files are for **empty** databases (running one twice stops with "already exists"); the services also create anything missing when
+they start. `SchemaParityTest` fails the build if the order-service's own start-up scripts ever define a table or column that
+`trading/schema.sql` lacks. With docker compose none of this is typed: the two database containers load these files the first time they start.
+
+**Sample data.** Ten advisors, ten customers with their accounts, thirteen instruments, ten orders and holdings, ten preference rows and four
+strategies in `trading_db`; ten users (ids 1000 to 1009) in `auth_db`. Every sample user signs in with the password `Sample@12345`
+(stored only as an Argon2id hash) and has two-step sign-in off. This is sample data: change or delete those users before a real deployment.
+
+---
+
 ## 1. Overview
 
 This database is designed for a trading platform and uses Primary Keys, Foreign Keys, Unique Constraints, NOT NULL constraints, DEFAULT values, and CHECK constraints to maintain data integrity.
@@ -273,47 +303,8 @@ email address or phone number is stored here.
 Channels (`channel_sms`, `channel_email`, `channel_in_app`) and categories (`notify_order_status`,
 `notify_watchlist_alerts`, `notify_strategy_execution`) are one boolean column each. All three channels false means "No notifications".
 
-**Upgrading an existing database** (nothing is dropped; safe to run twice):
-
-```bash
-psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/add_customer_preferences.sql
-```
-
-A new database gets the table from `create_schema.sql` and sample rows from `sample_data.sql`. The order-service also runs
-`preferences-schema.sql` (the same idempotent statements, without the back-fill) every time it starts.
-
-### One script for a new database
-
-`databases/PostgreSQL/migrations/create_schema.sql` creates the **whole** schema from an empty database: advisor, account
-(with `email` and `phone_no`, the contact details given at account set-up), instrument, orders, holdings, watchlist and
-watchlist_item (with the price-alert columns and indexes), customer_preference, notification and notification_delivery,
-the realised P&L and portfolio-performance tables, and strategy and strategy_run (automated strategies, see
-`documentation/readme/STRATEGIES.md`), plus their triggers. Run it, then `sample_data.sql`, and nothing else is needed. The last section of the file ("Upgrading an
-existing database") holds `ALTER TABLE ... IF NOT EXISTS` statements for older databases and does nothing on a new one;
-the per-feature scripts (`add_customer_preferences.sql`, `add_notifications_and_price_alerts.sql`) are the same upgrades
-on their own.
-
-```bash
-psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/create_schema.sql
-psql -U postgres -h localhost -d trading_db -f databases/PostgreSQL/migrations/sample_data.sql
-```
-
-### Bringing an existing machine up to date (pgAdmin, no command line)
-
-Two plain-SQL files, one per database. Nothing here needs `psql`: open the **Query Tool** on the database, paste the whole
-file (or open it with the folder icon), and press **F5**. Each is safe to run repeatedly: every step checks first, skips
-what is already there and applies what is not, so a machine several versions behind ends in the same place as one that
-is one version behind.
-
-| Run on | File | Does |
-|---|---|---|
-| `trading_db` | `update_trading_db.sql` | Creates anything missing (a database with no tables gets the whole schema); adds `account.email` and `account.phone_no`, merging and dropping a duplicate `phone_number` column; adds watchlist price-alert columns, preferences and notification tables; inserts missing sample rows and fills the contact details of sample accounts that lack them. One transaction: on an error nothing changes, so fix it and run it again. |
-| `auth_db` | `update_auth_db.sql` | Creates `users` / `refresh_tokens` if absent; gives the ten sample users their fixed ids 1000-1009 and `<username>@example.com` emails (moving the old `@local.auth` placeholders); moves the id sequence past the highest id so new registrations cannot collide. |
-
-Registered customers' own data is never overwritten. `update_trading_db.sql` is the application's start-up scripts and
-`sample_data.sql` pasted together (so one paste is enough); `UpdateScriptSyncTest` fails the build if a source changes and the
-update script was not rebuilt. `auth_setup.sql` (which creates the database and role) and `create_schema.sql` remain for a
-brand-new machine and still need `psql`.
+The table comes from `trading/schema.sql` and its sample rows from `trading/seed_data.sql`. The order-service also runs
+`preferences-schema.sql` (the same idempotent statements) every time it starts. How to create the databases is in section 0.
 
 **The email in `auth_db.users` and `trading_db.account` must be the same for the same user.** The databases cannot enforce
 that, so both seeds come from one list (sample account `1001` is user `1000`, and so on) and `SeedDataConsistencyTest` fails
@@ -333,7 +324,7 @@ ORDER BY user_id;                               ORDER BY user_id;
 Written only by the Portfolio module of the order-service (`PortfolioIsReadOnlyTest` fails the build on any other write). They hold **facts
 of the past** and nothing live: market value, unrealised and day profit and loss as at now are computed from the current quote on every
 request and are never stored. Created by the startup schema (`portfolio-schema.sql`, `portfolio-performance-schema.sql`), by
-`create_schema.sql` (a new database) and by `update_trading_db.sql` (an existing one). `update_auth_db.sql` is not affected.
+`trading/schema.sql` (a new database).
 
 **realised_pnl_entry**: one row per filled sale, written once, never changed.
 

@@ -47,9 +47,9 @@ describe('auth cookies', () => {
   });
 
   describe('cookieSettings', () => {
-    it('is strict, and insecure only outside production (so http://localhost works)', () => {
-      expect(cookieSettings({ NODE_ENV: 'development' })).toEqual({ secure: false, sameSite: 'strict' });
-      expect(cookieSettings({ NODE_ENV: 'production' })).toEqual({ secure: true, sameSite: 'strict' });
+    it('is insecure only outside production (so http://localhost works) when the file leaves it empty', () => {
+      expect(cookieSettings({ AUTH_COOKIE_SAMESITE: 'strict', NODE_ENV: 'development' })).toEqual({ secure: false, sameSite: 'strict' });
+      expect(cookieSettings({ AUTH_COOKIE_SAMESITE: 'strict', NODE_ENV: 'production' })).toEqual({ secure: true, sameSite: 'strict' });
     });
 
     it('can be set explicitly', () => {
@@ -57,11 +57,12 @@ describe('auth cookies', () => {
         secure: true,
         sameSite: 'lax',
       });
-      expect(cookieSettings({ NODE_ENV: 'production', AUTH_COOKIE_SECURE: 'false' }).secure).toBe(false);
+      expect(cookieSettings({ AUTH_COOKIE_SAMESITE: 'strict', NODE_ENV: 'production', AUTH_COOKIE_SECURE: 'false' }).secure).toBe(false);
     });
 
-    it('ignores an unknown SameSite value, and never emits SameSite=None without Secure', () => {
-      expect(cookieSettings({ AUTH_COOKIE_SAMESITE: 'bogus' }).sameSite).toBe('strict');
+    it('refuses a missing or unknown SameSite value, and never emits SameSite=None without Secure', () => {
+      expect(() => cookieSettings({})).toThrow('auth.cookie.samesite');
+      expect(() => cookieSettings({ AUTH_COOKIE_SAMESITE: 'bogus' })).toThrow('strict, lax or none');
       expect(cookieSettings({ AUTH_COOKIE_SAMESITE: 'none', AUTH_COOKIE_SECURE: 'false' })).toEqual({
         secure: true,
         sameSite: 'none',
@@ -70,10 +71,10 @@ describe('auth cookies', () => {
   });
 
   describe('refreshTtlSeconds', () => {
-    it('reads JWT_REFRESH_TOKEN_EXPIRES_IN, defaulting to seven days', () => {
+    it('reads JWT_REFRESH_TOKEN_EXPIRES_IN and refuses a missing or invalid one', () => {
       expect(refreshTtlSeconds({ JWT_REFRESH_TOKEN_EXPIRES_IN: '3600' })).toBe(3600);
-      expect(refreshTtlSeconds({})).toBe(604800);
-      expect(refreshTtlSeconds({ JWT_REFRESH_TOKEN_EXPIRES_IN: 'nope' })).toBe(604800);
+      expect(() => refreshTtlSeconds({})).toThrow('jwt.refresh-token-expires-in');
+      expect(() => refreshTtlSeconds({ JWT_REFRESH_TOKEN_EXPIRES_IN: 'nope' })).toThrow('positive whole number');
     });
   });
 

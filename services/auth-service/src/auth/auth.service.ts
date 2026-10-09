@@ -1,3 +1,4 @@
+import { accessTokenTtlSeconds, jwtIssuer, refreshTokenTtlSeconds } from '../config/required-settings';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService, UsersRepository } from '../users/users.service';
@@ -14,8 +15,6 @@ import { User } from '../users/user.entity';
 import { UserResponseDto, TokenResponseDto } from './dto';
 import { LoginThrottleService } from './login-throttle.service';
 
-const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
-const DEFAULT_JWT_ISSUER = 'auth-service';
 const DUMMY_ARGON2ID_HASH =
   '$argon2id$v=19$m=65536,t=3,p=2$MDEyMzQ1Njc4OWFiY2RlZg$ae5MbA5HD/nOiVoQN73kuKsSG9C7+nVj5POBuhjB7Nk';
 
@@ -59,8 +58,8 @@ export class AuthService {
       tokenPayload,
       {
         algorithm: 'HS256',
-        issuer: process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER,
-        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+        issuer: jwtIssuer(),
+        expiresIn: accessTokenTtlSeconds(),
       },
     );
   }
@@ -189,7 +188,7 @@ export class AuthService {
     // Generate refresh token
     const refreshTokenData = await this.refreshTokensService.createRefreshToken(
       user.id,
-      parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN || '604800', 10),
+      refreshTokenTtlSeconds(),
     );
 
     // Sign access token
@@ -199,7 +198,7 @@ export class AuthService {
       accessToken,
       refreshToken: refreshTokenData.token,
       tokenType: 'Bearer',
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      expiresIn: accessTokenTtlSeconds(),
     };
   }
 
@@ -230,7 +229,7 @@ export class AuthService {
     const newRefreshTokenData =
       await this.refreshTokensService.createRefreshToken(
         user.id,
-        parseInt(process.env.JWT_REFRESH_TOKEN_EXPIRES_IN || '604800', 10),
+        refreshTokenTtlSeconds(),
       );
 
     // Sign new access token
@@ -240,7 +239,7 @@ export class AuthService {
       accessToken,
       refreshToken: newRefreshTokenData.token,
       tokenType: 'Bearer',
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      expiresIn: accessTokenTtlSeconds(),
     };
   }
 

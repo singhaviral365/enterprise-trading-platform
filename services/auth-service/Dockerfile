@@ -35,12 +35,7 @@ RUN npm ci --only=production
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --retries=10 --start-period=10s \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
-
-# Expose port (per contract)
-EXPOSE 3000
+# The port and the health check come from config/application.yml (services.auth.port) through docker-compose.yml, not from this image.
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/sbin/dumb-init", "--"]

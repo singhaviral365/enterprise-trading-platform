@@ -39,7 +39,7 @@ public class ExchangeRateApiClient implements ExchangeRateClient {
 
     @Autowired
     public ExchangeRateApiClient(
-            @Value("${trading.fx.base-url:https://v6.exchangerate-api.com/v6}") String baseUrl,
+            @Value("${trading.fx.base-url}") String baseUrl,
             @Value("${trading.fx.api-key:}") String apiKey,
             @Value("${trading.fx.request-timeout-millis:3000}") long requestTimeoutMillis) {
 

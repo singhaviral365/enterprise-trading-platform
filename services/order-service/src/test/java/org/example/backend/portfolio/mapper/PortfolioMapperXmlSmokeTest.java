@@ -57,7 +57,7 @@ class PortfolioMapperXmlSmokeTest {
     @Test
     void theLedgerTableAndItsIndexAreInTheFreshDatabaseScriptToo() throws IOException {
         String create = java.nio.file.Files.readString(
-                java.nio.file.Path.of("..", "..", "databases", "PostgreSQL", "migrations", "create_schema.sql"),
+                java.nio.file.Path.of("..", "..", "databases", "PostgreSQL", "trading", "schema.sql"),
                 StandardCharsets.UTF_8);
 
         assertTrue(create.contains("CREATE TABLE IF NOT EXISTS realised_pnl_entry"));

@@ -17,6 +17,8 @@ type Node = Record<string, unknown>;
 export const KEY_TO_ENV: Readonly<Record<string, string>> = {
   environment: 'NODE_ENV',
   'services.auth.port': 'PORT',
+  'services.mailhog.host': 'MAILHOG_HOST',
+  'services.mailhog.smtp-port': 'MAILHOG_SMTP_PORT',
   'database.auth.host': 'DATABASE_HOST',
   'database.auth.port': 'DATABASE_PORT',
   'database.auth.name': 'DATABASE_NAME',

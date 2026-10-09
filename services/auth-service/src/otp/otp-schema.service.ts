@@ -4,7 +4,7 @@ import { RedactingLogger } from '../common/logging/redacting.logger';
 
 /**
  * The statements that create `otp_challenges`. Every one is idempotent, so running them on each start-up is harmless, and
- * they are the same as `databases/PostgreSQL/migrations/add_auth_otp_challenges.sql`.
+ * they are the same as `databases/PostgreSQL/auth/schema.sql`.
  */
 export const OTP_SCHEMA_STATEMENTS: readonly string[] = [
   `CREATE TABLE IF NOT EXISTS otp_challenges (
@@ -69,7 +69,7 @@ export class OtpSchemaService implements OnModuleInit {
       this.logger.error(
         'OtpSchemaService',
         'Could not create or update the otp_challenges table or users.two_factor_enabled. Email verification, two-step sign-in and forgot password will fail until they exist: ' +
-          'run databases/PostgreSQL/migrations/add_auth_otp_challenges.sql against the auth database, ' +
+          'run databases/PostgreSQL/auth/schema.sql against the auth database, ' +
           'or give the database user permission to create tables.',
         { error: error instanceof Error ? error.message : String(error) },
       );

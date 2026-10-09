@@ -41,7 +41,7 @@ public class ExecutorTokenMinter {
     @Autowired
     public ExecutorTokenMinter(
             @Value("${strategy.token.secret}") String secret,
-            @Value("${strategy.token.issuer:${JWT_ISSUER:auth-service}}") String issuer,
+            @Value("${strategy.token.issuer}") String issuer,
             @Value("${strategy.token.ttl-seconds:60}") long ttlSeconds) {
         this(secret, issuer, ttlSeconds, Clock.systemUTC());
     }

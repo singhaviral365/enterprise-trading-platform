@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  */
 class SeedDataConsistencyTest {
 
-    private static final Path MIGRATIONS = Path.of("..", "..", "databases", "PostgreSQL", "migrations");
+    private static final Path MIGRATIONS = Path.of("..", "..", "databases", "PostgreSQL");
 
     /** The people the seeds are written for, in user_id order starting at 1000. */
     private static final List<String> USERNAMES = List.of(
@@ -32,19 +32,19 @@ class SeedDataConsistencyTest {
 
     /** (1000, 'alice.trader', 'alice.trader@example.com', '$2b$... */
     private static final Pattern AUTH_USER =
-            Pattern.compile("\\(\\s*(\\d+),\\s*'([^']+)',\\s*'([^'@]+@[^']+)',\\s*'\\$2b");
+            Pattern.compile("\\(\\s*(\\d+),\\s*'([^']+)',\\s*'([^'@]+@[^']+)',\\s*'\\$argon2id");
     /** (1001, 'ACC000001001', 1000, 'alice.trader@example.com', '+353850000001', ... */
     private static final Pattern ACCOUNT =
             Pattern.compile("\\(\\s*(\\d+),\\s*'ACC\\d+',\\s*(\\d+),\\s*'([^'@]+@[^']+)',\\s*'([^']+)'");
-    /** (1001, 1000, 'alice.trader@example.com', '+353850000001') in the fill-in UPDATE at the end of sample_data.sql */
+    /** (1001, 1000, 'alice.trader@example.com', '+353850000001') in the fill-in UPDATE at the end of trading/seed_data.sql */
     private static final Pattern ACCOUNT_FILL =
             Pattern.compile("\\(\\s*(\\d+),\\s*(\\d+),\\s*'([^'@]+@[^']+)',\\s*'(\\+[0-9]+)'\\)");
 
     @Test
     void everySeededAccountHoldsTheEmailOfTheUserItBelongsTo() throws IOException {
-        Map<Integer, String> userEmails = authEmails("auth_setup.sql");
+        Map<Integer, String> userEmails = authEmails("auth/seed_data.sql");
         Map<Integer, String> accountEmails = new TreeMap<>();
-        for (Matcher m = ACCOUNT.matcher(read("sample_data.sql")); m.find(); ) {
+        for (Matcher m = ACCOUNT.matcher(read("trading/seed_data.sql")); m.find(); ) {
             accountEmails.put(Integer.parseInt(m.group(2)), m.group(3));
         }
 
@@ -53,18 +53,13 @@ class SeedDataConsistencyTest {
     }
 
     @Test
-    void theUpdateScriptSeedsTheSameUsersAsTheAuthSetup() throws IOException {
-        assertEquals(authEmails("auth_setup.sql"), authEmails("update_auth_db.sql"));
-    }
-
-    @Test
-    void theUpdateScriptFillsAccountsWithTheSameContactDetailsAsTheSeed() throws IOException {
+    void theContactDetailsFilledAtTheEndMatchThoseInsertedWithTheAccounts() throws IOException {
         Map<Integer, String> inserted = new TreeMap<>();
-        for (Matcher m = ACCOUNT.matcher(read("sample_data.sql")); m.find(); ) {
+        for (Matcher m = ACCOUNT.matcher(read("trading/seed_data.sql")); m.find(); ) {
             inserted.put(Integer.parseInt(m.group(1)), m.group(3) + " " + m.group(4));
         }
         Map<Integer, String> filled = new TreeMap<>();
-        String sample = read("sample_data.sql");
+        String sample = read("trading/seed_data.sql");
         String fillSection = sample.substring(sample.indexOf("7. CONTACT DETAILS"));
         for (Matcher m = ACCOUNT_FILL.matcher(fillSection); m.find(); ) {
             assertEquals(Integer.parseInt(m.group(1)) - 1, Integer.parseInt(m.group(2)),

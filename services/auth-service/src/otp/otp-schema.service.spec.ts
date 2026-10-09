@@ -35,7 +35,7 @@ describe('OtpSchemaService', () => {
 
     expect(logger.error).toHaveBeenCalledWith(
       'OtpSchemaService',
-      expect.stringContaining('add_auth_otp_challenges.sql'),
+      expect.stringContaining('auth/schema.sql'),
       { error: 'permission denied for schema public' },
     );
   });

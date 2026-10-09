@@ -1,0 +1,193 @@
+# The whole platform in containers: two PostgreSQL databases (created from databases/PostgreSQL/*), Kafka, the auth, order and executor services,
+# and the frontend behind nginx.
+#
+#   cp .env.example .env      # then fill in the blanks (or: node config/cli.js env-file, which writes .env from config/application.yml)
+#   docker compose up --build
+#
+# Compose reads ./.env for the ${VARIABLES} below and hands it to each service (env_file), so every port, URL and secret comes from that one
+# file. Only what differs INSIDE the docker network (the host names of the databases and of Kafka) is set here.
+name: trading-platform
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - trading-db-data:/var/lib/postgresql/data
+      # Run once, on an empty volume: the schema, then the sample data.
+      - ./databases/PostgreSQL/trading/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./databases/PostgreSQL/trading/seed_data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
+    ports:
+      - "${TRADING_DB_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [trading-net]
+
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${AUTH_POSTGRES_DB}
+      POSTGRES_USER: ${AUTH_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+      - ./databases/PostgreSQL/auth/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./databases/PostgreSQL/auth/seed_data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_POSTGRES_USER} -d ${AUTH_POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks: [trading-net]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # PLAINTEXT is for the other containers; PLAINTEXT_HOST is for a client on the machine running docker (KAFKA_EXTERNAL_HOST:KAFKA_PORT).
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${KAFKA_EXTERNAL_HOST}:${KAFKA_PORT}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkQrQXtsTmyQ1mLvSstIngQ
+    ports:
+      - "${KAFKA_PORT}:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:29092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+    networks: [trading-net]
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.7.0
+    entrypoint: bash
+    command: /kafka-scripts/create-topics.sh
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./infra/kafka/create-topics.sh:/kafka-scripts/create-topics.sh:ro
+    networks: [trading-net]
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+    env_file: .env
+    environment:
+      DATABASE_HOST: auth-db
+      DATABASE_PORT: 5432
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${AUTH_PORT}/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    networks: [trading-net]
+
+  order-service:
+    build:
+      context: ./services/order-service
+    env_file: .env
+    environment:
+      DATABASE_TRADING_HOST: postgres
+      DATABASE_TRADING_PORT: 5432
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports:
+      - "${ORDER_PORT}:${ORDER_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${ORDER_PORT}/actuator/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+    networks: [trading-net]
+
+  executor-service:
+    build:
+      context: ./services/executor-service
+    env_file: .env
+    environment:
+      DATABASE_TRADING_HOST: postgres
+      DATABASE_TRADING_PORT: 5432
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SERVICES_ORDER_HOST: order-service
+    ports:
+      - "${EXECUTOR_PORT}:${EXECUTOR_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost ${EXECUTOR_PORT} || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 40s
+    networks: [trading-net]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # What the browser calls for sign-in: the auth-service's published port on this machine.
+        PUBLIC_AUTH_URL: ${PUBLIC_AUTH_URL:-http://localhost:${AUTH_PORT}}
+    environment:
+      ORDER_PORT: ${ORDER_PORT}
+      EXECUTOR_PORT: ${EXECUTOR_PORT}
+    ports:
+      - "${FRONTEND_PORT}:80"
+    depends_on:
+      - auth-service
+      - order-service
+      - executor-service
+    networks: [trading-net]
+
+networks:
+  trading-net:
+    driver: bridge
+
+volumes:
+  trading-db-data:
+  auth-db-data:
+  kafka-data:

@@ -10,7 +10,7 @@
 #   executor-service  spring.config.import           the same
 #   frontend          config/cli.js frontend         generates src/app/config/platform.config.ts and proxy.conf.json (npm start/build/test do it)
 #   contracts         config/cli.js contracts        writes each contract's `servers:` URLs
-#   run-app.ps1, services/docker-compose.yml, scripts.sh     config/cli.js get | compose-env
+#   run-app.ps1, docker-compose.yml, setup-db.sh            config/cli.js get | env-file (writes the root .env and .env.example)
 # A real environment variable still wins over a key (the auth-service maps `database.auth.password` to DATABASE_PASSWORD, Spring maps it
 # to DATABASE_AUTH_PASSWORD), which is how a container or a CI job overrides one value without editing the file.
 # See config/README.md.
@@ -55,11 +55,6 @@ database:
     user: postgres
     password: ""
 
-# Only docker compose (services/docker-compose.yml) builds the order-service image from these.
-docker:
-  core-java-repo-url: ""
-  core-java-ref: core-java
-
 # Kafka. Start it yourself (Linux); the services only need the address.
 kafka:
   # Where the services reach Kafka FROM THIS MACHINE: the host and port of its advertised listener (for example your Linux VM's IP:9092).
@@ -90,6 +85,7 @@ external:
   # model: a name can be retired for new keys (gemini-2.5-flash answers 404 now), so the -latest alias is used. rate-limit-rpm: set it to the
   # requests per minute your key is allowed (AI Studio > usage); above it the chat answers "busy" instead of calling Google.
   gemini:
+    base-url: https://generativelanguage.googleapis.com
     api-key: ""
     model: gemini-flash-lite-latest
     rate-limit-rpm: 10
@@ -102,7 +98,7 @@ signals:
 auth:
   log-level: debug
   # Registering emails a code to the address typed first. Needs email mode other than off.
-  verification-enabled: true
+  verification-enabled: false
   # Whether each user may switch on two-step sign-in in Settings.
   two-factor-enabled: true
   otp:
@@ -123,15 +119,15 @@ auth:
     extra-origins: []
   # Email: off | dev | prod. dev = MailHog (services.mailhog), prod = a real SMTP account over TLS (docs: documentation/readme/EMAIL.md).
   email:
-    mode: prod
+    mode: off
     smtp:
       host: ""
       port: ""
       tls: starttls
       user: ""
       password: ""
-    from: ""
-    from-domains: ""
+    from: noreply@etpteamriya.com
+    from-domains: etpteamriya.com
     # Outside production, real mail needs this: a comma list of domains, or * for anyone.
     allowed-recipient-domains: ""
     reply-to: ""
@@ -140,7 +136,7 @@ auth:
 # optional: the browser always encrypts and the service also accepts plain bodies (Bruno, curl). required: plain bodies are refused.
 # Generate the key with:  node config/cli.js enc-key   (it prints the two lines; paste them here)
 encryption:
-  mode: optional
+  mode: off
   kid: ""
   private-key-pem: ""
   max-age-seconds: 60
@@ -151,15 +147,15 @@ encryption:
 order:
   # Notification email: off | dev | prod. run-app.ps1 turns this into the Spring profile of the same name.
   email:
-    mode: prod
+    mode: off
     smtp:
       host: ""
       port: 587
       tls: starttls
       username: ""
       password: ""
-    from: ""
-    from-domains: ""
+    from: noreply@etpteamriya.com
+    from-domains: etpteamriya.com
     allowed-recipient-domains: ""
     reply-to: ""
     max-per-minute: 60
@@ -175,7 +171,7 @@ executor:
 # SonarQube (scripts/sonar-scan.ps1 and documentation/readme/SONARQUBE.md). The server runs on the Linux VM; the token is made in SonarQube
 # (My Account > Security).
 sonar:
-  host-url: http://{LINUX_IP}:9000
+  host-url: http://localhost:9000
   token: ""
 
 # End-to-end tests (frontend/e2e, Playwright) run against the live stack. Real accounts, real credentials: keep them in the git-ignored file.

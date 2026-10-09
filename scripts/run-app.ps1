@@ -1,10 +1,10 @@
 # Starts the whole platform, each part in its own terminal:  frontend, auth-service, order-service, executor-service.
 #
-#   .\run-app.ps1                  the default: payload encryption and real (prod) email, exactly as config/application.yml says
-#   .\run-app.ps1 --windows        the same, and also starts Kafka (docker compose) on this machine
-#   .\run-app.ps1 --dev-mail       email goes to MailHog (run it yourself, see services.mailhog) instead of a real SMTP account
-#   .\run-app.ps1 --no-email       send no email at all (registration then needs auth.verification-enabled: false)
-#   .\run-app.ps1 --no-encryption  turn payload encryption off for this run
+#   .\scripts\run-app.ps1                  the default: payload encryption and real (prod) email, exactly as config/application.yml says
+#   .\scripts\run-app.ps1 --windows        the same, and also starts Kafka (docker compose) on this machine
+#   .\scripts\run-app.ps1 --dev-mail       email goes to MailHog (run it yourself, see services.mailhog) instead of a real SMTP account
+#   .\scripts\run-app.ps1 --no-email       send no email at all (registration then needs auth.verification-enabled: false)
+#   .\scripts\run-app.ps1 --no-encryption  turn payload encryption off for this run
 #
 # Every URL, port, credential and switch lives in config/application.yml (copy config/application.example.yml; see config/README.md).
 # Kafka is expected to be running already (in your Linux environment) unless you pass --windows.
@@ -79,8 +79,8 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\serv
 
 if ($windows) {
     Write-Host "Starting Kafka (docker compose)..."
-    node $cli compose-env
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir\services'; docker compose --env-file .env -f docker-compose.yml up -d kafka kafka-init"
+    node $cli env-file
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$rootDir'; docker compose up -d kafka kafka-init"
     Write-Host "All 5 parts started in separate terminals."
 } else {
     Write-Host "Started 4 services in separate terminals."

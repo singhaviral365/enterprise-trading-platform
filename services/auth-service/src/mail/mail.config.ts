@@ -1,3 +1,4 @@
+import { requiredInt, requiredText } from '../config/required-settings';
 /**
  * Email settings, read from the environment, and the rules each mode must obey. Nothing here sends anything: it describes where mail
  * would go and refuses to start the service when that is unsafe.
@@ -49,7 +50,6 @@ export const LOCAL_SMTP_HOSTS: readonly string[] = ['localhost', '127.0.0.1', ':
 /** Environments where `dev` mode must never be used, whatever else is configured. */
 const NON_DEV_ENVIRONMENTS: readonly string[] = ['production', 'prod', 'staging'];
 
-export const DEFAULT_FROM = 'noreply@etpteamriya.com';
 
 const MODES: readonly MailMode[] = ['off', 'dev', 'prod'];
 const TLS_VALUES: readonly MailTls[] = ['starttls', 'implicit', 'none'];
@@ -93,17 +93,19 @@ export function mailSettings(env: NodeJS.ProcessEnv = process.env): MailSettings
   const tls: MailTls = rawTls !== '' ? (rawTls as MailTls) : mode === 'prod' ? 'starttls' : 'none';
 
   const port = parseInt(env.AUTH_EMAIL_SMTP_PORT || '', 10);
-  const defaultPort = mode === 'prod' ? (tls === 'implicit' ? 465 : 587) : 1025;
+  // Dev mail goes to MailHog (services.mailhog); prod uses the standard submission port of its TLS mode (465 implicit, 587 starttls).
+  const defaultPort =
+    mode === 'prod' ? (tls === 'implicit' ? 465 : 587) : mode === 'dev' ? requiredInt('MAILHOG_SMTP_PORT', 'services.mailhog.smtp-port', env) : 0;
 
   return {
     mode,
     enabled: mode !== 'off',
-    host: (env.AUTH_EMAIL_SMTP_HOST || 'localhost').trim(),
+    host: (env.AUTH_EMAIL_SMTP_HOST || (mode === 'dev' ? requiredText('MAILHOG_HOST', 'services.mailhog.host', env) : '')).trim(),
     port: Number.isFinite(port) && port > 0 ? port : defaultPort,
     tls,
     user: text(env.AUTH_EMAIL_SMTP_USER),
     password: text(env.AUTH_EMAIL_SMTP_PASSWORD),
-    from: (env.AUTH_EMAIL_FROM || DEFAULT_FROM).trim(),
+    from: mode === 'off' ? '' : requiredText('AUTH_EMAIL_FROM', 'auth.email.from', env),
     fromDomains: list(env.AUTH_EMAIL_FROM_DOMAINS),
     allowedRecipientDomains: list(env.AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS),
     replyTo: text(env.AUTH_EMAIL_REPLY_TO),

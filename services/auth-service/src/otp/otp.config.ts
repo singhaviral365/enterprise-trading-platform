@@ -1,3 +1,4 @@
+import { requiredInt } from '../config/required-settings';
 import { MailSettings } from '../mail/mail.config';
 
 /**
@@ -31,20 +32,19 @@ export interface OtpSettings {
 export const OTP_SETTINGS = Symbol('OTP_SETTINGS');
 export const OTP_CLOCK = Symbol('OTP_CLOCK');
 
-function positiveInt(raw: string | undefined, fallback: number): number {
-  const parsed = parseInt(raw ?? '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+function positiveInt(name: string, key: string, env: NodeJS.ProcessEnv): number {
+  return requiredInt(name, key, env);
 }
 
 export function otpSettings(env: NodeJS.ProcessEnv = process.env): OtpSettings {
   return {
     twoFactorEnabled: env.AUTH_TWO_FACTOR_ENABLED !== 'false',
     emailVerificationEnabled: env.AUTH_EMAIL_VERIFICATION_ENABLED !== 'false',
-    codeTtlSeconds: positiveInt(env.AUTH_OTP_TTL_SECONDS, 300),
-    resetTtlSeconds: positiveInt(env.AUTH_OTP_RESET_TTL_SECONDS, 600),
-    maxAttempts: positiveInt(env.AUTH_OTP_MAX_ATTEMPTS, 5),
-    resendCooldownSeconds: positiveInt(env.AUTH_OTP_RESEND_COOLDOWN_SECONDS, 30),
-    maxSends: positiveInt(env.AUTH_OTP_MAX_SENDS, 3),
+    codeTtlSeconds: positiveInt('AUTH_OTP_TTL_SECONDS', 'auth.otp.ttl-seconds', env),
+    resetTtlSeconds: positiveInt('AUTH_OTP_RESET_TTL_SECONDS', 'auth.otp.reset-ttl-seconds', env),
+    maxAttempts: positiveInt('AUTH_OTP_MAX_ATTEMPTS', 'auth.otp.max-attempts', env),
+    resendCooldownSeconds: positiveInt('AUTH_OTP_RESEND_COOLDOWN_SECONDS', 'auth.otp.resend-cooldown-seconds', env),
+    maxSends: positiveInt('AUTH_OTP_MAX_SENDS', 'auth.otp.max-sends', env),
     codeLength: 6,
   };
 }

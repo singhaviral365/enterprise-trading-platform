@@ -1,3 +1,4 @@
+import { requiredInt } from '../config/required-settings';
 import { CompactEncrypt, JWK, KeyLike, compactDecrypt, exportJWK, generateKeyPair, exportPKCS8, importJWK, importPKCS8, importSPKI } from 'jose';
 import { createPublicKey } from 'crypto';
 
@@ -31,18 +32,20 @@ export function encryptionSettings(env: NodeJS.ProcessEnv = process.env): Encryp
     throw new Error(`ENC_MODE must be one of ${MODES.join(', ')} (got "${env.ENC_MODE}").`);
   }
   const pem = (env.ENC_PRIVATE_KEY_PEM ?? '').replace(/\\n/g, '\n').trim();
-  const age = parseInt(env.ENC_MAX_AGE_SECONDS || '', 10);
   return {
     mode: (raw || 'off') as EncryptionMode,
     privateKeyPem: pem.length > 0 ? pem : null,
-    kid: (env.ENC_KID || 'auth-1').trim(),
-    maxAgeSeconds: Number.isFinite(age) && age > 0 ? age : 60,
+    kid: (env.ENC_KID ?? '').trim(),
+    maxAgeSeconds: raw === '' || raw === 'off' ? 0 : requiredInt('ENC_MAX_AGE_SECONDS', 'encryption.max-age-seconds', env),
     logPlaintext: env.ENC_LOG_PLAINTEXT === 'true',
   };
 }
 
 /** Stops the service starting with encryption switched on but unusable, or with plaintext logging in production. */
 export function assertEncryptionSettings(settings: EncryptionSettings, env: NodeJS.ProcessEnv = process.env): void {
+  if (settings.mode !== 'off' && settings.kid === '') {
+    throw new Error(`ENC_MODE=${settings.mode} needs ENC_KID: fill in encryption.kid in config/application.yml.`);
+  }
   if (settings.mode !== 'off' && settings.privateKeyPem === null) {
     throw new Error(
       `ENC_MODE=${settings.mode} needs ENC_PRIVATE_KEY_PEM (an RSA 3072 private key, PKCS#8 PEM). Generate one with ` +

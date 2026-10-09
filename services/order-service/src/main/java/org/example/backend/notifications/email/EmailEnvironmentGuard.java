@@ -52,11 +52,11 @@ public class EmailEnvironmentGuard {
 
     public EmailEnvironmentGuard(
             Environment environment,
-            @Value("${notifications.email.smtp.host:localhost}") String host,
+            @Value("${notifications.email.smtp.host}") String host,
             @Value("${notifications.email.smtp.tls:none}") String tls,
             @Value("${notifications.email.smtp.username:}") String username,
             @Value("${notifications.email.smtp.password:}") String password,
-            @Value("${notifications.email.from:noreply@etpteamriya.com}") String from,
+            @Value("${notifications.email.from}") String from,
             @Value("${notifications.email.from-domains:}") String fromDomains,
             @Value("${notifications.email.allowed-recipient-domains:}") String allowedRecipientDomains) {
         this.environment = environment;

@@ -49,7 +49,7 @@ public class MarketDataPoller {
             InstrumentMapper instrumentMapper,
             QuoteClient quoteClient,
             MarketDataEventProducer marketDataEventProducer,
-            @Value("${trading.market-data.poll-interval-seconds:${POLL_INTERVAL_SECONDS:60}}") long pollIntervalSeconds,
+            @Value("${trading.market-data.poll-interval-seconds}") long pollIntervalSeconds,
             @Value("${trading.market-data.watch-symbols:}") String watchSymbolsCsv) {
 
         this(
@@ -77,7 +77,7 @@ public class MarketDataPoller {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelayString = "${trading.market-data.poll-interval-seconds:${POLL_INTERVAL_SECONDS:60}}", timeUnit = java.util.concurrent.TimeUnit.SECONDS)
+    @Scheduled(fixedDelayString = "${trading.market-data.poll-interval-seconds}", timeUnit = java.util.concurrent.TimeUnit.SECONDS)
     public void poll() {
         List<String> symbols = loadSymbolsToPoll();
         if (symbols.isEmpty()) {

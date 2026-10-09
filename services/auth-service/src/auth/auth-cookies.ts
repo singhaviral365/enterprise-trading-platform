@@ -1,4 +1,5 @@
 import type { Response } from 'express';
+import { refreshTokenTtlSeconds, requiredText } from '../config/required-settings';
 
 /** The signed access JWT. Sent on every request to the platform; JavaScript can never read it (HttpOnly). */
 export const ACCESS_TOKEN_COOKIE = 'access_token';
@@ -31,24 +32,24 @@ export interface IssuedTokens {
   readonly expiresIn: number;
 }
 
-const DEFAULT_REFRESH_TTL_SECONDS = 604800;
-
 /**
- * `AUTH_COOKIE_SECURE` (default: on in production, off in development so http://localhost works) and
- * `AUTH_COOKIE_SAMESITE` (`strict` by default; `none` is for a front end on another site and needs Secure).
+ * `AUTH_COOKIE_SECURE` (empty in the file: on in production, off in development so http://localhost works) and
+ * `AUTH_COOKIE_SAMESITE` (`strict`, `lax` or `none`; `none` is for a front end on another site and needs Secure). Both come from
+ * auth.cookie in config/application.yml.
  */
 export function cookieSettings(env: NodeJS.ProcessEnv = process.env): CookieSettings {
-  const configured = env.AUTH_COOKIE_SAMESITE?.toLowerCase();
-  const sameSite: SameSiteMode =
-    configured === 'lax' || configured === 'none' || configured === 'strict' ? configured : 'strict';
+  const configured = requiredText('AUTH_COOKIE_SAMESITE', 'auth.cookie.samesite', env).toLowerCase();
+  if (configured !== 'lax' && configured !== 'none' && configured !== 'strict') {
+    throw new Error(`auth.cookie.samesite must be strict, lax or none (got "${configured}").`);
+  }
+  const sameSite: SameSiteMode = configured;
   const secure = env.AUTH_COOKIE_SECURE !== undefined ? env.AUTH_COOKIE_SECURE === 'true' : env.NODE_ENV === 'production';
   // Browsers refuse SameSite=None without Secure, so never emit that combination.
   return { secure: secure || sameSite === 'none', sameSite };
 }
 
 export function refreshTtlSeconds(env: NodeJS.ProcessEnv = process.env): number {
-  const parsed = parseInt(env.JWT_REFRESH_TOKEN_EXPIRES_IN || '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_REFRESH_TTL_SECONDS;
+  return refreshTokenTtlSeconds(env);
 }
 
 /** Reads one cookie out of a raw `Cookie` header; undefined when absent. */

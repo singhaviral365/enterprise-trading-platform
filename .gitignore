@@ -56,3 +56,10 @@ frontend/src/app/config/platform.config.ts
 frontend/proxy.conf.json
 services/.env
 frontend/e2e/support/e2e-config.generated.json
+
+# SonarScanner working folder
+.scannerwork/
+
+# Generated or local-only: logs, IDE settings
+*.log
+run-logs/

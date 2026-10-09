@@ -1,0 +1,24 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Market data is the executor-service's; every other /api call is the order-service's (the dev proxy makes the same split).
+    location /api/v1/market {
+        proxy_pass http://executor-service:${EXECUTOR_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /api {
+        proxy_pass http://order-service:${ORDER_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # The app's own routes: any other path is the single page.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

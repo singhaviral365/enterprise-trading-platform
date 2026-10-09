@@ -7,7 +7,7 @@ Every URL, port, credential and switch of the platform lives in **one file**: `c
 | `application.example.yml` | yes | The template: every key, no secrets, sensible local defaults. Also the fallback when `application.yml` is missing, so a fresh clone builds and its tests run. |
 | `application.yml` | **no** (git-ignored) | Your copy with the real passwords, API keys, the email account and the encryption key. `cp config/application.example.yml config/application.yml` |
 
-Nothing else holds a setting. There are no `.env` files any more (the old ones are no longer read; delete them).
+Nothing else holds a setting, and the services read this file, and docker compose reads the root `.env` generated from it. The root `.env.example` (committed, secrets blank) lists **every environment variable, grouped by the part that reads it**; `node config/cli.js env-file` keeps `.env` and `.env.example` in step with this file and the example. A real environment variable overrides its key, which is what a container or CI job uses.
 
 ## Who reads it, and how
 
@@ -17,8 +17,8 @@ Nothing else holds a setting. There are no `.env` files any more (the old ones a
 | **order-service, executor-service** | `spring.config.import` in `application.properties` loads the example and then `application.yml` as properties. `application*.properties` refer to keys as `${database.trading.password}`. Override a key with an environment variable named like it (`DATABASE_TRADING_PASSWORD`) or a JVM option. |
 | **frontend** | `node config/cli.js frontend` (run by `npm start`, `build`, `test` and `e2e`) generates `src/app/config/platform.config.ts` (the service URLs the typed clients use), `proxy.conf.json` (the dev proxy) and the e2e settings. The generated files are git-ignored. |
 | **contracts** | `node config/cli.js contracts` (run before `npm run api:generate`) writes the `servers:` URL of each OpenAPI contract from `services.auth` / `services.order`. |
-| **docker compose** | `node config/cli.js compose-env` writes `services/.env` (ports, database login, Kafka) for the `${VARIABLES}`; the auth and order containers mount `application.yml` itself. |
-| **run-app.ps1, scripts.sh, the ETL, the e2e scripts** | `node config/cli.js get <key>` / `env`, or the same loader in Python (`etl/src/config.py`). |
+| **docker compose** | The root `docker-compose.yml` reads the root `.env`, which `node config/cli.js env-file` writes from this file (and `.env.example`, the committed template, from the example file). Each container gets the whole `.env`; compose sets only the host names that differ inside the docker network. |
+| **run-app.ps1, setup-db.sh, the ETL, the e2e scripts** | `node config/cli.js get <key>` / `env`, or the same loader in Python (`etl/src/config.py`). |
 
 ## Commands
 
@@ -27,7 +27,7 @@ node config/cli.js check             # what is missing or unsafe (run-app.ps1 do
 node config/cli.js get services.order.url
 node config/cli.js frontend          # regenerate the frontend files
 node config/cli.js contracts         # rewrite the contracts' servers:
-node config/cli.js compose-env       # write services/.env for docker compose
+node config/cli.js env-file          # write the root .env and .env.example (docker compose reads .env)
 node config/cli.js enc-key           # a new payload-encryption key to paste under `encryption:`
 ```
 

@@ -147,8 +147,8 @@ and two-step sign-in **off** by default. To use MailHog with it:
 **The table.** `otp_challenges` (and `users.two_factor_enabled`) is created by the auth service itself on every start-up (`CREATE TABLE ... IF NOT EXISTS`), in any
 environment, so it does not matter how the database was prepared (TypeORM `synchronize` only runs under `NODE_ENV=development`).
 It needs `users` to exist and a database user that may create tables; if that fails the log says so and points at
-[`databases/PostgreSQL/migrations/add_auth_otp_challenges.sql`](../../databases/PostgreSQL/migrations/add_auth_otp_challenges.sql),
-which you can run by hand instead (idempotent; nothing is dropped). `auth_setup.sql` has it for new databases.
+[`databases/PostgreSQL/auth/schema.sql`](../../databases/PostgreSQL/auth/schema.sql),
+which creates it (and the other auth tables) on a new database.
 
 **End-to-end tests** (Playwright) read codes from MailHog's API (`E2E_MAILHOG_URL`, default `http://localhost:8025`), so MailHog must be
 running for any journey that registers or signs in with two-step on; the seeded users have two-step off, so a plain sign-in needs no mail.

@@ -1,10 +1,10 @@
+import { jwtIssuer, jwtSecret } from '../config/required-settings';
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UnauthorisedException } from '../common/exceptions';
 import { ACCESS_TOKEN_COOKIE, readCookie } from './auth-cookies';
 
-const DEFAULT_JWT_ISSUER = 'auth-service';
 
 /**
  * JWT Strategy for Passport.
@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           readCookie(request?.headers?.cookie, ACCESS_TOKEN_COOKIE) ?? null,
       ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'dev-only-change-me-this-secret-is-not-for-production-use',
+      secretOrKey: jwtSecret(),
       algorithms: ['HS256'],
     });
   }
@@ -44,7 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     // Verify issuer
-    if (payload.iss !== (process.env.JWT_ISSUER || DEFAULT_JWT_ISSUER)) {
+    if (payload.iss !== jwtIssuer()) {
       throw new UnauthorisedException('Unauthorised');
     }
 

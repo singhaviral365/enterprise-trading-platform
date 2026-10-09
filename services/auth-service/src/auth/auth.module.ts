@@ -1,3 +1,4 @@
+import { accessTokenTtlSeconds, jwtIssuer, jwtSecret } from '../config/required-settings';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
@@ -30,11 +31,11 @@ import { OTP_SETTINGS, otpSettings } from '../otp/otp.config';
     TypeOrmModule.forFeature([User, RefreshToken, OtpChallenge]),
     MailModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET,
+      secret: jwtSecret(),
       signOptions: {
-        issuer: process.env.JWT_ISSUER || 'auth-service',
+        issuer: jwtIssuer(),
         algorithm: 'HS256',
-        expiresIn: parseInt(process.env.JWT_ACCESS_TOKEN_EXPIRES_IN || '900', 10),
+        expiresIn: accessTokenTtlSeconds(),
       },
     }),
     PassportModule,

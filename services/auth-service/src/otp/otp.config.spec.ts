@@ -1,9 +1,18 @@
 import { MailSettings } from '../mail/mail.config';
 import { assertEmailCanBeSent, otpSecret, otpSettings } from './otp.config';
 
+/** What the file supplies: the limits have no fallback in code. */
+const LIMITS = {
+  AUTH_OTP_TTL_SECONDS: '300',
+  AUTH_OTP_RESET_TTL_SECONDS: '600',
+  AUTH_OTP_MAX_ATTEMPTS: '5',
+  AUTH_OTP_RESEND_COOLDOWN_SECONDS: '30',
+  AUTH_OTP_MAX_SENDS: '3',
+};
+
 describe('otp settings', () => {
-  it('has safe defaults, with two-step sign-in on', () => {
-    expect(otpSettings({})).toEqual({
+  it('reads the limits, with two-step sign-in and the registration check on unless switched off', () => {
+    expect(otpSettings({ ...LIMITS })).toEqual({
       twoFactorEnabled: true,
       emailVerificationEnabled: true,
       codeTtlSeconds: 300,
@@ -16,18 +25,18 @@ describe('otp settings', () => {
   });
 
   it('turns two-step sign-in (the option) off only with a literal "false"', () => {
-    expect(otpSettings({ AUTH_TWO_FACTOR_ENABLED: 'false' }).twoFactorEnabled).toBe(false);
-    expect(otpSettings({ AUTH_TWO_FACTOR_ENABLED: '0' }).twoFactorEnabled).toBe(true);
-    expect(otpSettings({ AUTH_TWO_FACTOR_ENABLED: '' }).twoFactorEnabled).toBe(true);
+    expect(otpSettings({ ...LIMITS, AUTH_TWO_FACTOR_ENABLED: 'false' }).twoFactorEnabled).toBe(false);
+    expect(otpSettings({ ...LIMITS, AUTH_TWO_FACTOR_ENABLED: '0' }).twoFactorEnabled).toBe(true);
+    expect(otpSettings({ ...LIMITS, AUTH_TWO_FACTOR_ENABLED: '' }).twoFactorEnabled).toBe(true);
   });
 
   it('turns the email check at registration off only with a literal "false"', () => {
-    expect(otpSettings({ AUTH_EMAIL_VERIFICATION_ENABLED: 'false' }).emailVerificationEnabled).toBe(false);
-    expect(otpSettings({ AUTH_EMAIL_VERIFICATION_ENABLED: '0' }).emailVerificationEnabled).toBe(true);
-    expect(otpSettings({}).emailVerificationEnabled).toBe(true);
+    expect(otpSettings({ ...LIMITS, AUTH_EMAIL_VERIFICATION_ENABLED: 'false' }).emailVerificationEnabled).toBe(false);
+    expect(otpSettings({ ...LIMITS, AUTH_EMAIL_VERIFICATION_ENABLED: '0' }).emailVerificationEnabled).toBe(true);
+    expect(otpSettings({ ...LIMITS }).emailVerificationEnabled).toBe(true);
   });
 
-  it('reads the limits, ignoring anything that is not a positive number', () => {
+  it('reads each limit from its own variable', () => {
     expect(
       otpSettings({
         AUTH_OTP_TTL_SECONDS: '120',
@@ -37,10 +46,12 @@ describe('otp settings', () => {
         AUTH_OTP_MAX_SENDS: '2',
       }),
     ).toMatchObject({ codeTtlSeconds: 120, resetTtlSeconds: 900, maxAttempts: 4, resendCooldownSeconds: 45, maxSends: 2 });
-    expect(otpSettings({ AUTH_OTP_TTL_SECONDS: '-5', AUTH_OTP_MAX_ATTEMPTS: 'many' })).toMatchObject({
-      codeTtlSeconds: 300,
-      maxAttempts: 5,
-    });
+  });
+
+  it('refuses a missing or invalid limit, naming the key to fix', () => {
+    expect(() => otpSettings({})).toThrow('fill in auth.otp.ttl-seconds');
+    expect(() => otpSettings({ ...LIMITS, AUTH_OTP_TTL_SECONDS: '-5' })).toThrow('auth.otp.ttl-seconds');
+    expect(() => otpSettings({ ...LIMITS, AUTH_OTP_MAX_ATTEMPTS: 'many' })).toThrow('auth.otp.max-attempts');
   });
 
   it('hashes with AUTH_OTP_SECRET when given, else the JWT secret, else nothing', () => {
@@ -67,20 +78,20 @@ describe('assertEmailCanBeSent', () => {
   });
 
   it('refuses to start with the registration email check on and no way to send the code, and says how to fix it', () => {
-    expect(() => assertEmailCanBeSent(otpSettings({}), mail(false))).toThrow(/AUTH_EMAIL_MODE=dev/);
-    expect(() => assertEmailCanBeSent(otpSettings({}), mail(false))).toThrow(/AUTH_EMAIL_VERIFICATION_ENABLED=false/);
+    expect(() => assertEmailCanBeSent(otpSettings({ ...LIMITS }), mail(false))).toThrow(/AUTH_EMAIL_MODE=dev/);
+    expect(() => assertEmailCanBeSent(otpSettings({ ...LIMITS }), mail(false))).toThrow(/AUTH_EMAIL_VERIFICATION_ENABLED=false/);
   });
 
   it('is fine with email on, or with the check off', () => {
-    expect(() => assertEmailCanBeSent(otpSettings({}), mail(true))).not.toThrow();
+    expect(() => assertEmailCanBeSent(otpSettings({ ...LIMITS }), mail(true))).not.toThrow();
     expect(() =>
-      assertEmailCanBeSent(otpSettings({ AUTH_EMAIL_VERIFICATION_ENABLED: 'false' }), mail(false)),
+      assertEmailCanBeSent(otpSettings({ ...LIMITS, AUTH_EMAIL_VERIFICATION_ENABLED: 'false' }), mail(false)),
     ).not.toThrow();
   });
 
   it('does not stop the service starting just because two-step sign-in is offered: that is each user\'s choice', () => {
     expect(() =>
-      assertEmailCanBeSent(otpSettings({ AUTH_EMAIL_VERIFICATION_ENABLED: 'false', AUTH_TWO_FACTOR_ENABLED: 'true' }), mail(false)),
+      assertEmailCanBeSent(otpSettings({ ...LIMITS, AUTH_EMAIL_VERIFICATION_ENABLED: 'false', AUTH_TWO_FACTOR_ENABLED: 'true' }), mail(false)),
     ).not.toThrow();
   });
 });

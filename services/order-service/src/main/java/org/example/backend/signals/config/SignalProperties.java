@@ -27,16 +27,16 @@ public class SignalProperties {
     private final int warnRpm;
 
     public SignalProperties(
-            @Value("${signals.candles.cache-ttl-minutes:${CANDLE_CACHE_TTL_MINUTES:10}}") long candleTtlMinutes,
+            @Value("${signals.candles.cache-ttl-minutes}") long candleTtlMinutes,
             @Value("${signals.candles.max-stale-hours:24}") long candleMaxStaleHours,
-            @Value("${signals.cache-ttl-minutes:${SIGNAL_CACHE_TTL_MINUTES:5}}") long signalTtlMinutes,
+            @Value("${signals.cache-ttl-minutes}") long signalTtlMinutes,
             @Value("${signals.lookback-days:90}") int defaultLookbackDays,
-            @Value("${gemini.api-key:${GEMINI_API_KEY:}}") String geminiApiKey,
-            @Value("${gemini.model:${GEMINI_MODEL:gemini-flash-lite-latest}}") String geminiModel,
-            @Value("${gemini.base-url:https://generativelanguage.googleapis.com}") String geminiBaseUrl,
+            @Value("${gemini.api-key}") String geminiApiKey,
+            @Value("${gemini.model}") String geminiModel,
+            @Value("${gemini.base-url}") String geminiBaseUrl,
             @Value("${gemini.timeout-millis:8000}") long geminiTimeoutMillis,
             @Value("${gemini.max-output-tokens:400}") int geminiMaxOutputTokens,
-            @Value("${gemini.rate-limit-rpm:${GEMINI_RATE_LIMIT_RPM:60}}") int rateLimitRpm,
+            @Value("${gemini.rate-limit-rpm}") int rateLimitRpm,
             @Value("${gemini.rate-limit-per-account-rpm:10}") int rateLimitPerAccountRpm,
             @Value("${gemini.warn-rpm:50}") int warnRpm) {
         this.candleTtl = Duration.ofMinutes(Math.max(1, candleTtlMinutes));

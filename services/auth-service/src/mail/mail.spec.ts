@@ -39,16 +39,16 @@ const prod = (over: Partial<MailSettings> = {}): MailSettings =>
   });
 
 describe('mail settings', () => {
-  it('is off, with the dev defaults, unless a mode is chosen', () => {
+  it('is off, and needs nothing else, unless a mode is chosen', () => {
     expect(mailSettings({})).toEqual({
       mode: 'off',
       enabled: false,
-      host: 'localhost',
-      port: 1025,
+      host: '',
+      port: 0,
       tls: 'none',
       user: null,
       password: null,
-      from: 'noreply@etpteamriya.com',
+      from: '',
       fromDomains: [],
       allowedRecipientDomains: [],
       replyTo: null,
@@ -60,6 +60,7 @@ describe('mail settings', () => {
     expect(
       mailSettings({
         AUTH_EMAIL_MODE: ' DEV ',
+        MAILHOG_SMTP_PORT: '1025',
         AUTH_EMAIL_SMTP_HOST: ' mailhog ',
         AUTH_EMAIL_SMTP_PORT: '2525',
         AUTH_EMAIL_FROM: 'auth@example.test',
@@ -74,21 +75,30 @@ describe('mail settings', () => {
   });
 
   it('keeps AUTH_EMAIL_ENABLED=true as an alias for dev, and says it was used; the mode wins when both are set', () => {
-    expect(mailSettings({ AUTH_EMAIL_ENABLED: 'true' })).toMatchObject({ mode: 'dev', enabled: true, usedLegacySwitch: true });
+    const dev = { MAILHOG_HOST: 'localhost', MAILHOG_SMTP_PORT: '1025', AUTH_EMAIL_FROM: 'a@b.test' };
+    expect(mailSettings({ ...dev, AUTH_EMAIL_ENABLED: 'true' })).toMatchObject({ mode: 'dev', enabled: true, usedLegacySwitch: true });
     expect(mailSettings({ AUTH_EMAIL_ENABLED: '1' }).mode).toBe('off');
     expect(mailSettings({ AUTH_EMAIL_ENABLED: 'TRUE' }).mode).toBe('off');
     expect(mailSettings({ AUTH_EMAIL_ENABLED: 'true', AUTH_EMAIL_MODE: 'off' })).toMatchObject({ mode: 'off', usedLegacySwitch: false });
   });
 
-  it('defaults prod to STARTTLS on 587 (or implicit TLS on 465), and a bad port falls back', () => {
-    expect(mailSettings({ AUTH_EMAIL_MODE: 'prod' })).toMatchObject({ tls: 'starttls', port: 587 });
-    expect(mailSettings({ AUTH_EMAIL_MODE: 'prod', AUTH_EMAIL_SMTP_TLS: 'implicit' })).toMatchObject({ tls: 'implicit', port: 465 });
-    expect(mailSettings({ AUTH_EMAIL_MODE: 'dev', AUTH_EMAIL_SMTP_PORT: 'abc' }).port).toBe(1025);
+  it('uses the standard port of the TLS mode in prod, MailHog in dev, and falls back to those on a bad port', () => {
+    const from = { AUTH_EMAIL_FROM: 'a@b.test' };
+    expect(mailSettings({ ...from, AUTH_EMAIL_MODE: 'prod' })).toMatchObject({ tls: 'starttls', port: 587 });
+    expect(mailSettings({ ...from, AUTH_EMAIL_MODE: 'prod', AUTH_EMAIL_SMTP_TLS: 'implicit' })).toMatchObject({ tls: 'implicit', port: 465 });
+    const dev = { ...from, AUTH_EMAIL_MODE: 'dev', MAILHOG_HOST: 'mail.local', MAILHOG_SMTP_PORT: '2525' };
+    expect(mailSettings({ ...dev, AUTH_EMAIL_SMTP_PORT: 'abc' })).toMatchObject({ port: 2525, host: 'mail.local' });
+  });
+
+  it('needs a sender once mail is on, and the MailHog address in dev, and names the key to fill in', () => {
+    expect(() => mailSettings({ AUTH_EMAIL_MODE: 'prod' })).toThrow('auth.email.from');
+    expect(() => mailSettings({ AUTH_EMAIL_MODE: 'dev', AUTH_EMAIL_FROM: 'a@b.test' })).toThrow('services.mailhog');
   });
 
   it('reads credentials and the two domain lists, lowercased and trimmed', () => {
     const read = mailSettings({
       AUTH_EMAIL_MODE: 'prod',
+      AUTH_EMAIL_FROM: 'a@b.test',
       AUTH_EMAIL_SMTP_USER: ' u ',
       AUTH_EMAIL_SMTP_PASSWORD: ' p ',
       AUTH_EMAIL_FROM_DOMAINS: 'Example.com, other.org ,',
