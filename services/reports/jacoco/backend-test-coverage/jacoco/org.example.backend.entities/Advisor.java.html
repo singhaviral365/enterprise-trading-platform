@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Advisor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Backend</a> &gt; <a href="index.source.html" class="el_package">org.example.backend.entities</a> &gt; <span class="el_source">Advisor.java</span></div><h1>Advisor.java</h1><pre class="source lang-java linenums">package org.example.backend.entities;
+
+import java.time.LocalDate;
+import java.util.Objects;
+
+public class Advisor {
+
+    private final int advisorId;
+    private final String advisorName;
+    private final String email;
+    private final String passwordHash;
+    private final LocalDate hireDate;
+
+    public Advisor(
+            int advisorId,
+            String advisorName,
+            String email,
+            String passwordHash,
+<span class="nc" id="L19">            LocalDate hireDate) {</span>
+
+        // Advisor ID must be at least 1
+<span class="nc bnc" id="L22" title="All 2 branches missed.">        if (advisorId &lt; 1) {</span>
+<span class="nc" id="L23">            throw new IllegalArgumentException(</span>
+                    &quot;Advisor ID must be at least 1&quot;
+            );
+        }
+
+        // Advisor name cannot be null or blank
+<span class="nc bnc" id="L29" title="All 4 branches missed.">        if (advisorName == null || advisorName.isBlank()) {</span>
+<span class="nc" id="L30">            throw new IllegalArgumentException(</span>
+                    &quot;Advisor name is required&quot;
+            );
+        }
+
+        // Email cannot be null or blank
+<span class="nc bnc" id="L36" title="All 4 branches missed.">        if (email == null || email.isBlank()) {</span>
+<span class="nc" id="L37">            throw new IllegalArgumentException(</span>
+                    &quot;Email is required&quot;
+            );
+        }
+
+        // Password hash cannot be null or blank
+<span class="nc bnc" id="L43" title="All 4 branches missed.">        if (passwordHash == null || passwordHash.isBlank()) {</span>
+<span class="nc" id="L44">            throw new IllegalArgumentException(</span>
+                    &quot;Password hash is required&quot;
+            );
+        }
+
+        // Hire date cannot be null
+<span class="nc" id="L50">        Objects.requireNonNull(</span>
+                hireDate,
+                &quot;Hire date is required&quot;
+        );
+
+        // Assign validated values
+<span class="nc" id="L56">        this.advisorId = advisorId;</span>
+<span class="nc" id="L57">        this.advisorName = advisorName;</span>
+<span class="nc" id="L58">        this.email = email;</span>
+<span class="nc" id="L59">        this.passwordHash = passwordHash;</span>
+<span class="nc" id="L60">        this.hireDate = hireDate;</span>
+<span class="nc" id="L61">    }</span>
+
+    public int getAdvisorId() {
+<span class="nc" id="L64">        return advisorId;</span>
+    }
+
+    public String getAdvisorName() {
+<span class="nc" id="L68">        return advisorName;</span>
+    }
+
+    public String getEmail() {
+<span class="nc" id="L72">        return email;</span>
+    }
+
+    public String getPasswordHash() {
+<span class="nc" id="L76">        return passwordHash;</span>
+    }
+
+    public LocalDate getHireDate() {
+<span class="nc" id="L80">        return hireDate;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

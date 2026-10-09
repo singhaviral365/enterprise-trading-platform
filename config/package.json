@@ -1,0 +1,15 @@
+{
+  "name": "platform-config",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Command line for config/application.yml (see README.md in this folder).",
+  "scripts": {
+    "check": "node cli.js check",
+    "frontend": "node cli.js frontend",
+    "contracts": "node cli.js contracts",
+    "enc-key": "node cli.js enc-key"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

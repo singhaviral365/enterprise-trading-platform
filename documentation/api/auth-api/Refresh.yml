@@ -1,0 +1,21 @@
+info:
+  name: Refresh
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: refresh
+  body:
+    type: json
+    data: |
+      {
+        "refreshToken": "3dfc63aa3b6538de5bcc3480c4718cab8b5001ee93835ad263597ca4ba2f0b14"
+      }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: false

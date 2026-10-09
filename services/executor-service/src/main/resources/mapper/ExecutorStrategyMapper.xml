@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  Every external value is a bind parameter (the hash-brace form); nothing is spliced into the SQL text. The statuses written here are literals.
+  This file reads `orders` (selectOrderByKey) and never writes it.
+-->
+<mapper namespace="org.example.trade_executor.strategy.mapper.StrategyMapper">
+
+    <resultMap id="RunnableStrategyResultMap" type="org.example.trade_executor.strategy.model.RunnableStrategy">
+        <constructor>
+            <idArg column="strategy_id" javaType="_long" name="strategyId"/>
+            <arg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="owner_user_id" javaType="_long" name="ownerUserId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
+            <arg column="instrument_ticker" javaType="String" name="tickerSymbol"/>
+            <arg column="instrument_currency" javaType="String" name="instrumentCurrency"/>
+            <arg column="side" javaType="org.example.backend.enums.OrderSide" name="side"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="trigger_direction" javaType="org.example.trade_executor.strategy.model.TriggerDirection" name="direction"/>
+            <arg column="trigger_price" javaType="java.math.BigDecimal" name="triggerPrice"/>
+            <arg column="armed" javaType="_boolean" name="armed"/>
+            <arg column="valid_from" javaType="java.time.OffsetDateTime" name="validFrom"/>
+            <arg column="valid_until" javaType="java.time.OffsetDateTime" name="validUntil"/>
+            <arg column="max_order_value" javaType="java.math.BigDecimal" name="maxOrderValue"/>
+            <arg column="max_position_qty" javaType="_long" name="maxPositionQty"/>
+            <arg column="max_executions" javaType="_int" name="maxExecutions"/>
+            <arg column="max_failures" javaType="_int" name="maxFailures"/>
+            <arg column="executions" javaType="_int" name="executions"/>
+            <arg column="consecutive_failures" javaType="_int" name="consecutiveFailures"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="ExistingOrderResultMap" type="org.example.trade_executor.strategy.model.ExistingOrder">
+        <constructor>
+            <idArg column="order_id" javaType="_long" name="orderId"/>
+            <arg column="order_status" javaType="String" name="status"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectActiveForTicker" resultMap="RunnableStrategyResultMap">
+        SELECT
+            s.strategy_id,
+            s.account_id,
+            a.user_id AS owner_user_id,
+            s.instrument_id,
+            i.instrument_ticker,
+            i.currency AS instrument_currency,
+            s.side,
+            s.quantity,
+            s.trigger_direction,
+            s.trigger_price,
+            s.armed,
+            s.valid_from,
+            s.valid_until,
+            s.max_order_value,
+            s.max_position_qty,
+            s.max_executions,
+            s.max_failures,
+            s.executions,
+            s.consecutive_failures
+        FROM strategy s
+        JOIN instrument i ON i.instrument_id = s.instrument_id
+        JOIN account a ON a.account_id = s.account_id
+        WHERE s.status = 'ACTIVE'
+          AND i.instrument_ticker = #{ticker}
+        ORDER BY s.strategy_id
+    </select>
+
+    <update id="arm">
+        UPDATE strategy
+        SET armed = TRUE,
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status = 'ACTIVE'
+          AND armed = FALSE
+    </update>
+
+    <!-- The one gate. Every condition is in the statement, so it is decided in one place, atomically. -->
+    <update id="claim">
+        UPDATE strategy
+        SET status = 'EXECUTING',
+            claimed_at = CURRENT_TIMESTAMP,
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status = 'ACTIVE'
+          AND armed = TRUE
+          AND executions &lt; max_executions
+          AND (valid_from IS NULL OR valid_from &lt;= CURRENT_TIMESTAMP)
+          AND (valid_until IS NULL OR valid_until &gt; CURRENT_TIMESTAMP)
+    </update>
+
+    <update id="confirmClaim">
+        UPDATE strategy
+        SET claimed_at = CURRENT_TIMESTAMP
+        WHERE strategy_id = #{strategyId}
+          AND status = 'EXECUTING'
+          AND (valid_until IS NULL OR valid_until &gt; CURRENT_TIMESTAMP)
+    </update>
+
+    <!--
+      UPDATE ... RETURNING is written as a select so the new status comes back. The message kept on the strategy is the last
+      problem, so the customer sees why it is not trading; at the failure limit it also says the platform stopped it.
+    -->
+    <select id="recordFailure" resultType="String" flushCache="true">
+        UPDATE strategy
+        SET consecutive_failures = consecutive_failures + 1,
+            status = CASE WHEN consecutive_failures + 1 &gt;= max_failures THEN 'FAILED' ELSE 'ACTIVE' END,
+            status_reason = CASE
+                WHEN consecutive_failures + 1 &gt;= max_failures
+                    THEN LEFT('Stopped after ' || max_failures || ' failed attempts in a row. Last problem: '
+                              || CAST(#{reason} AS VARCHAR), 200)
+                ELSE LEFT(CAST(#{reason} AS VARCHAR), 200)
+            END,
+            claimed_at = NULL,
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+          AND status = 'EXECUTING'
+        RETURNING status
+    </select>
+
+    <update id="recordSuccess">
+        UPDATE strategy
+        SET executions = executions + 1,
+            consecutive_failures = 0,
+            last_order_id = #{orderId},
+            status_reason = NULL,
+            armed = FALSE,
+            claimed_at = NULL,
+            status = CASE
+                WHEN status = 'EXECUTING'
+                    THEN CASE WHEN executions + 1 &gt;= max_executions THEN 'EXECUTED' ELSE 'ACTIVE' END
+                ELSE status
+            END,
+            version = version + 1
+        WHERE strategy_id = #{strategyId}
+    </update>
+
+    <insert id="insertRun">
+        INSERT INTO strategy_run (strategy_id, run_number, quote_price, quote_at, outcome, order_id, detail)
+        VALUES (
+            #{run.strategyId},
+            #{run.runNumber},
+            #{run.quotePrice},
+            #{run.quoteAt},
+            #{run.outcome},
+            #{run.orderId,jdbcType=BIGINT},
+            LEFT(CAST(#{run.detail,jdbcType=VARCHAR} AS VARCHAR), 200)
+        )
+    </insert>
+
+    <insert id="insertStaleRunOnce">
+        INSERT INTO strategy_run (strategy_id, run_number, quote_price, quote_at, outcome, detail)
+        SELECT
+            CAST(#{run.strategyId} AS BIGINT),
+            CAST(#{run.runNumber} AS INTEGER),
+            CAST(#{run.quotePrice} AS NUMERIC(19, 4)),
+            CAST(#{run.quoteAt} AS TIMESTAMPTZ),
+            'STALE',
+            LEFT(CAST(#{run.detail,jdbcType=VARCHAR} AS VARCHAR), 200)
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM strategy_run
+            WHERE strategy_id = #{run.strategyId}
+              AND outcome = 'STALE'
+              AND created_at &gt; CURRENT_TIMESTAMP - INTERVAL '5 minutes'
+        )
+    </insert>
+
+    <update id="settleRun">
+        UPDATE strategy_run
+        SET settled_status = #{settledStatus},
+            settled_at = CURRENT_TIMESTAMP
+        WHERE strategy_id = #{strategyId}
+          AND run_number = #{runNumber}
+          AND outcome IN ('ORDERED', 'DUPLICATE')
+          AND settled_status IS NULL
+    </update>
+
+    <select id="selectOrderByKey" resultMap="ExistingOrderResultMap">
+        SELECT order_id, order_status
+        FROM orders
+        WHERE idempotency_key = #{idempotencyKey}
+    </select>
+
+    <update id="expireOverdue">
+        UPDATE strategy
+        SET status = 'EXPIRED',
+            status_reason = 'The window closed before it finished',
+            version = version + 1
+        WHERE status IN ('ACTIVE', 'DISABLED')
+          AND valid_until IS NOT NULL
+          AND valid_until &lt;= CURRENT_TIMESTAMP
+    </update>
+
+    <update id="recoverStuck">
+        UPDATE strategy
+        SET status = 'ACTIVE',
+            claimed_at = NULL,
+            status_reason = 'Recovered after an interrupted run',
+            version = version + 1
+        WHERE status = 'EXECUTING'
+          AND claimed_at &lt; CURRENT_TIMESTAMP - (CAST(#{seconds} AS BIGINT) * INTERVAL '1 second')
+    </update>
+
+</mapper>

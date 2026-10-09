@@ -1,0 +1,7 @@
+<app-instrument-icon [symbol]="symbol()" [iconUrl]="iconUrl()" [size]="size()" />
+<span class="label-text">
+  <span class="label-symbol">{{ symbol() }}</span>
+  @if (name()) {
+    <span class="label-name">{{ name() }}</span>
+  }
+</span>

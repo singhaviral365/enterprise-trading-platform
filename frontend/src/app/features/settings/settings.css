@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.settings-header {
+  margin-bottom: 16px;
+}
+
+.settings-header .page-title {
+  margin-bottom: 4px;
+}
+
+.settings-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* The cards stack in two columns, so a short card never leaves a hole beside a tall one. */
+.settings-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.settings-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .settings-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.settings-layout > .is-full,
+.settings-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-layout .card {
+  container-type: inline-size;
+  padding: 16px 18px;
+}
+
+.settings-layout .card-title {
+  margin-bottom: 10px;
+}
+
+.settings-layout .form-group {
+  margin-bottom: 12px;
+}
+
+/* A label plus one control sits on one line: label left, control right. */
+.settings-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--surface-line-subtle);
+}
+
+.setting-row:last-child {
+  border-bottom: 0;
+}
+
+:host ::ng-deep .setting-row .form-label {
+  margin: 0;
+}
+
+:host ::ng-deep .setting-row .form-error-text {
+  grid-column: 1 / -1;
+}
+
+/* A read-only fact in the same row shape as a control: label left, value right, the explanation under both. */
+.setting-fact .setting-fact-hint {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+}
+
+/* Narrow card: label above the control again. */
+@container (max-width: 360px) {
+  .setting-row {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+}
+
+.settings-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-container-background);
+}
+
+.settings-preview dt {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.settings-preview dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.settings-actions .form-error-text {
+  flex: 1 1 100%;
+  margin: 0;
+  text-align: right;
+}

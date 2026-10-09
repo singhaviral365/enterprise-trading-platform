@@ -1,0 +1,28 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. The shared chrome is `.hc` in
+   styles.css; this only colours the series, from the status tokens. */
+
+.bar-chart .highcharts-point {
+  fill: var(--status-success-background);
+}
+
+/* Highcharts marks a point below the threshold with .highcharts-negative. */
+.bar-chart .highcharts-point.highcharts-negative {
+  fill: var(--status-error-background);
+}
+
+.bar-chart .highcharts-point-hover {
+  opacity: 0.85;
+}
+
+.bar-chart .highcharts-line-series .highcharts-graph {
+  fill: none;
+  stroke: var(--accent-primary-background);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+/* A zero line, so bars that rise and fall are read against it. */
+.bar-chart .highcharts-plot-line,
+.bar-chart .highcharts-zero-plot-line {
+  stroke: var(--surface-line);
+}

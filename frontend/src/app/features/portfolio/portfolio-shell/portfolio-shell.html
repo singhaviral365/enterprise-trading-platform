@@ -1,0 +1,159 @@
+<header class="portfolio-header">
+  <div>
+    <h1 class="page-title" data-testid="portfolio-title">Portfolio</h1>
+    @if (summary(); as s) {
+      <p class="portfolio-asof" data-testid="portfolio-asof">
+        Prices as of {{ s.asOf | date: 'medium' }}
+        @if (anyDelayed()) {
+          <span class="badge is-delayed" data-testid="portfolio-delayed">
+            <i class="fas fa-clock" aria-hidden="true"></i> Delayed
+          </span>
+        }
+      </p>
+    }
+  </div>
+  @if (accounts.linked()) {
+    <div class="portfolio-tools">
+      @if (store.data.isLoading()) {
+        <app-spinner [inline]="true" label="Refreshing your portfolio" />
+      }
+      <button
+        type="button"
+        class="btn is-secondary"
+        data-testid="portfolio-refresh"
+        [disabled]="store.data.isLoading()"
+        (click)="refresh()"
+      >
+        <i class="fas fa-rotate" aria-hidden="true"></i>
+        Refresh
+      </button>
+    </div>
+  }
+</header>
+
+@if (accounts.data.isLoading() && !accounts.data.hasValue()) {
+  <div class="card portfolio-state" aria-live="polite">
+    <app-spinner [inline]="true" label="Loading your account" />
+    <span>Loading your account…</span>
+  </div>
+} @else if (!accounts.linked()) {
+  <div class="card portfolio-state is-empty" data-testid="portfolio-no-account">
+    <i class="fas fa-building-columns" aria-hidden="true"></i>
+    <p>You don't have a trading account yet, so there is no portfolio to show.</p>
+    <a class="btn is-primary" routerLink="/dashboard">Go to the dashboard</a>
+  </div>
+} @else if (store.unavailable()) {
+  <!-- Nothing could be priced (MKT-503). Never an empty page: the holdings are still known, just not valued. -->
+  <div class="notice is-error" role="alert" data-testid="portfolio-unavailable">
+    <i class="fas fa-plug-circle-xmark" aria-hidden="true"></i>
+    <div>
+      <p class="notice-title">Prices are unavailable right now</p>
+      <p>
+        We could not get a price for any of your holdings, so their value and profit and loss are not shown. Your cash and
+        what you paid for each holding are below, and trading is not affected.
+      </p>
+    </div>
+    <button type="button" class="btn is-secondary" data-testid="portfolio-retry" (click)="store.reload()">
+      Try again
+    </button>
+  </div>
+
+  <section class="tiles" aria-label="Account summary">
+    <article class="card tile">
+      <h2 class="tile-label">Cash</h2>
+      <p class="tile-value" data-testid="portfolio-cash" [attr.title]="cash() | currency: currency()">{{ cash() | compactMoney: currency() }}</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Cost of holdings</h2>
+      <p class="tile-value" data-testid="portfolio-cost" [attr.title]="unavailableCost() | currency: currency()">{{ unavailableCost() | compactMoney: currency() }}</p>
+    </article>
+    @if (store.unavailableRealised(); as realised) {
+      <article class="card tile">
+        <h2 class="tile-label">Realised P&amp;L</h2>
+        <p class="tile-value" data-testid="portfolio-realised">
+          <app-pnl-value [amount]="realised.realisedPnl" [currency]="currency()" />
+        </p>
+        <p class="tile-note">Booked when you sold. Needs no price.</p>
+      </article>
+    }
+  </section>
+} @else if (summary(); as s) {
+  @if (s.partial) {
+    <div class="notice is-warning" role="status" data-testid="portfolio-partial">
+      <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+      <p>
+        {{ unpricedCount() === 1 ? '1 holding' : unpricedCount() + ' holdings' }} could not be priced. Market value, profit and
+        loss and total value cover only the others, so they are understated.
+      </p>
+    </div>
+  }
+
+  <section class="tiles" aria-label="Portfolio summary">
+    <article class="card tile is-featured">
+      <h2 class="tile-label">Total value</h2>
+      <p class="tile-value" data-testid="portfolio-total" [attr.title]="s.totalValue | currency: currency()">{{ s.totalValue | compactMoney: currency() }}</p>
+      <p class="tile-note">Cash plus market value</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Cash</h2>
+      <p class="tile-value" data-testid="portfolio-cash" [attr.title]="s.cashBalance | currency: currency()">{{ s.cashBalance | compactMoney: currency() }}</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Market value</h2>
+      <p class="tile-value" data-testid="portfolio-market-value" [attr.title]="s.marketValue | currency: currency()">{{ s.marketValue | compactMoney: currency() }}</p>
+      <p class="tile-note" [attr.title]="s.costBasis | currency: currency()">Cost {{ s.costBasis | compactMoney: currency() }}</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Unrealised P&amp;L</h2>
+      <p class="tile-value" data-testid="portfolio-unrealised">
+        <app-pnl-value [amount]="s.unrealisedPnl" [percent]="s.unrealisedPnlPercent" [currency]="currency()" />
+      </p>
+      <p class="tile-note">On what you still hold</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Realised P&amp;L</h2>
+      <p class="tile-value" data-testid="portfolio-realised">
+        <app-pnl-value [amount]="s.realisedPnl" [currency]="currency()" />
+      </p>
+      <p class="tile-note">Booked when you sold</p>
+    </article>
+    <article class="card tile">
+      <h2 class="tile-label">Today</h2>
+      <p class="tile-value" data-testid="portfolio-day">
+        <app-pnl-value [amount]="s.dayPnl" [percent]="s.dayPnlPercent" [currency]="currency()" />
+      </p>
+      <p class="tile-note">Since the previous close</p>
+    </article>
+  </section>
+} @else if (store.errorMessage()) {
+  <div class="card portfolio-state is-error" role="alert" data-testid="portfolio-error">
+    <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+    <p>{{ store.errorMessage() }}</p>
+    <button type="button" class="btn is-secondary" (click)="refresh()">Try again</button>
+  </div>
+} @else {
+  <div class="card portfolio-state" aria-live="polite" data-testid="portfolio-loading">
+    <app-spinner [inline]="true" label="Loading your portfolio" />
+    <span>Loading your portfolio…</span>
+  </div>
+}
+
+@if (accounts.linked() && (store.unavailable() || summary())) {
+  <nav class="portfolio-tabs" aria-label="Portfolio sections" data-testid="portfolio-tabs">
+    @for (tab of tabs; track tab.path) {
+      <a
+        class="portfolio-tab"
+        [routerLink]="tab.path"
+        routerLinkActive="is-active"
+        ariaCurrentWhenActive="page"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [attr.data-testid]="'portfolio-tab-' + tab.id"
+      >
+        <i [class]="tab.icon" aria-hidden="true"></i>
+        {{ tab.label }}
+      </a>
+    }
+  </nav>
+
+  <router-outlet />
+}

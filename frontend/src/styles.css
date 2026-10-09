@@ -1,0 +1,1395 @@
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Light theme: cool slate neutrals with the same emerald family as the dark theme. */
+  --surface-background: #F4F6FA;
+  --surface-background-bright: #FFFFFF;
+  /* Company logos are drawn for a light background: this tile stays light in both themes. */
+  --icon-background: #FFFFFF;
+  --icon-border: #E4E8EF;
+  --surface-container-background: #EEF1F6;
+  --surface-container-background-low: #F8FAFC;
+  --surface-container-background-medium: #FFFFFF;
+  --surface-container-background-high: #FFFFFF;
+  --surface-foreground: #0F172A;
+  --surface-foreground-subtle: #5B6475;
+  --surface-line: #8A93A3;
+  --surface-line-subtle: #E4E8EF;
+  --surface-foreground-link: #047857;
+  --surface-foreground-link-interaction: #065F46;
+
+  --accent-primary-background: #047857;
+  --accent-primary-background-interaction: #065F46;
+  --accent-primary-foreground: #FFFFFF;
+  --accent-primary-container-background: #ECFDF5;
+  --accent-primary-container-foreground: #5B6475;
+
+  --status-success-background: #047857;
+  --status-success-foreground: #FFFFFF;
+  --status-success-container-bg: #ECFDF5;
+  --status-success-container-fg: #047857;
+  --status-success-container-line: #A7F3D0;
+
+  --status-info-background: #2563EB;
+  --status-info-foreground: #FFFFFF;
+  --status-info-container-bg: #EFF6FF;
+  --status-info-container-fg: #1D4ED8;
+  --status-info-container-line: #BFDBFE;
+
+  --status-warning-background: #B45309;
+  --status-warning-foreground: #FFFFFF;
+  --status-warning-container-bg: #FFFBEB;
+  --status-warning-container-fg: #92400E;
+  --status-warning-container-line: #FDE68A;
+
+  --status-error-background: #DC2626;
+  --status-error-foreground: #FFFFFF;
+  --status-error-container-bg: #FEF2F2;
+  --status-error-container-fg: #B91C1C;
+  --status-error-container-line: #FECACA;
+
+  --data-categorical-1: #8CC1FD;
+  --data-categorical-2: #8AD97C;
+  --data-categorical-3: #D4B3FB;
+  --data-categorical-4: #E2D698;
+  --data-categorical-5: #FE98F5;
+  --data-categorical-6: #A3E2FF;
+  --data-categorical-7: #FFC371;
+  --data-categorical-8: #51F7D5;
+  --data-categorical-9: #ABAAA8;
+  --data-categorical-10: #FF9F9F;
+
+  --data-mono-green-1: #D4F3CF;
+  --data-mono-green-2: #8AD97C;
+  --data-mono-green-3: #48AC36;
+  --data-mono-green-4: #1E6F1D;
+  --data-mono-green-5: #044014;
+
+  --data-mono-blue-1: #DAEBFF;
+  --data-mono-blue-2: #8CC1FD;
+  --data-mono-blue-3: #3880F3;
+  --data-mono-blue-4: #2751C2;
+  --data-mono-blue-5: #132454;
+
+  --data-mono-red-1: #FFE0E0;
+  --data-mono-red-2: #FF9F9F;
+  --data-mono-red-3: #FA3939;
+  --data-mono-red-4: #C31212;
+  --data-mono-red-5: #861616;
+
+  --data-mono-neutral-1: #F5F3F0;
+  --data-mono-neutral-2: #D9D8D5;
+  --data-mono-neutral-3: #757473;
+  --data-mono-neutral-4: #403F3E;
+  --data-mono-neutral-5: #141414;
+
+  --header-height: 60px;
+
+  /* App shell (header / footer): frosted glass over the page in both themes. */
+  --shell-background: rgb(255 255 255 / 0.78);
+  --shell-foreground: #0F172A;
+  --shell-border: #E4E8EF;
+  --shell-hover: rgb(15 23 42 / 0.06);
+  --shell-cta-background: #047857;
+  --shell-cta-foreground: #FFFFFF;
+  --shell-cta-hover: #065F46;
+  --page-glow:
+    radial-gradient(1100px 520px at 0% -10%, rgb(16 185 129 / 0.10), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgb(59 130 246 / 0.08), transparent 60%);
+  --card-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 10px 28px -14px rgb(15 23 42 / 0.16);
+  --card-shadow-hover: 0 2px 4px rgb(15 23 42 / 0.05), 0 22px 44px -18px rgb(15 23 42 / 0.28);
+  /* Gradients: every stop keeps white text above 4.5:1. */
+  --accent-gradient: linear-gradient(135deg, #047857 0%, #0F766E 100%);
+  --accent-glow: 0 8px 20px -8px rgb(4 120 87 / 0.55);
+  --hero-gradient: linear-gradient(135deg, #065F46 0%, #0F766E 45%, #1D4ED8 110%);
+  --hero-foreground: #FFFFFF;
+  --radius-card: 18px;
+  --footer-height: 60px;
+  --sidebar-width-open: 175px;
+  --sidebar-width-closed: 60px;
+  --notification-z: 9999;
+  --modal-z: 9998;
+  --sidebar-z: 100;
+  --header-z: 200;
+  /* Below the sidebar (100), so the footer scrolling into view never covers the navigation. */
+  --footer-z: 50;
+}
+
+:root[data-theme="dark"],
+body[data-theme="dark"] {
+  /* Dark theme: deep slate surfaces with a bright emerald accent (dark text on accent fills). */
+  --surface-background: #0A0D12;
+  --surface-background-bright: #12161D;
+  /* Company logos are drawn for a light background: this tile stays light in both themes. */
+  --icon-background: #FFFFFF;
+  --icon-border: #E4E8EF;
+  --surface-container-background: #181D26;
+  --surface-container-background-low: #12161D;
+  --surface-container-background-medium: #181D26;
+  --surface-container-background-high: #1F2530;
+  --surface-foreground: #E8EAF0;
+  --surface-foreground-subtle: #9BA3B4;
+  --surface-line: #4A5364;
+  --surface-line-subtle: #252C38;
+  --surface-foreground-link: #6EE7B7;
+  --surface-foreground-link-interaction: #A7F3D0;
+
+  --accent-primary-background: #34D399;
+  --accent-primary-background-interaction: #6EE7B7;
+  --accent-primary-foreground: #03241A;
+  --accent-primary-container-background: #0F2A22;
+  --accent-primary-container-foreground: #9BA3B4;
+
+  --status-success-background: #34D399;
+  --status-success-foreground: #03241A;
+  --status-success-container-bg: #0F2A22;
+  --status-success-container-fg: #6EE7B7;
+  --status-success-container-line: #1F5E48;
+
+  --status-info-background: #60A5FA;
+  --status-info-foreground: #0A1A33;
+  --status-info-container-bg: #0F1E36;
+  --status-info-container-fg: #93C5FD;
+  --status-info-container-line: #2B4C7E;
+
+  --status-warning-background: #FBBF24;
+  --status-warning-foreground: #2A1A02;
+  --status-warning-container-bg: #2B2111;
+  --status-warning-container-fg: #FCD34D;
+  --status-warning-container-line: #6B5220;
+
+  --status-error-background: #F87171;
+  --status-error-foreground: #2A0707;
+  --status-error-container-bg: #2E1416;
+  --status-error-container-fg: #FCA5A5;
+  --status-error-container-line: #7A2A2E;
+
+  /* App shell (header / footer): translucent glass instead of a solid colour bar. */
+  --shell-background: rgb(10 13 18 / 0.72);
+  --shell-foreground: #E8EAF0;
+  --shell-border: #252C38;
+  --shell-hover: rgb(255 255 255 / 0.07);
+  --shell-cta-background: #34D399;
+  --shell-cta-foreground: #03241A;
+  --shell-cta-hover: #6EE7B7;
+  --page-glow:
+    radial-gradient(1100px 520px at 0% -10%, rgb(52 211 153 / 0.09), transparent 60%),
+    radial-gradient(900px 480px at 100% 0%, rgb(96 165 250 / 0.07), transparent 60%);
+  --card-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 10px 30px -12px rgb(0 0 0 / 0.6);
+  --card-shadow-hover: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 48px -16px rgb(0 0 0 / 0.75);
+  --accent-gradient: linear-gradient(135deg, #34D399 0%, #2DD4BF 100%);
+  --accent-glow: 0 8px 22px -8px rgb(52 211 153 / 0.55);
+  --hero-gradient: linear-gradient(135deg, #065F46 0%, #0E7490 50%, #1E40AF 110%);
+  --hero-foreground: #FFFFFF;
+
+  --data-categorical-1: #2751C2;
+  --data-categorical-2: #1E6F1D;
+  --data-categorical-3: #7332BA;
+  --data-categorical-4: #997E05;
+  --data-categorical-5: #C318A0;
+  --data-categorical-6: #047CBB;
+  --data-categorical-7: #C74B07;
+  --data-categorical-8: #058070;
+  --data-categorical-9: #757473;
+  --data-categorical-10: #C31212;
+
+  --data-mono-green-1: #D4F3CF;
+  --data-mono-green-2: #BBEBB2;
+  --data-mono-green-3: #8AD97C;
+  --data-mono-green-4: #65C754;
+  --data-mono-green-5: #48AC36;
+
+  --data-mono-blue-1: #DAEBFF;
+  --data-mono-blue-2: #B4D6FF;
+  --data-mono-blue-3: #8CC1FD;
+  --data-mono-blue-4: #60A5FA;
+  --data-mono-blue-5: #3880F3;
+
+  --data-mono-red-1: #FFE0E0;
+  --data-mono-red-2: #FFC7C7;
+  --data-mono-red-3: #FF9F9F;
+  --data-mono-red-4: #FF6868;
+  --data-mono-red-5: #FA3939;
+
+  --data-mono-neutral-1: #F5F3F0;
+  --data-mono-neutral-2: #E6E4E1;
+  --data-mono-neutral-3: #D9D8D5;
+  --data-mono-neutral-4: #ABAAA8;   
+  --data-mono-neutral-5: #757473;
+}
+
+@font-face {
+    font-family: 'Fidelity Sans';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-Regular.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-Regular.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Italic';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-Italic.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-Italic.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Bold';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-Bold.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-Bold.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Bold Italic';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-BoldItalic.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-BoldItalic.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Extra Bold';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-ExtraBold.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-ExtraBold.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Light';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-Light.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-Light.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Light Italic';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-LightItalic.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-LightItalic.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Ultra Light';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-UltraLight.woff2) format("woff2"), url(https://assets.fidelity.com/fonts/FidelitySans-UltraLight.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Condensed Medium';
+    src: url(https://assets.fidelity.com/fonts/FidelitySansCondensed-Medium.woff2) format("woff2"), url(https://dpcs-assets-fidelity-stage.dpcs.fmr.com/fonts/FidelitySansCondensed-Medium.woff) format("woff");
+}
+
+@font-face {
+    font-family: 'Fidelity Sans Demibold';
+    src: url(https://assets.fidelity.com/fonts/FidelitySans-Demibold.woff2) format("woff2"), url(https://dpcs-assets-fidelity-stage.dpcs.fmr.com/fonts/FidelitySans-Demibold.woff) format("woff");
+}
+
+app-root {
+  display: block;
+}
+
+html,
+body {
+  font-family: 'Fidelity Sans', sans-serif;
+  background: var(--page-glow), var(--surface-background);
+  background-attachment: fixed;
+  color: var(--surface-foreground);
+  min-height: 100vh;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+a {
+  color: var(--surface-foreground-link);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--surface-foreground-link-interaction);
+}
+
+/* Typography */
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--surface-foreground);
+  margin-bottom: 24px;
+}
+
+.page-subtitle {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--surface-foreground);
+  margin-bottom: 24px;
+}
+
+.section-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--surface-foreground);
+}
+
+.text-small {
+  font-size: 12px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:not(.is-icon-only)>i {
+  position: relative;
+  top: 2px;
+}
+
+.btn.is-primary {
+  background: var(--accent-gradient);
+  color: var(--accent-primary-foreground);
+  /* box-shadow: var(--accent-glow); */
+}
+
+.btn.is-primary:hover:not(:disabled) {
+  background: var(--accent-gradient);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn.is-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn.is-inverse {
+  background: var(--accent-primary-foreground);
+  color: var(--accent-primary-background);
+}
+
+.btn.is-inverse:hover:not(:disabled) {
+  background: var(--surface-line-subtle);
+}
+
+.btn.is-secondary {
+  background: var(--surface-container-background);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line);
+}
+
+.btn.is-secondary:hover:not(:disabled) {
+  background: var(--surface-line-subtle);
+}
+
+.btn.is-tertiary {
+  background: var(--surface-container-background);
+  color: var(--surface-foreground);
+  border: none;
+}
+
+.btn.is-tertiary:hover:not(:disabled) {
+  background: var(--surface-line-subtle);
+}
+
+.btn.is-success {
+  background: var(--status-success-background);
+  color: var(--status-success-foreground);
+}
+
+.btn.is-success:hover:not(:disabled) {
+  background: var(--status-success-container-fg);
+}
+
+.btn.is-info {
+  background: var(--status-info-background);
+  color: var(--status-info-foreground);
+}
+
+.btn.is-info:hover:not(:disabled) {
+  background: var(--status-info-container-fg);
+}
+
+.btn.is-error {
+  background: var(--status-error-background);
+  color: var(--status-error-foreground);
+}
+
+.btn.is-error:hover:not(:disabled) {
+  background: var(--status-error-container-fg);
+}
+
+.btn.is-warning {
+  background: var(--status-warning-background);
+  color: var(--status-warning-foreground);
+}
+
+.btn.is-warning:hover:not(:disabled) {
+  background: var(--status-warning-container-fg);
+}
+
+.btn:disabled {
+  background: var(--surface-line-subtle);
+  color: var(--surface-line);
+  cursor: not-allowed;
+}
+
+.btn.is-small {
+  min-height: 30px;
+  min-width: 30px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 400;
+  border-radius: 8px;
+}
+
+.btn.is-large {
+  min-height: 44px;
+  padding: 10px 24px;
+  font-size: 16px;
+  font-weight: 800;
+  border-radius: 50px;
+}
+
+.btn.is-transparent {
+  border: none;
+  background: none;
+  color: var(--surface-foreground);
+}
+
+.full-width-btn {
+  width: 100%;
+}
+
+.btn.is-icon-only {
+  min-height: 26px;
+  min-width: 36px;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  padding: 0;
+  gap: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.is-icon-only.is-small {
+  min-height: 20px;
+  min-width: 20px;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+}
+
+.btn.is-icon-only.is-unclickable {
+  cursor: default;
+}
+
+/* Form Elements */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--surface-foreground);
+  margin-bottom: 6px;
+}
+
+.required {
+  margin-left: 2px;
+  font-size: 10px;
+  color: var(--surface-line);
+}
+
+.form-input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  border-color: var(--accent-primary-background);
+}
+
+.form-input::placeholder {
+  color: var(--surface-line);
+}
+
+.form-input.is-error {
+  border-color: var(--status-error-background);
+}
+
+.form-input:read-only {
+  cursor: not-allowed;
+  background: var(--surface-background);
+  border: 1px solid var(--surface-line-subtle);
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s ease;
+}
+
+.form-textarea:focus {
+  border-color: var(--accent-primary-background);
+}
+
+/* Dropdown */
+
+.form-select,
+.form-select::picker(select) {
+  appearance: base-select;
+}
+
+.form-select {
+  min-width: max-content;
+  width: max-content;
+  height: 40px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 8px;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.form-select:focus {
+  border-color: var(--accent-primary-background);
+}
+
+.form-select.is-error {
+  border-color: var(--status-error-background);
+}
+
+.form-select::picker-icon {
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  content: '\f078';
+  /* fa-chevron-down */
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+  display: block;
+}
+
+.form-select::picker(select) {
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 8px;
+  padding: 4px;
+  margin-top: 4px;
+}
+
+.form-select option {
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 4px 0px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--surface-foreground);
+}
+
+.form-select option:hover:not(:disabled):not(:checked) {
+  background: var(--surface-background);
+}
+
+.form-select option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.form-select option:checked {
+  background: var(--status-success-container-bg);
+  color: var(--status-success-container-fg);
+  font-weight: 500;
+}
+
+/* Hide the default checkmark on selected options (cleaner look) */
+.form-select option::checkmark {
+  display: none;
+}
+
+.form-error-text {
+  font-size: 12px;
+  color: var(--status-error-container-fg);
+  margin-top: 4px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+  margin-top: 4px;
+}
+
+/* Status Messages */
+
+.status {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.is-success {
+  color: var(--status-success-container-fg);
+}
+
+.is-info {
+  color: var(--status-info-container-fg);
+}
+
+.is-warning {
+  color: var(--status-warning-container-fg);
+}
+
+.is-error {
+  color: var(--status-error-container-fg);
+}
+
+.is-neutral {
+  color: var(--surface-foreground-subtle);
+}
+
+/* Card */
+
+.card {
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: var(--radius-card);
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--surface-foreground);
+  margin-bottom: 16px;
+}
+
+/* Table */
+
+/* Wrap the table in .table-container for the border, rounded corners and horizontal scrolling.
+   Add .is-scrollable to cap the height and keep the header row visible while scrolling. */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+}
+
+.table-container.is-scrollable {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  color: var(--surface-foreground);
+}
+
+.data-table caption {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--surface-foreground);
+  border-bottom: 1px solid var(--surface-line-subtle);
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--surface-foreground);
+  background: var(--surface-container-background);
+  border-bottom: 1px solid var(--surface-line-subtle);
+}
+
+.data-table td {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--surface-foreground);
+  border-bottom: 1px solid var(--surface-line-subtle);
+  vertical-align: middle;
+}
+
+/* Row headers (first cell of a row) read as data, not as a column heading. */
+.data-table tbody th {
+  position: static;
+  font-weight: 600;
+  background: none;
+  border-bottom: 1px solid var(--surface-line-subtle);
+}
+
+.data-table tbody tr:last-child th,
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Numbers: right-aligned with fixed-width digits so columns line up. */
+.data-table .is-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody tr:hover th,
+.data-table tbody tr:hover td {
+  background: var(--surface-container-background);
+}
+
+.data-table.is-striped tbody tr:nth-child(even) th,
+.data-table.is-striped tbody tr:nth-child(even) td {
+  background: var(--surface-container-background-low);
+}
+
+.data-table.is-striped tbody tr:hover th,
+.data-table.is-striped tbody tr:hover td {
+  background: var(--surface-container-background);
+}
+
+.data-table.is-compact th,
+.data-table.is-compact td {
+  padding: 6px 12px;
+}
+
+.data-table tfoot td,
+.data-table tfoot th {
+  position: static;
+  font-weight: 600;
+  background: var(--surface-container-background);
+  border-top: 1px solid var(--surface-line-subtle);
+  border-bottom: none;
+}
+
+.data-table .clickable-row {
+  cursor: pointer;
+}
+
+.data-table .clickable-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.data-table .actions-cell {
+  white-space: nowrap;
+}
+
+.data-table .actions-cell>.btn+.btn {
+  margin-left: 8px;
+}
+
+.data-table .empty-row td {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--surface-foreground-subtle);
+}
+
+/* Selectable table (.row-table): the table behind Market data and Positions. Every row is a rounded card of its
+   own that lifts on hover, and the selected row is filled with the primary colour. Use it for tables whose rows
+   open something; plain read-only tables stay .data-table. Wrap it in .row-table-scroll, which is also the
+   container the .col-extra columns react to (they drop out when the table is squeezed). Mark one cell per row
+   .col-last: it keeps the rounded end when the columns after it are hidden. Rows are made clickable either with
+   tabindex="0" plus click / Enter / Space handlers on the <tr>, or with a .row-link button in the first cell. */
+.row-table-scroll {
+  container-type: inline-size;
+  overflow-x: auto;
+}
+
+.row-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  font-size: 14px;
+  color: var(--surface-foreground);
+}
+
+.row-table caption {
+  text-align: left;
+}
+
+.row-table th,
+.row-table td {
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.row-table thead th {
+  padding-top: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.row-table tbody th {
+  font-weight: 600;
+}
+
+/* Numbers: right-aligned with fixed-width digits so columns line up. */
+.row-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-table tbody tr {
+  position: relative;
+  transition: transform 0.18s ease;
+}
+
+.row-table tbody tr > * {
+  background: var(--surface-container-background-low);
+  transition: background 0.18s ease;
+}
+
+.row-table tbody tr > :first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.row-table tbody tr > :last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+/* A row with a single cell is both the first and the last: round all four corners, not just the right pair. */
+.row-table tbody tr > :first-child:last-child {
+  border-radius: 12px;
+}
+
+.row-table tbody tr:hover > *,
+.row-table tbody tr:focus-within > * {
+  background: var(--surface-container-background);
+}
+
+.row-table tbody tr:hover {
+  transform: translateY(-1px);
+}
+
+.row-table tbody tr[tabindex] {
+  cursor: pointer;
+}
+
+.row-table tbody tr[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* A button in the first cell whose click area covers the whole row. */
+.row-table .row-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-table .row-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+}
+
+.row-table .row-link:focus-visible {
+  outline: none;
+}
+
+.row-table .row-link:focus-visible::after {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+/* The selected row: the full primary shade, text switched to the on-primary colour. */
+.row-table tbody tr.is-selected > *,
+.row-table tbody tr.is-selected:hover > * {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+  --label-subtle: var(--accent-primary-foreground);
+}
+
+/* Compact: only the first (Instrument) column, used while a detail pane is open beside the list. The other columns and the
+   totals row are hidden; their figures are in the detail. */
+.row-table.is-compact thead th:not(:first-child),
+.row-table.is-compact tbody tr > :not(:first-child),
+.row-table.is-compact tfoot {
+  display: none;
+}
+
+/* With the other cells hidden the first cell is also the last: round all four corners (the row rule only rounds its left side), and keep
+   the table inside its card so a selected row is never cut flat on the right. */
+.row-table.is-compact {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.row-table.is-compact thead th:first-child,
+.row-table.is-compact tbody tr > :first-child {
+  border-radius: 12px;
+}
+
+.row-table.is-compact tbody tr > :first-child {
+  overflow: hidden;
+}
+
+/* Muted text and the "no value" hyphen follow the on-primary colour inside the selected row. */
+.row-table tbody tr.is-selected .muted,
+.row-table tbody tr.is-selected .no-value {
+  color: var(--accent-primary-foreground);
+}
+
+/* Totals row. */
+.row-table tfoot th,
+.row-table tfoot td {
+  font-weight: 700;
+  background: var(--surface-container-background);
+}
+
+.row-table tfoot > tr > :first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.row-table tfoot > tr > :last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+@container (max-width: 620px) {
+  .row-table .col-extra {
+    display: none;
+  }
+
+  .row-table tbody tr > .col-last {
+    border-radius: 0 12px 12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-table tbody tr,
+  .row-table tbody tr:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Modal Overlay */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--modal-z);
+  animation: fadeIn 0.15s ease;
+}
+
+/* Dims the page with the theme foreground colour at 50% opacity (no hardcoded colour). */
+.modal-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--surface-foreground);
+  opacity: 0.5;
+}
+
+.modal-content {
+  background: var(--surface-background-bright);
+  border-radius: 18px;
+  padding: 12px 0px;
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0px 20px;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-body {
+  padding: 32px 20px;
+  color: var(--surface-foreground-subtle);
+  border-top: 1px solid var(--surface-line-subtle);
+  text-align: left;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 0px 20px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Layout: App Shell */
+
+/* Keep room for the vertical scrollbar even when a page does not need it yet, so a pane opening (and the page
+   growing taller) never narrows the main content. */
+html {
+  scrollbar-gutter: stable;
+}
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  padding-top: var(--header-height);
+}
+
+.app-main {
+  flex: 1;
+  padding: 32px 40px;
+  transition: margin-left 0.25s ease;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-main.sidebar-open {
+  margin-left: var(--sidebar-width-open);
+}
+
+.app-main.sidebar-closed {
+  margin-left: var(--sidebar-width-closed);
+}
+
+
+/* Utility */
+
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+.flex-3 { flex: 3; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.wrap { flex-wrap: wrap;}
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-24 { gap: 24px; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mt-32 { margin-top: 32px; }
+.mb-4 { margin-bottom: 4px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+.full-width { width: 100%; }
+
+/* Auth Page */
+
+.auth-page {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-links {
+  text-align: center;
+  font-size: 13px;
+}
+
+/* Main Page */
+
+.main-page {
+  width: 100%;
+  text-align: left;
+}
+
+/* Empty State */
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--surface-foreground-subtle);
+}
+
+.empty-state-text {
+  font-size: 15px;
+  margin-top: 12px;
+}
+
+/* Page Toolbar */
+
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 250px;
+}
+
+.search-input.small {
+  width: 150px
+}
+
+/* Missing value and zero / unchanged marks: a small hyphen instead of a long dash or icon */
+
+.no-value {
+  color: var(--surface-foreground-subtle);
+  font-weight: 400;
+}
+
+.zero-mark {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+/* Accessibility */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: var(--notification-z);
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background-interaction);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.skip-link:hover {
+  color: var(--accent-primary-foreground);
+}
+
+.app-main:focus {
+  outline: none;
+}
+
+/* Declared last so it also wins over the `outline: none` on form controls. */
+:focus-visible {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}
+
+/* Motion: cards rise into place, and interactive cards lift on hover. */
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  animation-delay: calc(var(--stagger, 0) * 70ms);
+}
+
+.card.is-lift {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card.is-lift:hover {
+  transform: translateY(-3px);
+  /* box-shadow: var(--card-shadow-hover); */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-in {
+    animation: none;
+  }
+
+  .card.is-lift,
+  .card.is-lift:hover,
+  .btn:hover {
+    transform: none;
+    transition: none;
+  }
+}
+
+
+/* Charts (Highcharts, styled mode). Every chart component adds .hc to its host: this is the chrome they share, drawn only from
+   tokens, so each chart's own stylesheet only has to colour its series. The plot sits inside a box with a fixed height and is
+   positioned in it, so Highcharts measuring its own container cannot make the card grow. */
+
+.hc-frame {
+  position: relative;
+  width: 100%;
+  height: var(--hc-height, 260px);
+  min-height: var(--hc-height, 260px);
+}
+
+.hc-frame .hc-plot {
+  position: absolute;
+  inset: 0;
+}
+
+.hc .highcharts-background,
+.hc .highcharts-plot-background,
+.hc .highcharts-plot-border,
+.hc .highcharts-halo {
+  fill: none;
+  stroke: none;
+}
+
+.hc .highcharts-credits,
+.hc .highcharts-title,
+.hc .highcharts-legend {
+  display: none;
+}
+
+.hc .highcharts-tracker-area,
+.hc .highcharts-tracker-line {
+  fill: transparent;
+  stroke: transparent;
+}
+
+.hc .highcharts-grid-line {
+  stroke: var(--surface-line-subtle);
+  stroke-width: 1px;
+}
+
+.hc .highcharts-axis-line,
+.hc .highcharts-tick {
+  stroke: var(--surface-line-subtle);
+}
+
+.hc .highcharts-axis-labels text {
+  fill: var(--surface-foreground-subtle);
+  font-size: 12px;
+}
+
+.hc .highcharts-crosshair {
+  stroke: var(--surface-line);
+  stroke-dasharray: 4 4;
+}
+
+.hc .highcharts-tooltip-box {
+  fill: var(--surface-background-bright);
+  stroke: var(--surface-line);
+  stroke-width: 1px;
+}
+
+.hc .highcharts-tooltip text {
+  fill: var(--surface-foreground);
+  font-size: 13px;
+}
+
+/* "View as table": the same numbers as the chart, reachable with the keyboard and by a screen reader. */
+.chart-table {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.chart-table summary {
+  cursor: pointer;
+  width: fit-content;
+}
+
+.chart-table summary:focus-visible {
+  outline: 2px solid var(--accent-primary-background);
+  outline-offset: 2px;
+}
+
+.chart-table .table-container {
+  max-height: 260px;
+  margin-top: 8px;
+  overflow: auto;
+}
+
+/* A big figure in a tile or card is shortened (compactMoney); if it is still too wide for its card it is cut with an ellipsis instead
+   of running under the next card. The full amount is the tooltip. */
+.stat-value,
+.tile-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

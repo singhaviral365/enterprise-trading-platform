@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MarketDataPoller.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.marketdata</a> &gt; <span class="el_source">MarketDataPoller.java</span></div><h1>MarketDataPoller.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.marketdata;
+
+import org.example.backend.mapper.InstrumentMapper;
+import org.example.trade_executor.client.LiveQuote;
+import org.example.trade_executor.client.QuoteClient;
+import org.example.trade_executor.client.QuoteUnavailableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Component
+public class MarketDataPoller {
+
+    static final int MAX_SYMBOLS_PER_REQUEST = 25;
+    static final long DAILY_REQUEST_QUOTA = 2000L;
+    static final long SECONDS_PER_DAY = 86_400L;
+
+<span class="fc" id="L36">    private static final Logger LOGGER = LoggerFactory.getLogger(MarketDataPoller.class);</span>
+
+    private final InstrumentMapper instrumentMapper;
+    private final QuoteClient quoteClient;
+    private final MarketDataEventProducer marketDataEventProducer;
+    private final long configuredIntervalSeconds;
+    private final Set&lt;String&gt; watchSymbols;
+    private final Clock clock;
+
+<span class="fc" id="L45">    private Instant lastPollAt = Instant.EPOCH;</span>
+
+    @Autowired
+    public MarketDataPoller(
+            InstrumentMapper instrumentMapper,
+            QuoteClient quoteClient,
+            MarketDataEventProducer marketDataEventProducer,
+            @Value(&quot;${trading.market-data.poll-interval-seconds:${POLL_INTERVAL_SECONDS:60}}&quot;) long pollIntervalSeconds,
+            @Value(&quot;${trading.market-data.watch-symbols:}&quot;) String watchSymbolsCsv) {
+
+<span class="fc" id="L55">        this(</span>
+                instrumentMapper,
+                quoteClient,
+                marketDataEventProducer,
+                pollIntervalSeconds,
+                watchSymbolsCsv,
+<span class="fc" id="L61">                Clock.systemUTC());</span>
+<span class="fc" id="L62">    }</span>
+
+    MarketDataPoller(
+            InstrumentMapper instrumentMapper,
+            QuoteClient quoteClient,
+            MarketDataEventProducer marketDataEventProducer,
+            long pollIntervalSeconds,
+            String watchSymbolsCsv,
+<span class="fc" id="L70">            Clock clock) {</span>
+
+<span class="fc" id="L72">        this.instrumentMapper = instrumentMapper;</span>
+<span class="fc" id="L73">        this.quoteClient = quoteClient;</span>
+<span class="fc" id="L74">        this.marketDataEventProducer = marketDataEventProducer;</span>
+<span class="fc" id="L75">        this.configuredIntervalSeconds = Math.max(1L, pollIntervalSeconds);</span>
+<span class="fc" id="L76">        this.watchSymbols = parseWatchSymbols(watchSymbolsCsv);</span>
+<span class="fc" id="L77">        this.clock = clock;</span>
+<span class="fc" id="L78">    }</span>
+
+    @Scheduled(fixedDelayString = &quot;${trading.market-data.poll-interval-seconds:${POLL_INTERVAL_SECONDS:60}}&quot;, timeUnit = java.util.concurrent.TimeUnit.SECONDS)
+    public void poll() {
+<span class="fc" id="L82">        List&lt;String&gt; symbols = loadSymbolsToPoll();</span>
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if (symbols.isEmpty()) {</span>
+<span class="nc" id="L84">            LOGGER.debug(&quot;Skipping market-data poll because no held or watched symbols were found&quot;);</span>
+<span class="nc" id="L85">            return;</span>
+        }
+
+<span class="fc" id="L88">        long effectiveIntervalSeconds = calculateEffectiveIntervalSeconds(symbols.size(), configuredIntervalSeconds);</span>
+<span class="fc" id="L89">        Instant now = clock.instant();</span>
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        if (Duration.between(lastPollAt, now).getSeconds() &lt; effectiveIntervalSeconds) {</span>
+<span class="fc" id="L91">            LOGGER.debug(</span>
+                    &quot;Skipping market-data poll. elapsed={}s required={}s configured={}s symbols={} requests/day={}&quot;,
+<span class="fc" id="L93">                    Duration.between(lastPollAt, now).getSeconds(),</span>
+<span class="fc" id="L94">                    effectiveIntervalSeconds,</span>
+<span class="fc" id="L95">                    configuredIntervalSeconds,</span>
+<span class="fc" id="L96">                    symbols.size(),</span>
+<span class="fc" id="L97">                    requestsPerDay(symbols.size(), effectiveIntervalSeconds));</span>
+<span class="fc" id="L98">            return;</span>
+        }
+
+<span class="fc" id="L101">        lastPollAt = now;</span>
+<span class="fc" id="L102">        OffsetDateTime quotedAt = OffsetDateTime.ofInstant(now, ZoneOffset.UTC);</span>
+
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        for (List&lt;String&gt; batch : partition(symbols, MAX_SYMBOLS_PER_REQUEST)) {</span>
+<span class="fc" id="L105">            publishBatch(batch, quotedAt);</span>
+<span class="fc" id="L106">        }</span>
+<span class="fc" id="L107">    }</span>
+
+    static long calculateEffectiveIntervalSeconds(int symbolCount, long configuredIntervalSeconds) {
+<span class="fc" id="L110">        long safeConfigured = Math.max(1L, configuredIntervalSeconds);</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        if (symbolCount &lt;= 0) {</span>
+<span class="nc" id="L112">            return safeConfigured;</span>
+        }
+
+<span class="fc" id="L115">        long requestsPerPoll = (long) Math.ceil((double) symbolCount / MAX_SYMBOLS_PER_REQUEST);</span>
+<span class="fc" id="L116">        long minimumForQuota = (long) Math.ceil((double) (requestsPerPoll * SECONDS_PER_DAY) / DAILY_REQUEST_QUOTA);</span>
+<span class="fc" id="L117">        return Math.max(safeConfigured, Math.max(1L, minimumForQuota));</span>
+    }
+
+    static long requestsPerDay(int symbolCount, long intervalSeconds) {
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (symbolCount &lt;= 0) {</span>
+<span class="nc" id="L122">            return 0L;</span>
+        }
+
+<span class="fc" id="L125">        long requestsPerPoll = (long) Math.ceil((double) symbolCount / MAX_SYMBOLS_PER_REQUEST);</span>
+<span class="fc" id="L126">        return (requestsPerPoll * SECONDS_PER_DAY) / Math.max(1L, intervalSeconds);</span>
+    }
+
+    private List&lt;String&gt; loadSymbolsToPoll() {
+<span class="fc" id="L130">        Set&lt;String&gt; symbols = new LinkedHashSet&lt;&gt;();</span>
+
+<span class="fc" id="L132">        List&lt;String&gt; dbSymbols = instrumentMapper.selectSymbolsForMarketPolling();</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">        if (dbSymbols != null) {</span>
+<span class="fc" id="L134">            symbols.addAll(dbSymbols.stream()</span>
+<span class="fc" id="L135">                    .filter(Objects::nonNull)</span>
+<span class="fc" id="L136">                    .map(String::trim)</span>
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">                    .filter(value -&gt; !value.isBlank())</span>
+<span class="fc" id="L138">                    .collect(Collectors.toCollection(LinkedHashSet::new)));</span>
+        }
+<span class="fc" id="L140">        symbols.addAll(loadWatchlistSymbols());</span>
+<span class="fc" id="L141">        symbols.addAll(loadStrategySymbols());</span>
+<span class="fc" id="L142">        symbols.addAll(watchSymbols);</span>
+
+<span class="fc" id="L144">        List&lt;String&gt; result = new ArrayList&lt;&gt;(symbols);</span>
+<span class="fc" id="L145">        Collections.sort(result);</span>
+<span class="fc" id="L146">        return result;</span>
+    }
+
+    /**
+     * Symbols customers have put on a watchlist. A failure here (for example the watchlist tables
+     * not existing yet) must not stop held and open-order symbols from being priced, so it is
+     * logged and treated as &quot;no extra symbols&quot;.
+     */
+    private Set&lt;String&gt; loadWatchlistSymbols() {
+        try {
+<span class="fc" id="L156">            List&lt;String&gt; symbols = instrumentMapper.selectWatchlistSymbolsForMarketPolling();</span>
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">            if (symbols == null) {</span>
+<span class="nc" id="L158">                return Set.of();</span>
+            }
+<span class="fc" id="L160">            return symbols.stream()</span>
+<span class="fc" id="L161">                    .filter(Objects::nonNull)</span>
+<span class="fc" id="L162">                    .map(String::trim)</span>
+<span class="pc bpc" id="L163" title="1 of 2 branches missed.">                    .filter(value -&gt; !value.isBlank())</span>
+<span class="fc" id="L164">                    .collect(Collectors.toCollection(LinkedHashSet::new));</span>
+<span class="fc" id="L165">        } catch (RuntimeException ex) {</span>
+<span class="fc" id="L166">            LOGGER.warn(&quot;Could not load watchlist symbols for market polling; continuing without them&quot;, ex);</span>
+<span class="fc" id="L167">            return Set.of();</span>
+        }
+    }
+
+    /**
+     * Symbols a customer's automated strategy is waiting on. Treated like the watchlist symbols: a failure here (for example
+     * the strategy table not existing yet) is logged and costs only this lookup.
+     */
+    private Set&lt;String&gt; loadStrategySymbols() {
+        try {
+<span class="fc" id="L177">            List&lt;String&gt; symbols = instrumentMapper.selectStrategySymbolsForMarketPolling();</span>
+<span class="pc bpc" id="L178" title="1 of 2 branches missed.">            if (symbols == null) {</span>
+<span class="nc" id="L179">                return Set.of();</span>
+            }
+<span class="fc" id="L181">            return symbols.stream()</span>
+<span class="fc" id="L182">                    .filter(Objects::nonNull)</span>
+<span class="fc" id="L183">                    .map(String::trim)</span>
+<span class="fc bfc" id="L184" title="All 2 branches covered.">                    .filter(value -&gt; !value.isBlank())</span>
+<span class="fc" id="L185">                    .collect(Collectors.toCollection(LinkedHashSet::new));</span>
+<span class="fc" id="L186">        } catch (RuntimeException ex) {</span>
+<span class="fc" id="L187">            LOGGER.warn(&quot;Could not load strategy symbols for market polling; continuing without them&quot;, ex);</span>
+<span class="fc" id="L188">            return Set.of();</span>
+        }
+    }
+
+    private void publishBatch(List&lt;String&gt; batch, OffsetDateTime quotedAt) {
+        try {
+<span class="fc" id="L194">            Map&lt;String, LiveQuote&gt; quotes = quoteClient.getQuotes(batch);</span>
+<span class="pc bpc" id="L195" title="1 of 4 branches missed.">            if (quotes == null || quotes.isEmpty()) {</span>
+<span class="fc" id="L196">                LOGGER.info(&quot;No quotes returned for market-data batch size={} symbols={}&quot;, batch.size(), batch);</span>
+<span class="fc" id="L197">                return;</span>
+            }
+
+<span class="fc" id="L200">            quotes.values().forEach(quote -&gt; marketDataEventProducer.publish(quote, quotedAt));</span>
+<span class="nc" id="L201">        } catch (QuoteUnavailableException ex) {</span>
+<span class="nc" id="L202">            LOGGER.warn(&quot;Market-data batch quote request failed for symbols {}&quot;, batch, ex);</span>
+<span class="fc" id="L203">        }</span>
+<span class="fc" id="L204">    }</span>
+
+    private static Set&lt;String&gt; parseWatchSymbols(String csv) {
+<span class="pc bpc" id="L207" title="2 of 4 branches missed.">        if (csv == null || csv.isBlank()) {</span>
+<span class="fc" id="L208">            return Set.of();</span>
+        }
+
+<span class="nc" id="L211">        return java.util.Arrays.stream(csv.split(&quot;,&quot;))</span>
+<span class="nc" id="L212">                .map(String::trim)</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">                .filter(value -&gt; !value.isBlank())</span>
+<span class="nc" id="L214">                .collect(Collectors.toCollection(LinkedHashSet::new));</span>
+    }
+
+    private static List&lt;List&lt;String&gt;&gt; partition(Collection&lt;String&gt; symbols, int batchSize) {
+<span class="fc" id="L218">        List&lt;String&gt; values = new ArrayList&lt;&gt;(symbols);</span>
+<span class="fc" id="L219">        List&lt;List&lt;String&gt;&gt; partitions = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">        for (int start = 0; start &lt; values.size(); start += batchSize) {</span>
+<span class="fc" id="L221">            int end = Math.min(start + batchSize, values.size());</span>
+<span class="fc" id="L222">            partitions.add(values.subList(start, end));</span>
+        }
+<span class="fc" id="L224">        return partitions;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,362 @@
+openapi: 3.1.0
+
+info:
+  title: Customer Preferences API (Trade REST API module, served by order-service)
+  version: 1.0.0
+  summary: One settings document per customer account.
+  description: |
+    Where a customer's choices live: how they want to be alerted, which currency the account is in (read-only), how dates and
+    numbers are written, and a few display extras. It is a module inside the Trade REST API
+    (`services/order-service`), in its own package, and its routes are served by the same service.
+
+    ## The document
+
+    A customer has one preferences document, addressed by their account. `GET` always answers: an account that has
+    never saved anything gets the defaults (`updatedAt` is then null), so the settings screen never has to handle
+    "not found". `PUT` replaces the whole document; every field is required (except `preferredCurrency`, below), so a
+    half-sent request cannot quietly reset the rest.
+
+    | Setting | Values | Default |
+    |---|---|---|
+    | `preferredCurrency` | one of the supported currencies; this **is the account's currency**, fixed when the account was opened and read-only here | the account's own currency |
+    | `channels` | any of `SMS`, `EMAIL`, `IN_APP`; an empty array means "No notifications" | `IN_APP` |
+    | `categories` | any of `ORDER_STATUS`, `WATCHLIST_ALERTS`, `STRATEGY_EXECUTION` | all three |
+    | `dateFormat` | see the schema | `MON_DD_YYYY` (Oct 6, 2026) |
+    | `timeFormat` | `H12`, `H24` | `H12` |
+    | `numberFormat` | `US` (100,000,000), `IN` (10,00,00,000) | `US` |
+    | `aiAssistantEnabled` | true turns on the trade-signal assistant on each instrument's quote screen, and allows the platform to send the signal and the customer's holding in that instrument to the language model (see the signals contract) | false |
+    | `theme` | `LIGHT`, `DARK`, `SYSTEM` | `SYSTEM` |
+    | `landingPage` | `DASHBOARD`, `MARKET`, `POSITIONS`, `ORDERS` | `DASHBOARD` |
+    | `defaultOrderType` | `MARKET`, `LIMIT` | `MARKET` |
+
+    ## The currency is fixed
+
+    `preferredCurrency` and the account's currency are the same thing, and it is chosen **once, when the account is opened**
+    (`POST /api/v1/accounts/create` in the trade contract). `GET` always returns it. In a `PUT` it is optional: left out, or
+    equal to the account's currency, it changes nothing; **any other value is refused with `CUR-409` (409)** and nothing is
+    saved. There is no conversion, no open-order check and no exchange-rate error on this route. Market data is not touched:
+    quotes stay in the currency their instrument is quoted in, and an order converts them to the account currency when it is
+    placed or filled.
+
+    ## What is deliberately not here
+
+    * **Contact details.** A channel is a switch, not an address. The email address stays in the Auth service, and
+      there is no phone number on the platform yet, so `SMS` records the wish but nothing can deliver it until one
+      exists. Storing a second copy of either would double the places a leak can happen.
+    * **A route for other modules.** Customer notifications resolve a channel through a Java interface inside the
+      Trade REST API, not through these routes.
+
+    ## Authorisation
+
+    Every route requires a valid signed JWT (`AUTH-401` otherwise). The account in the token's user must own the
+    account in the path: unknown is `ACC-404`, someone else's is `ACC-403`. The account is only ever the path's;
+    nothing in a body can widen it.
+  contact:
+    name: Team 3
+  license:
+    name: Instructional use only
+
+servers:
+  - url: http://localhost:8081
+    description: Local development, run from Docker Compose
+  - url: http://trade-api:8080
+    description: Service name inside the Docker Compose network
+
+tags:
+  - name: Preferences
+    description: Reading and replacing an account's preferences.
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  /api/v1/accounts/{accountId}/preferences:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+
+    get:
+      operationId: getPreferences
+      tags: [Preferences]
+      summary: Read the account's preferences (the defaults if none were ever saved)
+      responses:
+        '200':
+          description: The saved preferences, or the defaults with `updatedAt` null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          $ref: '#/components/responses/AccountNotFound'
+
+    put:
+      operationId: replacePreferences
+      tags: [Preferences]
+      summary: Replace the account's preferences (the currency cannot be changed)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesRequest'
+      responses:
+        '200':
+          description: The stored preferences, exactly what the next `GET` returns.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          $ref: '#/components/responses/AccountNotReachable'
+        '404':
+          $ref: '#/components/responses/AccountNotFound'
+        '409':
+          $ref: '#/components/responses/CurrencyFixed'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: The numeric account key. Must be an account the token's user owns.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+      example: 1001
+
+  responses:
+    Unauthorised:
+      description: Missing, malformed, expired or wrongly signed token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorised:
+              value:
+                errorCode: AUTH-401
+                message: Unauthorised
+    AccountNotReachable:
+      description: The token is valid but its user does not own the account in the path.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            forbidden:
+              value:
+                errorCode: ACC-403
+                message: Account not reachable with this token
+    AccountNotFound:
+      description: No account exists with that key.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              value:
+                errorCode: ACC-404
+                message: Account not found
+    CurrencyFixed:
+      description: |
+        `preferredCurrency` was sent and is not the account's currency. The currency is set when the account is opened and
+        cannot be changed. Nothing was saved.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            fixed:
+              value:
+                errorCode: CUR-409
+                message: The account currency is set when the account is opened and cannot be changed.
+    InvalidInput:
+      description: |
+        A field is missing or is not one of its allowed values. The message never
+        says which, so a caller cannot probe the validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid:
+              value:
+                errorCode: VAL-422
+                message: Invalid input
+
+  schemas:
+
+    Currency:
+      type: string
+      description: Currencies a customer can choose to see estimates in.
+      enum: [USD, EUR, GBP, INR, JPY, CAD, AUD, CHF, SGD, CNY]
+
+    NotificationChannel:
+      type: string
+      description: Where to alert. No channel at all means "No notifications".
+      enum: [SMS, EMAIL, IN_APP]
+
+    NotificationCategory:
+      type: string
+      description: |
+        What to alert about. `ORDER_STATUS` covers an order the customer placed being FILLED or REJECTED. `STRATEGY_EXECUTION`
+        covers orders placed by the customer's automated strategies, and a strategy that was stopped or expired.
+      enum: [ORDER_STATUS, WATCHLIST_ALERTS, STRATEGY_EXECUTION]
+
+    DateFormat:
+      type: string
+      description: |
+        | Value | Example |
+        |---|---|
+        | `DD_MM_YYYY` | 06/10/2026 |
+        | `MM_DD_YYYY` | 10/06/2026 |
+        | `DD_MONTH_YYYY` | 06-October-2026 |
+        | `DD_MON_YYYY` | 06-Oct-2026 |
+        | `YYYY_MM_DD` | 2026-10-06 |
+        | `MON_DD_YYYY` | Oct 6, 2026 |
+      enum: [DD_MM_YYYY, MM_DD_YYYY, DD_MONTH_YYYY, DD_MON_YYYY, YYYY_MM_DD, MON_DD_YYYY]
+
+    TimeFormat:
+      type: string
+      description: '`H12` is 3:07 PM, `H24` is 15:07.'
+      enum: [H12, H24]
+
+    NumberFormat:
+      type: string
+      description: '`US` groups by thousands (100,000,000); `IN` by lakh and crore (10,00,00,000).'
+      enum: [US, IN]
+
+    Theme:
+      type: string
+      enum: [LIGHT, DARK, SYSTEM]
+
+    LandingPage:
+      type: string
+      description: The page the application opens on after sign-in.
+      enum: [DASHBOARD, MARKET, POSITIONS, ORDERS]
+
+    OrderType:
+      type: string
+      description: The pricing type the order ticket starts on.
+      enum: [MARKET, LIMIT]
+
+    PreferencesRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - channels
+        - categories
+        - dateFormat
+        - timeFormat
+        - numberFormat
+        - aiAssistantEnabled
+        - theme
+        - landingPage
+        - defaultOrderType
+      properties:
+        preferredCurrency:
+          $ref: '#/components/schemas/Currency'
+          description: Optional. If present it must equal the account's currency (otherwise `CUR-409`); it is read-only.
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationChannel'
+          description: An empty array means "No notifications". Duplicates are ignored.
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationCategory'
+        dateFormat:
+          $ref: '#/components/schemas/DateFormat'
+        timeFormat:
+          $ref: '#/components/schemas/TimeFormat'
+        numberFormat:
+          $ref: '#/components/schemas/NumberFormat'
+        aiAssistantEnabled:
+          type: boolean
+          description: true turns on the trade-signal assistant on each instrument's quote screen (see the signals contract).
+        theme:
+          $ref: '#/components/schemas/Theme'
+        landingPage:
+          $ref: '#/components/schemas/LandingPage'
+        defaultOrderType:
+          $ref: '#/components/schemas/OrderType'
+
+    Preferences:
+      type: object
+      additionalProperties: false
+      required:
+        - accountId
+        - preferredCurrency
+        - channels
+        - categories
+        - dateFormat
+        - timeFormat
+        - numberFormat
+        - aiAssistantEnabled
+        - theme
+        - landingPage
+        - defaultOrderType
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          example: 1001
+        preferredCurrency:
+          $ref: '#/components/schemas/Currency'
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationChannel'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationCategory'
+        dateFormat:
+          $ref: '#/components/schemas/DateFormat'
+        timeFormat:
+          $ref: '#/components/schemas/TimeFormat'
+        numberFormat:
+          $ref: '#/components/schemas/NumberFormat'
+        aiAssistantEnabled:
+          type: boolean
+        theme:
+          $ref: '#/components/schemas/Theme'
+        landingPage:
+          $ref: '#/components/schemas/LandingPage'
+        defaultOrderType:
+          $ref: '#/components/schemas/OrderType'
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the customer last saved. Null while they are on the defaults.
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      properties:
+        errorCode:
+          type: string
+          example: ACC-403
+        message:
+          type: string
+          example: Account not reachable with this token

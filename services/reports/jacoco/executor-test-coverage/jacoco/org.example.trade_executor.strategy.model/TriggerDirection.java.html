@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TriggerDirection.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy.model</a> &gt; <span class="el_source">TriggerDirection.java</span></div><h1>TriggerDirection.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy.model;
+
+import java.math.BigDecimal;
+
+/** Which side of its trigger price a strategy fires on. The same two values as the order-service's, which owns the table. */
+<span class="fc" id="L6">public enum TriggerDirection {</span>
+    /** Fires when the price is at or under the trigger. */
+<span class="fc" id="L8">    BELOW,</span>
+    /** Fires when the price is at or over the trigger. */
+<span class="fc" id="L10">    ABOVE;</span>
+
+    /** True when {@code price} satisfies the condition, whether or not it just crossed. */
+    public boolean reachedBy(BigDecimal price, BigDecimal trigger) {
+<span class="fc" id="L14">        int comparison = price.compareTo(trigger);</span>
+<span class="fc bfc" id="L15" title="All 6 branches covered.">        return this == BELOW ? comparison &lt;= 0 : comparison &gt;= 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

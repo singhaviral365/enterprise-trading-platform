@@ -1,0 +1,124 @@
+/* Not encapsulated (see the component): Highcharts draws its SVG outside Angular's templates. Every selector
+   starts with .donut-chart so nothing leaks. Colours come only from the design tokens. */
+
+.donut-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+.donut-chart .donut-figure {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 1;
+}
+
+.donut-chart .donut-plot {
+  width: 100%;
+  height: 100%;
+}
+
+/* The total sits in the hole; clicks and hovers go through it to the slices underneath. */
+.donut-chart .donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 18%;
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-chart .donut-center-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.donut-chart .donut-center-value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Highcharts (styled mode) ---- */
+.donut-chart .highcharts-background,
+.donut-chart .highcharts-plot-background,
+.donut-chart .highcharts-plot-border,
+.donut-chart .highcharts-halo {
+  fill: none;
+  stroke: none;
+}
+
+.donut-chart .highcharts-credits,
+.donut-chart .highcharts-title,
+.donut-chart .highcharts-legend {
+  display: none;
+}
+
+.donut-chart .highcharts-point {
+  stroke: var(--surface-background-bright);
+  stroke-width: 2px;
+  transition: opacity 0.2s ease;
+}
+
+.donut-chart .highcharts-point-hover {
+  opacity: 0.82;
+}
+
+.donut-chart .highcharts-color-0 {
+  fill: var(--data-categorical-1);
+}
+.donut-chart .highcharts-color-1 {
+  fill: var(--data-categorical-2);
+}
+.donut-chart .highcharts-color-2 {
+  fill: var(--data-categorical-3);
+}
+.donut-chart .highcharts-color-3 {
+  fill: var(--data-categorical-4);
+}
+.donut-chart .highcharts-color-4 {
+  fill: var(--data-categorical-5);
+}
+.donut-chart .highcharts-color-5 {
+  fill: var(--data-categorical-6);
+}
+.donut-chart .highcharts-color-6 {
+  fill: var(--data-categorical-7);
+}
+.donut-chart .highcharts-color-7 {
+  fill: var(--data-categorical-8);
+}
+.donut-chart .highcharts-color-8 {
+  fill: var(--data-categorical-9);
+}
+.donut-chart .highcharts-color-9 {
+  fill: var(--data-categorical-10);
+}
+
+.donut-chart .highcharts-tooltip-box {
+  fill: var(--surface-background-bright);
+  stroke: var(--surface-line);
+  stroke-width: 1px;
+}
+
+.donut-chart .highcharts-tooltip text {
+  fill: var(--surface-foreground);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut-chart .highcharts-point {
+    transition: none;
+  }
+}

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>KafkaConsumerConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">trade-executor</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.config</a> &gt; <span class="el_source">KafkaConsumerConfiguration.java</span></div><h1>KafkaConsumerConfiguration.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.example.backend.exceptions.OptimisticLockException;
+import org.example.trade_executor.executor.PoisonOrderMessageException;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.RecoverableDataAccessException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.CommonErrorHandler;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+@EnableKafka
+<span class="fc" id="L34">public class KafkaConsumerConfiguration {</span>
+
+    @Bean
+    public ObjectMapper objectMapper() {
+<span class="fc" id="L38">        return new ObjectMapper().findAndRegisterModules();</span>
+    }
+
+    @Bean
+    public ConsumerFactory&lt;String, String&gt; ordersConsumerFactory(
+            @Value(&quot;${spring.kafka.bootstrap-servers:localhost:9092}&quot;) String bootstrapServers,
+            @Value(&quot;${trading.kafka.orders-consumer-group:trade-executor}&quot;) String consumerGroupId) {
+
+<span class="fc" id="L46">        Map&lt;String, Object&gt; properties = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L47">        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);</span>
+<span class="fc" id="L48">        properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);</span>
+<span class="fc" id="L49">        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);</span>
+<span class="fc" id="L50">        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);</span>
+<span class="fc" id="L51">        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, &quot;earliest&quot;);</span>
+<span class="fc" id="L52">        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);</span>
+
+<span class="fc" id="L54">        return new DefaultKafkaConsumerFactory&lt;&gt;(properties);</span>
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory&lt;String, String&gt; ordersKafkaListenerContainerFactory(
+            ConsumerFactory&lt;String, String&gt; ordersConsumerFactory,
+            CommonErrorHandler kafkaCommonErrorHandler) {
+
+<span class="fc" id="L62">        ConcurrentKafkaListenerContainerFactory&lt;String, String&gt; factory =</span>
+                new ConcurrentKafkaListenerContainerFactory&lt;&gt;();
+<span class="fc" id="L64">        factory.setConsumerFactory(ordersConsumerFactory);</span>
+<span class="fc" id="L65">        factory.setCommonErrorHandler(kafkaCommonErrorHandler);</span>
+<span class="fc" id="L66">        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);</span>
+<span class="fc" id="L67">        return factory;</span>
+    }
+
+    @Bean
+    public DeadLetterPublishingRecoverer deadLetterPublishingRecoverer(
+            KafkaTemplate&lt;String, String&gt; deadLetterKafkaTemplate,
+            @Value(&quot;${trading.kafka.orders-topic:orders}&quot;) String ordersTopic) {
+
+<span class="fc" id="L75">        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(</span>
+                deadLetterKafkaTemplate,
+<span class="fc" id="L77">                (record, ex) -&gt; new TopicPartition(ordersTopic + &quot;.DLT&quot;, record.partition()));</span>
+
+<span class="fc" id="L79">        recoverer.setHeadersFunction((record, ex) -&gt; {</span>
+<span class="fc" id="L80">            Headers headers = new RecordHeaders();</span>
+<span class="fc" id="L81">            headers.add(</span>
+                    &quot;failure-reason&quot;,
+<span class="fc" id="L83">                    rootCauseMessage(ex).getBytes(StandardCharsets.UTF_8));</span>
+<span class="fc" id="L84">            return headers;</span>
+        });
+
+<span class="fc" id="L87">        return recoverer;</span>
+    }
+
+    @Bean
+    public CommonErrorHandler kafkaCommonErrorHandler(
+            DeadLetterPublishingRecoverer deadLetterPublishingRecoverer,
+            @Value(&quot;${trading.kafka.consumer.retry.initial-interval-millis:100}&quot;) long initialIntervalMillis,
+            @Value(&quot;${trading.kafka.consumer.retry.multiplier:2.0}&quot;) double multiplier,
+            @Value(&quot;${trading.kafka.consumer.retry.max-interval-millis:1000}&quot;) long maxIntervalMillis,
+            @Value(&quot;${trading.kafka.consumer.retry.max-attempts:3}&quot;) int maxAttempts) {
+
+<span class="fc" id="L98">        ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(Math.max(0, maxAttempts - 1));</span>
+<span class="fc" id="L99">        backOff.setInitialInterval(Math.max(1L, initialIntervalMillis));</span>
+<span class="fc" id="L100">        backOff.setMultiplier(Math.max(1.0d, multiplier));</span>
+<span class="fc" id="L101">        backOff.setMaxInterval(Math.max(1L, maxIntervalMillis));</span>
+
+<span class="fc" id="L103">        DefaultErrorHandler errorHandler = new DefaultErrorHandler(deadLetterPublishingRecoverer, backOff);</span>
+<span class="fc" id="L104">        errorHandler.setCommitRecovered(true);</span>
+<span class="fc" id="L105">        errorHandler.addNotRetryableExceptions(PoisonOrderMessageException.class);</span>
+<span class="fc" id="L106">        errorHandler.addRetryableExceptions(</span>
+                OptimisticLockException.class,
+                CannotGetJdbcConnectionException.class,
+                RecoverableDataAccessException.class,
+                TransientDataAccessException.class);
+
+<span class="fc" id="L112">        return errorHandler;</span>
+    }
+
+    private static String rootCauseMessage(Exception exception) {
+<span class="fc" id="L116">        Throwable cause = exception;</span>
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        while (cause.getCause() != null) {</span>
+<span class="nc" id="L118">            cause = cause.getCause();</span>
+        }
+
+<span class="fc" id="L121">        String message = cause.getMessage();</span>
+<span class="pc bpc" id="L122" title="2 of 4 branches missed.">        if (message == null || message.isBlank()) {</span>
+<span class="nc" id="L123">            return cause.getClass().getSimpleName();</span>
+        }
+<span class="fc" id="L125">        return message;</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

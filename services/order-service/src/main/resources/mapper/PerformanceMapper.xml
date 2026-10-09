@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  The performance track's SQL. Every value is a bound parameter; nothing is substituted into the SQL text.
+
+  READ-ONLY RULE: the trading tables are only ever SELECTed here. The tables written are price_candle_daily and
+  portfolio_nav_daily, which this module owns. PortfolioIsReadOnlyTest enforces that.
+-->
+<mapper namespace="org.example.backend.portfolio.mapper.PerformanceMapper">
+
+    <resultMap id="DailyCandleResultMap" type="org.example.backend.portfolio.performance.DailyCandle">
+        <constructor>
+            <idArg column="symbol" javaType="String" name="symbol"/>
+            <idArg column="candle_date" javaType="java.time.LocalDate" name="date"/>
+            <arg column="close" javaType="java.math.BigDecimal" name="close"/>
+            <arg column="adjclose" javaType="java.math.BigDecimal" name="adjclose"/>
+            <arg column="currency" javaType="String" name="currency"/>
+            <arg column="synthetic" javaType="_boolean" name="synthetic"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="NavRowResultMap" type="org.example.backend.portfolio.performance.NavRow">
+        <constructor>
+            <idArg column="nav_date" javaType="java.time.LocalDate" name="date"/>
+            <arg column="cash" javaType="java.math.BigDecimal" name="cash"/>
+            <arg column="holdings_value" javaType="java.math.BigDecimal" name="holdingsValue"/>
+            <arg column="total_value" javaType="java.math.BigDecimal" name="totalValue"/>
+            <arg column="cost_basis" javaType="java.math.BigDecimal" name="costBasis"/>
+            <arg column="unrealised_pnl" javaType="java.math.BigDecimal" name="unrealisedPnl"/>
+            <arg column="realised_pnl_cumulative" javaType="java.math.BigDecimal" name="realisedPnlCumulative"/>
+            <arg column="net_flow" javaType="java.math.BigDecimal" name="netFlow"/>
+            <arg column="day_pnl" javaType="java.math.BigDecimal" name="dayPnl"/>
+            <arg column="units" javaType="java.math.BigDecimal" name="units"/>
+            <arg column="nav" javaType="java.math.BigDecimal" name="nav"/>
+            <arg column="estimated" javaType="_boolean" name="estimated"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="DayRealisedResultMap" type="org.example.backend.portfolio.performance.DayRealised">
+        <constructor>
+            <idArg column="day" javaType="java.time.LocalDate" name="day"/>
+            <arg column="realised_pnl" javaType="java.math.BigDecimal" name="realisedPnl"/>
+        </constructor>
+    </resultMap>
+
+    <!-- A synthetic row is replaced when Fauxnance later publishes the real one. -->
+    <insert id="upsertCandle">
+        INSERT INTO price_candle_daily (symbol, candle_date, close, adjclose, currency, synthetic)
+        VALUES (#{symbol}, #{date}, #{close}, #{adjclose}, #{currency}, #{synthetic})
+        ON CONFLICT (symbol, candle_date) DO UPDATE
+        SET close = EXCLUDED.close,
+            adjclose = EXCLUDED.adjclose,
+            currency = COALESCE(EXCLUDED.currency, price_candle_daily.currency),
+            synthetic = EXCLUDED.synthetic
+    </insert>
+
+    <select id="selectCandles" resultMap="DailyCandleResultMap">
+        SELECT symbol, candle_date, close, adjclose, currency, synthetic
+        FROM price_candle_daily
+        WHERE symbol = #{symbol}
+        <if test="from != null">
+          AND candle_date &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND candle_date &lt;= #{to}
+        </if>
+        ORDER BY candle_date ASC
+    </select>
+
+    <select id="selectFirstCandleDate" resultType="java.time.LocalDate">
+        SELECT MIN(candle_date) FROM price_candle_daily WHERE symbol = #{symbol}
+    </select>
+
+    <select id="selectLastCandleDate" resultType="java.time.LocalDate">
+        SELECT MAX(candle_date) FROM price_candle_daily WHERE symbol = #{symbol}
+    </select>
+
+    <insert id="upsertNav">
+        INSERT INTO portfolio_nav_daily (
+            account_id, nav_date, cash, holdings_value, total_value, cost_basis, unrealised_pnl,
+            realised_pnl_cumulative, net_flow, day_pnl, units, nav, estimated
+        ) VALUES (
+            #{accountId}, #{date}, #{cash}, #{holdingsValue}, #{totalValue}, #{costBasis}, #{unrealisedPnl},
+            #{realisedPnlCumulative}, #{netFlow}, #{dayPnl}, #{units}, #{nav}, #{estimated}
+        )
+        ON CONFLICT (account_id, nav_date) DO UPDATE
+        SET cash = EXCLUDED.cash,
+            holdings_value = EXCLUDED.holdings_value,
+            total_value = EXCLUDED.total_value,
+            cost_basis = EXCLUDED.cost_basis,
+            unrealised_pnl = EXCLUDED.unrealised_pnl,
+            realised_pnl_cumulative = EXCLUDED.realised_pnl_cumulative,
+            net_flow = EXCLUDED.net_flow,
+            day_pnl = EXCLUDED.day_pnl,
+            units = EXCLUDED.units,
+            nav = EXCLUDED.nav,
+            estimated = EXCLUDED.estimated
+    </insert>
+
+    <select id="selectNav" resultMap="NavRowResultMap">
+        SELECT nav_date, cash, holdings_value, total_value, cost_basis, unrealised_pnl, realised_pnl_cumulative,
+               net_flow, day_pnl, units, nav, estimated
+        FROM portfolio_nav_daily
+        WHERE account_id = #{accountId}
+        <if test="from != null">
+          AND nav_date &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND nav_date &lt;= #{to}
+        </if>
+        ORDER BY nav_date ASC
+    </select>
+
+    <select id="selectLastNavDate" resultType="java.time.LocalDate">
+        SELECT MAX(nav_date) FROM portfolio_nav_daily WHERE account_id = #{accountId}
+    </select>
+
+    <select id="countNav" resultType="long">
+        SELECT COUNT(*) FROM portfolio_nav_daily WHERE account_id = #{accountId}
+    </select>
+
+    <select id="selectBuildableAccountIds" resultType="long">
+        SELECT account_id FROM account WHERE account_status &lt;&gt; 'CLOSED' ORDER BY account_id
+    </select>
+
+    <select id="selectRealisedByDay" resultMap="DayRealisedResultMap">
+        SELECT (booked_at AT TIME ZONE 'UTC')::date AS day, SUM(realised_pnl) AS realised_pnl
+        FROM realised_pnl_entry
+        WHERE account_id = #{accountId}
+        GROUP BY (booked_at AT TIME ZONE 'UTC')::date
+        ORDER BY day ASC
+    </select>
+
+</mapper>

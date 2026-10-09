@@ -1,0 +1,17 @@
+info:
+  name: Account Details
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: accounts/1001
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

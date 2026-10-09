@@ -1,0 +1,126 @@
+<app-tooltip position="bottom" text="Profile">
+  <button
+    #trigger
+    type="button"
+    class="btn is-tertiary is-icon-only"
+    aria-haspopup="dialog"
+    aria-controls="profile-menu-pane"
+    data-testid="open-profile"
+    [attr.aria-label]="'Account menu for ' + session.username()"
+    [attr.aria-expanded]="open()"
+    (click)="toggle()"
+  >
+    <i class="fas fa-user" aria-hidden="true"></i>
+  </button>
+</app-tooltip>
+
+@if (open()) {
+  <div
+    #pane
+    id="profile-menu-pane"
+    class="profile-pane"
+    role="dialog"
+    aria-labelledby="profile-menu-name"
+    tabindex="-1"
+    data-testid="profile-menu-pane"
+  >
+    @if (view() === 'details') {
+      <section class="pane-identity" data-testid="profile-details">
+        <span class="avatar" aria-hidden="true">{{ session.username().charAt(0).toUpperCase() }}</span>
+        <div class="identity-text">
+          <h2 id="profile-menu-name" class="identity-name" data-testid="profile-username">
+            {{ profile.user()?.username ?? session.username() }}
+          </h2>
+          <p class="identity-email" data-testid="profile-email">{{ profile.user()?.email }}</p>
+        </div>
+      </section>
+
+      <section class="pane-section" aria-labelledby="profile-account-title">
+        <h3 id="profile-account-title" class="pane-heading">Trading account</h3>
+        @if (account.data.isLoading() && !account.data.hasValue()) {
+          <div class="pane-state">
+            <app-spinner [inline]="true" label="Loading account" />
+            Loading your account…
+          </div>
+        } @else if (account.errorMessage()) {
+          <div class="pane-state is-error" role="status" data-testid="profile-account-error">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            {{ account.errorMessage() }}
+            <button type="button" class="btn is-secondary is-small" (click)="account.reload()">Try again</button>
+          </div>
+        } @else if (account.linked(); as info) {
+          <div class="account-line">
+            <span class="account-number" data-testid="account-menu-number">{{ info.accountNumber }}</span>
+            <span [class]="'status-badge is-' + info.overview.account.status.toLowerCase()">
+              {{ info.overview.account.status }}
+            </span>
+          </div>
+          <p class="account-balance" data-testid="profile-balance">
+            {{ info.overview.balance.cashBalance | compactMoney: info.overview.balance.currency }}
+            <span class="account-balance-label">cash</span>
+          </p>
+          <dl class="pane-facts">
+            <div>
+              <dt>Holder</dt>
+              <dd>{{ info.overview.account.holderName }}</dd>
+            </div>
+            <div>
+              <dt>Currency</dt>
+              <dd>{{ info.overview.balance.currency }}</dd>
+            </div>
+            <div>
+              <dt>As of</dt>
+              <dd>{{ info.overview.balance.asOf | date: 'medium' }}</dd>
+            </div>
+          </dl>
+        } @else if (account.data.hasValue()) {
+          <div class="pane-state">
+            <i class="fas fa-building-columns" aria-hidden="true"></i>
+            No trading account is linked yet.
+            <button type="button" class="btn is-primary is-small" (click)="openAccountSetup()">Open my account</button>
+          </div>
+        }
+      </section>
+
+      <section class="pane-section" aria-labelledby="profile-security-title">
+        <h3 id="profile-security-title" class="pane-heading">Sign-in security</h3>
+        @if (profile.loading()) {
+          <div class="pane-state">
+            <app-spinner [inline]="true" label="Loading your profile" />
+            Loading your profile…
+          </div>
+        } @else if (profile.errorMessage() && !profile.user()) {
+          <div class="pane-state is-error" role="alert" data-testid="profile-error">
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            {{ profile.errorMessage() }}
+            <button type="button" class="btn is-secondary is-small" (click)="profile.refresh()">Try again</button>
+          </div>
+        } @else {
+          <dl class="pane-facts">
+            <div>
+              <dt>Two-step sign-in</dt>
+              <dd data-testid="profile-two-factor">{{ profile.user()?.twoFactorEnabled ? 'On' : 'Off' }}</dd>
+            </div>
+            @if (profile.user()?.createdOn; as created) {
+              <div>
+                <dt>Member since</dt>
+                <dd data-testid="profile-created">{{ created | date: 'mediumDate' }}</dd>
+              </div>
+            }
+          </dl>
+        }
+        <button type="button" class="btn is-secondary" data-testid="profile-change-password" (click)="view.set('password')">
+          <i class="fas fa-key" aria-hidden="true"></i>
+          Change password
+        </button>
+      </section>
+    } @else {
+      <h2 id="profile-menu-name" class="identity-name">Change password</h2>
+      <app-change-password-form
+        (changed)="view.set('details')"
+        (cancelled)="view.set('details')"
+        (signedOut)="onSignedOut()"
+      />
+    }
+  </div>
+}

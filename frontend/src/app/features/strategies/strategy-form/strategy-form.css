@@ -1,0 +1,134 @@
+:host {
+  display: block;
+}
+
+.strategy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.strategy-form .card-title {
+  margin-bottom: 0;
+}
+
+/* The five inputs share one row on a wide screen and wrap to two columns, then one. */
+.rule-row {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+@media (min-width: 900px) {
+  .rule-row {
+    /* The Buy / Sell switch keeps the width of its two labels; the rest share what is left. */
+    grid-template-columns: minmax(200px, 1.6fr) 168px minmax(170px, 1.2fr) minmax(130px, 1fr) minmax(100px, 0.7fr);
+    align-items: start;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-group .form-hint,
+.form-group .form-error-text {
+  margin: 0;
+}
+
+.prefixed {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.prefix {
+  position: absolute;
+  inset-inline-start: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}
+
+.prefixed .prefix + .form-input {
+  padding-inline-start: 52px;
+}
+
+/* The one live sentence that replaces the paragraphs of helper text. */
+.summary {
+  padding: 12px 14px;
+  border: 1px solid var(--surface-line-subtle);
+  border-inline-start: 3px solid var(--accent-primary-background);
+  border-radius: 12px;
+  background: var(--surface-container-background);
+}
+
+.summary p {
+  margin: 0;
+}
+
+.summary-text {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.summary-text i {
+  color: var(--accent-primary-background);
+}
+
+.more-options summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--surface-foreground-subtle);
+}
+
+.more-options summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-options summary .chevron {
+  font-size: 11px;
+  transition: transform 0.2s ease-out;
+}
+
+.more-options[open] summary .chevron {
+  transform: rotate(90deg);
+}
+
+.more-hint {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .more-options summary .chevron {
+    transition: none;
+  }
+}
+
+.options-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}

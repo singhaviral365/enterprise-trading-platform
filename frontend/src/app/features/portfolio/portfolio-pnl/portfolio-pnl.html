@@ -1,0 +1,121 @@
+<section class="card panel" aria-labelledby="portfolio-pnl-title" [attr.aria-busy]="store.pnl.isLoading()" data-testid="portfolio-pnl-section">
+  <div class="section-head">
+    <h2 id="portfolio-pnl-title" class="card-title">Profit and loss by instrument</h2>
+    @if (store.pnl.isLoading() && store.pnl.hasValue()) {
+      <app-spinner [inline]="true" label="Updating profit and loss" />
+    }
+    @if (breakdown().length) {
+      <button type="button" class="btn is-secondary is-small" data-testid="portfolio-pnl-export" (click)="exportCsv()">
+        <i class="fas fa-download" aria-hidden="true"></i>
+        Download CSV
+      </button>
+    }
+  </div>
+
+  <form class="range-form" novalidate (submit)="applyRange($event)" data-testid="portfolio-range-form">
+    <div class="form-group">
+      <label class="form-label" for="portfolio-from">Realised from</label>
+      <input
+        id="portfolio-from"
+        class="form-input"
+        type="date"
+        data-testid="portfolio-from"
+        [formField]="rangeForm.from"
+      />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="portfolio-to">Realised to</label>
+      <input
+        id="portfolio-to"
+        class="form-input"
+        type="date"
+        data-testid="portfolio-to"
+        [formField]="rangeForm.to"
+        [class.is-error]="rangeForm.to().invalid()"
+        [attr.aria-invalid]="rangeForm.to().invalid() ? 'true' : null"
+        [attr.aria-describedby]="rangeForm.to().invalid() ? 'portfolio-range-error' : null"
+      />
+    </div>
+    <button type="submit" class="btn is-primary" data-testid="portfolio-range-apply" [disabled]="rangeForm().invalid()">
+      Apply
+    </button>
+    @if (rangeApplied()) {
+      <button type="button" class="btn is-tertiary" data-testid="portfolio-range-clear" (click)="clearRange()">
+        Clear
+      </button>
+    }
+  </form>
+  @if (rangeForm.to().invalid()) {
+    <p id="portfolio-range-error" class="form-error-text" role="alert" data-testid="portfolio-range-error">
+      {{ rangeForm.to().errors()[0].message }}
+    </p>
+  }
+  <p class="form-hint">
+    The dates bound the realised figure only (by the day you sold, UTC). Unrealised is always as at now.
+  </p>
+
+  @if (store.pnl.isLoading() && !store.pnl.hasValue()) {
+    <div class="portfolio-state" aria-live="polite" data-testid="portfolio-pnl-loading">
+      <app-spinner [inline]="true" label="Loading profit and loss" />
+      <span>Loading profit and loss…</span>
+    </div>
+  } @else if (store.pnlUnavailable()) {
+    <p class="portfolio-note" data-testid="portfolio-pnl-unavailable">
+      Profit and loss by instrument needs prices, which are unavailable right now.
+    </p>
+  } @else if (store.pnlErrorMessage() && !store.pnlSnapshot()) {
+    <div class="portfolio-state is-error" role="alert" data-testid="portfolio-pnl-error">
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      <p>{{ store.pnlErrorMessage() }}</p>
+      <button type="button" class="btn is-secondary" (click)="store.reloadPnl()">Try again</button>
+    </div>
+  } @else if (breakdown().length) {
+    <div class="row-table-scroll">
+      <table class="row-table" data-testid="portfolio-breakdown">
+        <caption class="visually-hidden">
+          Realised, unrealised and total profit and loss for each instrument.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Instrument</th>
+            <th scope="col" class="num">Realised</th>
+            <th scope="col" class="num">Unrealised</th>
+            <th scope="col" class="num col-last">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of breakdown(); track row.symbol) {
+            <tr [attr.data-testid]="'pnl-' + row.symbol">
+              <th scope="row">{{ row.symbol }}</th>
+              <td class="num"><app-pnl-value [amount]="row.realisedPnl" [currency]="currency()" /></td>
+              <td class="num"><app-pnl-value [amount]="row.unrealisedPnl" [currency]="currency()" /></td>
+              <td class="num col-last"><app-pnl-value [amount]="row.totalPnl" [currency]="currency()" /></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="portfolio-note" data-testid="portfolio-breakdown-empty">No profit or loss to show yet.</p>
+  }
+</section>
+
+@if (realisedOverTime().length > 1) {
+  <section class="card panel" aria-labelledby="portfolio-realised-title" data-testid="portfolio-realised-history">
+    <div class="section-head">
+      <h2 id="portfolio-realised-title" class="card-title">What you have banked, over time</h2>
+    </div>
+    <p class="chart-takeaway" data-testid="portfolio-realised-takeaway">
+      {{ realisedOverTime()[realisedOverTime().length - 1].value >= 0 ? 'Banked so far:' : 'Lost so far:' }}
+      <app-pnl-value [amount]="realisedOverTime()[realisedOverTime().length - 1].value" [currency]="currency()" />
+    </p>
+    <app-line-chart
+      [points]="realisedOverTime()"
+      seriesName="Realised"
+      [step]="true"
+      [zeroBased]="false"
+      [valueFormatter]="formatMoney"
+      [ariaLabel]="realisedLabel()"
+    />
+  </section>
+}

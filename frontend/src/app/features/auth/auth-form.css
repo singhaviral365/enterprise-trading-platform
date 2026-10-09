@@ -1,0 +1,247 @@
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form .form-group {
+  margin-bottom: 18px;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon > i {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}
+
+.input-with-icon .form-input {
+  height: 44px;
+  padding-left: 40px;
+  border-color: var(--surface-line);
+  /* transition: border-color 0.15s ease, box-shadow 0.15s ease; */
+}
+
+.input-with-icon .form-input:focus {
+  border-color: var(--accent-primary-background);
+  /* box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent); */
+}
+
+.input-with-icon .form-input.is-error {
+  border-color: var(--status-error-background);
+}
+
+.input-with-icon.has-toggle .form-input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--surface-foreground-subtle);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: var(--surface-container-background);
+}
+
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+  border: 1px solid var(--status-error-container-line);
+  border-radius: 8px;
+}
+
+.auth-alert > i {
+  margin-top: 2px;
+}
+
+.auth-form .btn[type='submit'] {
+  margin-top: 6px;
+}
+
+.auth-switch {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--surface-foreground-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--surface-foreground-link-interaction);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.plain-input {
+  height: 44px;
+  border-color: var(--surface-line);
+}
+
+.plain-input:focus {
+  /* box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary-background) 25%, transparent); */
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--surface-foreground-subtle);
+}
+
+/* Live password checklist: each rule turns green as it is met, red once the field is touched. */
+.rule-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  list-style: none;
+  border-radius: 10px;
+  background: var(--surface-container-background);
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+  transition: color 0.2s ease;
+}
+
+.rule > i {
+  font-size: 11px;
+  opacity: 0.55;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.rule.is-met {
+  color: var(--status-success-container-fg);
+}
+
+.rule.is-met > i {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.rule.is-missing {
+  color: var(--status-error-container-fg);
+}
+
+@media (max-width: 480px) {
+  .rule-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rule,
+  .rule > i {
+    transition: none;
+  }
+}
+
+/* A line of good news above a form (e.g. the password was changed). Same shape as the alert, in the success colours. */
+.auth-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 14px;
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+  border: 1px solid var(--status-success-container-line);
+  border-radius: 8px;
+}
+
+.auth-notice > i {
+  margin-top: 2px;
+}
+
+/* What a step is asking for, above its fields. */
+.auth-step-text {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}
+
+.auth-step-text strong {
+  color: var(--surface-foreground);
+}
+
+/* "Forgot password?" sits right under the password field. */
+.auth-field-link {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.link-button:disabled {
+  color: var(--surface-foreground-subtle);
+  text-decoration: none;
+  cursor: default;
+}
+
+/* Six digits, spaced out so each one can be checked against the email. */
+.code-input {
+  letter-spacing: 0.35em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rule.is-note {
+  grid-column: 1 / -1;
+}
+
+/* The currency symbol in front of the opening balance, in the same spot as an input icon. */
+.currency-symbol {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  pointer-events: none;
+}

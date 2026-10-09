@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>QuoteClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.client</a> &gt; <span class="el_source">QuoteClient.java</span></div><h1>QuoteClient.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.client;
+
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+
+public interface QuoteClient {
+
+    Optional&lt;LiveQuote&gt; getQuote(String symbol);
+
+    default Map&lt;String, LiveQuote&gt; getQuotes(Collection&lt;String&gt; symbols) {
+<span class="nc" id="L14">        Map&lt;String, LiveQuote&gt; quotes = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L15" title="All 2 branches missed.">        if (symbols == null) {</span>
+<span class="nc" id="L16">            return quotes;</span>
+        }
+
+<span class="nc bnc" id="L19" title="All 2 branches missed.">        for (String symbol : symbols) {</span>
+<span class="nc bnc" id="L20" title="All 4 branches missed.">            if (symbol == null || symbol.isBlank()) {</span>
+<span class="nc" id="L21">                continue;</span>
+            }
+<span class="nc" id="L23">            getQuote(symbol).ifPresent(quote -&gt; quotes.put(quote.symbol(), quote));</span>
+<span class="nc" id="L24">        }</span>
+
+<span class="nc" id="L26">        return quotes;</span>
+    }
+
+    /**
+     * Full quotes (all fields the API returned), keyed by symbol. Symbols the API could not quote
+     * are left out. The default only knows symbol and price; FauxnanceQuoteClient returns everything.
+     */
+    default Map&lt;String, QuoteDetails&gt; getQuoteDetails(Collection&lt;String&gt; symbols) {
+<span class="nc" id="L34">        Map&lt;String, QuoteDetails&gt; details = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L35">        getQuotes(symbols).forEach((symbol, quote) -&gt; {</span>
+<span class="nc" id="L36">            Map&lt;String, Object&gt; fields = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L37">            fields.put(&quot;symbol&quot;, quote.symbol());</span>
+<span class="nc" id="L38">            fields.put(&quot;price&quot;, quote.price());</span>
+<span class="nc" id="L39">            details.put(symbol, new QuoteDetails(quote.symbol(), quote.price(), fields));</span>
+<span class="nc" id="L40">        });</span>
+<span class="nc" id="L41">        return details;</span>
+    }
+
+    /**
+     * Historical candles for {@code symbol} between {@code from} and {@code to} (inclusive). The default has no
+     * history; FauxnanceQuoteClient calls the /candles endpoint.
+     */
+    default PriceHistory getCandles(String symbol, LocalDate from, LocalDate to, String interval) {
+<span class="nc" id="L49">        return PriceHistory.empty(symbol, interval);</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

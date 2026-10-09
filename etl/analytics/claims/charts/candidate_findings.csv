@@ -1,0 +1,52 @@
+symbol,candidate,date,value,unit
+RELIANCE.NS,Largest daily gain,2026-04-27,4.021328928265422,%
+RELIANCE.NS,Largest daily decline,2026-04-06,-3.9955885819076524,%
+RELIANCE.NS,Largest intraday range,2026-04-06,5.077262693156733,%
+RELIANCE.NS,Smallest intraday range,2026-01-15,0.0,%
+RELIANCE.NS,Highest volume day,2026-05-29,42634247.0,shares
+RELIANCE.NS,Top 10 days volume share,,14.050181418863183,%
+RELIANCE.NS,Top 10 days share of valid-volume days,,6.8493150684931505,%
+RELIANCE.NS,Top-volume average absolute movement,,2.0243095691601196,%
+RELIANCE.NS,Remaining-days average absolute movement,,0.9263244445458874,%
+RELIANCE.NS,High-volume movement ratio,,2.1853137754045755,x
+RELIANCE.NS,High-volume movement difference,,118.53137754045756,%
+RELIANCE.NS,Volume / price movement correlation,,0.4070069436817227,correlation
+RELIANCE.NS,Number of positive days,,72.0,days
+RELIANCE.NS,Number of negative days,,76.0,days
+RELIANCE.NS,Number of flat days,,4.0,days
+RELIANCE.NS,Average positive-day movement,,0.9306229704763427,%
+RELIANCE.NS,Average absolute negative-day movement,,1.0993550734956432,%
+INFY.NS,Largest daily gain,2026-02-13,5.81188266117616,%
+INFY.NS,Largest daily decline,2026-02-03,-4.122276122319659,%
+INFY.NS,Largest intraday range,2026-03-31,8.37973490113997,%
+INFY.NS,Smallest intraday range,2026-01-15,0.0,%
+INFY.NS,Highest volume day,2026-05-29,69085430.0,shares
+INFY.NS,Top 10 days volume share,,20.09718912788837,%
+INFY.NS,Top 10 days share of valid-volume days,,6.8493150684931505,%
+INFY.NS,Top-volume average absolute movement,,2.3742005468104415,%
+INFY.NS,Remaining-days average absolute movement,,1.1065117788202905,%
+INFY.NS,High-volume movement ratio,,2.145662244410719,x
+INFY.NS,High-volume movement difference,,114.5662244410719,%
+INFY.NS,Volume / price movement correlation,,0.4915397603171603,correlation
+INFY.NS,Number of positive days,,63.0,days
+INFY.NS,Number of negative days,,85.0,days
+INFY.NS,Number of flat days,,4.0,days
+INFY.NS,Average positive-day movement,,1.2831234933873723,%
+INFY.NS,Average absolute negative-day movement,,1.2031162942951272,%
+AAPL,Largest daily gain,2026-07-02,4.933363935302567,%
+AAPL,Largest daily decline,2026-02-12,-5.029204809948649,%
+AAPL,Largest intraday range,2026-02-16,6.1003549570412705,%
+AAPL,Smallest intraday range,2026-02-10,0.8839872480959403,%
+AAPL,Highest volume day,2026-06-26,261775500.0,shares
+AAPL,Top 10 days volume share,,15.004669699615212,%
+AAPL,Top 10 days share of valid-volume days,,6.896551724137931,%
+AAPL,Top-volume average absolute movement,,1.9798680673063955,%
+AAPL,Remaining-days average absolute movement,,1.0514380019187408,%
+AAPL,High-volume movement ratio,,1.8830098053269786,x
+AAPL,High-volume movement difference,,88.30098053269786,%
+AAPL,Volume / price movement correlation,,0.39486642462716987,correlation
+AAPL,Number of positive days,,86.0,days
+AAPL,Number of negative days,,65.0,days
+AAPL,Number of flat days,,0.0,days
+AAPL,Average positive-day movement,,1.0946524257645165,%
+AAPL,Average absolute negative-day movement,,1.1820286879556177,%

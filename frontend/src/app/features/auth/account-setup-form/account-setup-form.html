@@ -1,0 +1,150 @@
+<form class="auth-form" novalidate (submit)="onSubmit($event)" data-testid="account-setup-form">
+  @if (serverError()) {
+    <div class="auth-alert" role="alert" data-testid="account-setup-error">
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      <span>{{ serverError() }}</span>
+    </div>
+  }
+
+  <div class="form-group">
+    <label class="form-label" for="account-client-name">Full name</label>
+    <div class="input-with-icon">
+      <i class="fas fa-id-card" aria-hidden="true"></i>
+      <input
+        id="account-client-name"
+        class="form-input"
+        type="text"
+        autocomplete="name"
+        placeholder="Your full name"
+        data-testid="account-client-name"
+        [formField]="setupForm.clientName"
+        [class.is-error]="setupForm.clientName().touched() && setupForm.clientName().invalid()"
+        [attr.aria-invalid]="setupForm.clientName().touched() && setupForm.clientName().invalid()"
+        [attr.aria-describedby]="setupForm.clientName().touched() && setupForm.clientName().invalid() ? 'account-client-name-error' : null"
+      />
+    </div>
+    @if (setupForm.clientName().touched() && setupForm.clientName().invalid()) {
+      <p id="account-client-name-error" class="form-error-text">{{ setupForm.clientName().errors()[0].message }}</p>
+    }
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="account-phone">Phone number</label>
+    <div class="input-with-icon">
+      <i class="fas fa-phone" aria-hidden="true"></i>
+      <input
+        id="account-phone"
+        class="form-input"
+        type="tel"
+        autocomplete="tel"
+        placeholder="+1 555 123 4567"
+        data-testid="account-phone"
+        [formField]="setupForm.phoneNo"
+        [class.is-error]="setupForm.phoneNo().touched() && setupForm.phoneNo().invalid()"
+        [attr.aria-invalid]="setupForm.phoneNo().touched() && setupForm.phoneNo().invalid()"
+        [attr.aria-describedby]="setupForm.phoneNo().touched() && setupForm.phoneNo().invalid() ? 'account-phone-error' : null"
+      />
+    </div>
+    @if (setupForm.phoneNo().touched() && setupForm.phoneNo().invalid()) {
+      <p id="account-phone-error" class="form-error-text">{{ setupForm.phoneNo().errors()[0].message }}</p>
+    }
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="account-email">Email</label>
+    <div class="input-with-icon">
+      <i class="fas fa-envelope" aria-hidden="true"></i>
+      <input
+        id="account-email"
+        class="form-input"
+        type="email"
+        autocomplete="email"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="you@example.com"
+        data-testid="account-email"
+        [formField]="setupForm.email"
+        [class.is-error]="setupForm.email().touched() && setupForm.email().invalid()"
+        [attr.aria-invalid]="setupForm.email().touched() && setupForm.email().invalid()"
+        [attr.aria-describedby]="setupForm.email().touched() && setupForm.email().invalid() ? 'account-email-error' : null"
+      />
+    </div>
+    @if (setupForm.email().touched() && setupForm.email().invalid()) {
+      <p id="account-email-error" class="form-error-text">{{ setupForm.email().errors()[0].message }}</p>
+    }
+  </div>
+
+  <div class="form-group">
+    <app-dropdown
+      label="Currency"
+      inputId="account-currency"
+      data-testid="account-currency"
+      [options]="currencyOptions"
+      [value]="model().currency"
+      (valueChange)="setupForm.currency().value.set($event)"
+    />
+    <p class="form-hint" id="account-currency-hint">Chosen once. It cannot be changed later.</p>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label" for="account-dob">Date of birth <span class="optional">(optional)</span></label>
+      <input
+        id="account-dob"
+        class="form-input plain-input"
+        type="date"
+        autocomplete="bday"
+        data-testid="account-dob"
+        [formField]="setupForm.dob"
+        [class.is-error]="setupForm.dob().touched() && setupForm.dob().invalid()"
+        [attr.aria-invalid]="setupForm.dob().touched() && setupForm.dob().invalid()"
+        [attr.aria-describedby]="setupForm.dob().touched() && setupForm.dob().invalid() ? 'account-dob-error' : null"
+      />
+      @if (setupForm.dob().touched() && setupForm.dob().invalid()) {
+        <p id="account-dob-error" class="form-error-text">{{ setupForm.dob().errors()[0].message }}</p>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="account-balance">Opening balance <span class="optional">(optional)</span></label>
+      <div class="input-with-icon">
+        <span class="currency-symbol" aria-hidden="true" data-testid="account-balance-symbol">{{ currencySymbol() }}</span>
+        <input
+          id="account-balance"
+          class="form-input"
+          type="text"
+          inputmode="decimal"
+          [placeholder]="minBalance()"
+          data-testid="account-balance"
+          [formField]="setupForm.balance"
+          [class.is-error]="setupForm.balance().touched() && setupForm.balance().invalid()"
+          [attr.aria-invalid]="setupForm.balance().touched() && setupForm.balance().invalid()"
+          [attr.aria-describedby]="setupForm.balance().touched() && setupForm.balance().invalid() ? 'account-balance-error' : 'account-balance-hint'"
+        />
+      </div>
+      @if (setupForm.balance().touched() && setupForm.balance().invalid()) {
+        <p id="account-balance-error" class="form-error-text">{{ setupForm.balance().errors()[0].message }}</p>
+      } @else {
+        <p id="account-balance-hint" class="form-hint" data-testid="account-balance-hint">Defaults to {{ minBalance().toLocaleString('en-US') }} {{ model().currency }} if left blank.</p>
+      }
+    </div>
+  </div>
+
+  <button
+    type="submit"
+    class="btn is-primary is-large full-width-btn"
+    data-testid="account-setup-submit"
+    [disabled]="setupForm().invalid() || setupForm().submitting()"
+  >
+    @if (setupForm().submitting()) {
+      <app-spinner [inline]="true" label="Opening account" />
+      Opening account…
+    } @else {
+      Open my account
+    }
+  </button>
+
+  <p class="auth-switch">
+    <button type="button" class="link-button" data-testid="account-setup-skip" (click)="skipped.emit()">I'll do this later</button>
+  </p>
+</form>

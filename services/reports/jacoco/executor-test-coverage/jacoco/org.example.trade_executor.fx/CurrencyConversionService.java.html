@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CurrencyConversionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.fx</a> &gt; <span class="el_source">CurrencyConversionService.java</span></div><h1>CurrencyConversionService.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.fx;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Optional;
+
+/**
+ * Converts money between currencies using ExchangeRate-API rates, which are cached for
+ * {@code trading.fx.cache-ttl-minutes} so a burst of orders costs one API call, not one each.
+ *
+ * &lt;ul&gt;
+ *   &lt;li&gt;Same currency in and out never touches the rate service.&lt;/li&gt;
+ *   &lt;li&gt;If a refresh fails, the last rates are kept (and retried after a short back-off) rather than blocking
+ *       trading on a rate that moved a fraction of a percent; with no rates at all the conversion fails.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+@Service
+public class CurrencyConversionService {
+
+<span class="fc" id="L30">    private static final Logger LOGGER = LoggerFactory.getLogger(CurrencyConversionService.class);</span>
+
+<span class="fc" id="L32">    private static final MathContext RATE_PRECISION = new MathContext(16, RoundingMode.HALF_UP);</span>
+<span class="fc" id="L33">    private static final Duration FAILED_REFRESH_BACKOFF = Duration.ofMinutes(1);</span>
+
+    private final ExchangeRateClient client;
+    private final String baseCurrency;
+    private final Duration cacheTtl;
+    private final Clock clock;
+
+    private ExchangeRates cached;
+<span class="fc" id="L41">    private Instant nextRefreshAt = Instant.MIN;</span>
+
+    @Autowired
+    public CurrencyConversionService(
+            ExchangeRateClient client,
+            @Value(&quot;${trading.fx.base-currency:USD}&quot;) String baseCurrency,
+            @Value(&quot;${trading.fx.cache-ttl-minutes:180}&quot;) long cacheTtlMinutes) {
+
+<span class="fc" id="L49">        this(client, baseCurrency, cacheTtlMinutes, Clock.systemUTC());</span>
+<span class="fc" id="L50">    }</span>
+
+<span class="fc" id="L52">    CurrencyConversionService(ExchangeRateClient client, String baseCurrency, long cacheTtlMinutes, Clock clock) {</span>
+<span class="fc" id="L53">        this.client = client;</span>
+<span class="fc" id="L54">        this.baseCurrency = baseCurrency.toUpperCase();</span>
+<span class="fc" id="L55">        this.cacheTtl = Duration.ofMinutes(Math.max(1L, cacheTtlMinutes));</span>
+<span class="fc" id="L56">        this.clock = clock;</span>
+<span class="fc" id="L57">    }</span>
+
+    /** {@code amount} in {@code from} expressed in {@code to}. Not rounded: the caller picks the scale it stores. */
+    public BigDecimal convert(BigDecimal amount, String from, String to) {
+<span class="fc" id="L61">        String source = normalise(from);</span>
+<span class="fc" id="L62">        String target = normalise(to);</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (source.equals(target)) {</span>
+<span class="fc" id="L64">            return amount;</span>
+        }
+
+<span class="fc" id="L67">        ExchangeRates rates = currentRates();</span>
+<span class="pc bpc" id="L68" title="1 of 4 branches missed.">        if (!rates.supports(source) || !rates.supports(target)) {</span>
+<span class="fc" id="L69">            throw new ExchangeRateUnavailableException(&quot;No exchange rate for &quot; + source + &quot; -&gt; &quot; + target);</span>
+        }
+
+        // Rates are per one unit of the base currency: amount[from] / rate[from] = base, base * rate[to] = amount[to].
+<span class="fc" id="L73">        BigDecimal factor = rates.rates().get(target).divide(rates.rates().get(source), RATE_PRECISION);</span>
+<span class="fc" id="L74">        return amount.multiply(factor, RATE_PRECISION);</span>
+    }
+
+    /** The cached rates, refreshed when stale. Throws when there is nothing cached and the service cannot be reached. */
+    public synchronized ExchangeRates currentRates() {
+<span class="fc" id="L79">        Instant now = clock.instant();</span>
+<span class="fc bfc" id="L80" title="All 4 branches covered.">        if (cached == null || !now.isBefore(nextRefreshAt)) {</span>
+            try {
+<span class="fc" id="L82">                cached = client.fetchLatest(baseCurrency);</span>
+<span class="fc" id="L83">                nextRefreshAt = now.plus(cacheTtl);</span>
+<span class="fc" id="L84">            } catch (ExchangeRateUnavailableException ex) {</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">                if (cached == null) {</span>
+<span class="fc" id="L86">                    throw ex;</span>
+                }
+<span class="fc" id="L88">                LOGGER.warn(&quot;Exchange rate refresh failed, using rates from {}: {}&quot;, cached.fetchedAt(), ex.getMessage());</span>
+<span class="fc" id="L89">                nextRefreshAt = now.plus(FAILED_REFRESH_BACKOFF);</span>
+<span class="fc" id="L90">            }</span>
+        }
+<span class="fc" id="L92">        return cached;</span>
+    }
+
+    /** Like {@link #currentRates()} but empty instead of throwing, for read-only views such as the market board. */
+    public Optional&lt;ExchangeRates&gt; currentRatesIfAvailable() {
+        try {
+<span class="nc" id="L98">            return Optional.of(currentRates());</span>
+<span class="fc" id="L99">        } catch (ExchangeRateUnavailableException ex) {</span>
+<span class="fc" id="L100">            LOGGER.warn(&quot;Exchange rates unavailable for the market board: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L101">            return Optional.empty();</span>
+        }
+    }
+
+    private static String normalise(String currency) {
+<span class="pc bpc" id="L106" title="1 of 4 branches missed.">        if (currency == null || currency.isBlank()) {</span>
+<span class="fc" id="L107">            throw new ExchangeRateUnavailableException(&quot;Currency code is missing&quot;);</span>
+        }
+<span class="fc" id="L109">        return currency.trim().toUpperCase();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

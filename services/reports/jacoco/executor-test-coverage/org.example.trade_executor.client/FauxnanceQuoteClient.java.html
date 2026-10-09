@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FauxnanceQuoteClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">trade-executor</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.client</a> &gt; <span class="el_source">FauxnanceQuoteClient.java</span></div><h1>FauxnanceQuoteClient.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.client;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Component
+public class FauxnanceQuoteClient implements QuoteClient {
+
+<span class="fc" id="L29">    private static final Logger LOGGER = LoggerFactory.getLogger(FauxnanceQuoteClient.class);</span>
+
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final URI baseUri;
+    private final int maxAttempts;
+    private final long retryDelayMillis;
+    private final Duration requestTimeout;
+    private final String apiKey;
+
+    @Autowired
+    public FauxnanceQuoteClient(
+            @Value(&quot;${trading.quote.base-url}&quot;) String baseUrl,
+            @Value(&quot;${trading.quote.api-key:}&quot;) String apiKey,
+            @Value(&quot;${trading.quote.max-attempts:3}&quot;) int maxAttempts,
+            @Value(&quot;${trading.quote.retry-delay-millis:100}&quot;) long retryDelayMillis,
+            @Value(&quot;${trading.quote.request-timeout-millis:1000}&quot;) long requestTimeoutMillis) {
+
+<span class="fc" id="L47">        this(HttpClient.newBuilder()</span>
+<span class="fc" id="L48">                        .connectTimeout(Duration.ofMillis(requestTimeoutMillis))</span>
+<span class="fc" id="L49">                        .build(),</span>
+            new ObjectMapper(),
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">                URI.create(baseUrl.endsWith(&quot;/&quot;) ? baseUrl : baseUrl + &quot;/&quot;),</span>
+                apiKey,
+                maxAttempts,
+                retryDelayMillis,
+<span class="fc" id="L55">                Duration.ofMillis(requestTimeoutMillis));</span>
+<span class="fc" id="L56">    }</span>
+
+    public FauxnanceQuoteClient(
+            String baseUrl,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis) {
+
+<span class="fc" id="L64">        this(baseUrl, &quot;&quot;, maxAttempts, retryDelayMillis, requestTimeoutMillis, new ObjectMapper());</span>
+<span class="fc" id="L65">        }</span>
+
+        FauxnanceQuoteClient(
+            String baseUrl,
+            String apiKey,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis,
+            ObjectMapper objectMapper) {
+
+<span class="fc" id="L75">        this(HttpClient.newBuilder()</span>
+<span class="fc" id="L76">                .connectTimeout(Duration.ofMillis(requestTimeoutMillis))</span>
+<span class="fc" id="L77">                .build(),</span>
+            objectMapper,
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">            URI.create(baseUrl.endsWith(&quot;/&quot;) ? baseUrl : baseUrl + &quot;/&quot;),</span>
+            apiKey,
+            maxAttempts,
+            retryDelayMillis,
+<span class="fc" id="L83">            Duration.ofMillis(requestTimeoutMillis));</span>
+<span class="fc" id="L84">    }</span>
+
+    FauxnanceQuoteClient(
+            HttpClient httpClient,
+            ObjectMapper objectMapper,
+            URI baseUri,
+            String apiKey,
+            int maxAttempts,
+            long retryDelayMillis,
+<span class="fc" id="L93">            Duration requestTimeout) {</span>
+
+<span class="fc" id="L95">        this.httpClient = httpClient;</span>
+<span class="fc" id="L96">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L97">        this.baseUri = baseUri;</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        this.apiKey = apiKey == null ? &quot;&quot; : apiKey.trim();</span>
+<span class="fc" id="L99">        this.maxAttempts = Math.max(1, maxAttempts);</span>
+<span class="fc" id="L100">        this.retryDelayMillis = Math.max(0L, retryDelayMillis);</span>
+<span class="fc" id="L101">        this.requestTimeout = requestTimeout;</span>
+<span class="fc" id="L102">    }</span>
+
+    @Override
+    public Optional&lt;LiveQuote&gt; getQuote(String symbol) {
+<span class="fc" id="L106">        URI quoteUri = resolveQuoteUri(symbol);</span>
+<span class="fc" id="L107">        Map&lt;String, LiveQuote&gt; quotes = fetchQuotes(quoteUri, symbol);</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">        if (quotes.isEmpty()) {</span>
+<span class="nc" id="L109">            return Optional.empty();</span>
+        }
+
+<span class="fc" id="L112">        LiveQuote quote = quotes.get(symbol);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (quote != null) {</span>
+<span class="fc" id="L114">            return Optional.of(quote);</span>
+        }
+
+<span class="nc" id="L117">        return quotes.values().stream().findFirst();</span>
+    }
+
+    @Override
+    public Map&lt;String, LiveQuote&gt; getQuotes(Collection&lt;String&gt; symbols) {
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (symbols == null) {</span>
+<span class="nc" id="L123">            return Map.of();</span>
+        }
+
+<span class="nc" id="L126">        List&lt;String&gt; cleanSymbols = symbols.stream()</span>
+<span class="nc bnc" id="L127" title="All 4 branches missed.">                .filter(value -&gt; value != null &amp;&amp; !value.isBlank())</span>
+<span class="nc" id="L128">                .map(String::trim)</span>
+<span class="nc" id="L129">                .distinct()</span>
+<span class="nc" id="L130">                .toList();</span>
+
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (cleanSymbols.isEmpty()) {</span>
+<span class="nc" id="L133">            return Map.of();</span>
+        }
+
+<span class="nc" id="L136">        URI quoteUri = resolveBatchQuoteUri(cleanSymbols);</span>
+<span class="nc" id="L137">        return fetchQuotes(quoteUri, String.join(&quot;,&quot;, cleanSymbols));</span>
+    }
+
+    private Map&lt;String, LiveQuote&gt; fetchQuotes(URI quoteUri, String symbolContext) {
+
+<span class="fc" id="L142">        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(quoteUri)</span>
+<span class="fc" id="L143">            .timeout(requestTimeout)</span>
+<span class="fc" id="L144">            .GET();</span>
+
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">        if (!apiKey.isEmpty()) {</span>
+<span class="nc" id="L147">            requestBuilder.header(&quot;X-Api-Key&quot;, apiKey);</span>
+        }
+
+<span class="fc" id="L150">        HttpRequest request = requestBuilder.build();</span>
+
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">        for (int attempt = 1; attempt &lt;= maxAttempts; attempt++) {</span>
+            try {
+<span class="fc" id="L154">                HttpResponse&lt;String&gt; response = httpClient.send(</span>
+                        request,
+<span class="fc" id="L156">                        HttpResponse.BodyHandlers.ofString());</span>
+
+<span class="fc bfc" id="L158" title="All 2 branches covered.">                if (response.statusCode() == 200) {</span>
+<span class="fc" id="L159">                    return parseQuotes(response.body());</span>
+                }
+
+<span class="pc bpc" id="L162" title="2 of 4 branches missed.">                if (response.statusCode() == 404 || response.statusCode() == 204) {</span>
+<span class="nc" id="L163">                    LOGGER.info(&quot;No quote available for symbols {} (HTTP {})&quot;, symbolContext, response.statusCode());</span>
+<span class="nc" id="L164">                    return Map.of();</span>
+                }
+
+<span class="pc bpc" id="L167" title="2 of 4 branches missed.">                if (isRetryable(response.statusCode()) &amp;&amp; attempt &lt; maxAttempts) {</span>
+<span class="nc" id="L168">                    LOGGER.warn(</span>
+                            &quot;Retryable quote lookup failure for symbols {} at {} (HTTP {}, attempt {} of {})&quot;,
+                            symbolContext,
+                            quoteUri,
+<span class="nc" id="L172">                            response.statusCode(),</span>
+<span class="nc" id="L173">                            attempt,</span>
+<span class="nc" id="L174">                            maxAttempts);</span>
+<span class="nc" id="L175">                    backoff(attempt);</span>
+<span class="nc" id="L176">                    continue;</span>
+                }
+
+<span class="fc" id="L179">                LOGGER.error(</span>
+                    &quot;Quote lookup failed for symbols {} at {} with HTTP {}&quot;,
+                    symbolContext,
+                    quoteUri,
+<span class="fc" id="L183">                    response.statusCode());</span>
+
+<span class="fc" id="L185">                throw new QuoteUnavailableException(</span>
+                        symbolContext,
+<span class="fc" id="L187">                        &quot;Quote lookup failed with HTTP status &quot; + response.statusCode());</span>
+<span class="fc" id="L188">            } catch (IOException ex) {</span>
+<span class="pc bpc" id="L189" title="1 of 2 branches missed.">                if (attempt &lt; maxAttempts) {</span>
+<span class="fc" id="L190">                    LOGGER.warn(</span>
+                            &quot;I/O error during quote lookup for symbols {} at {} (attempt {} of {})&quot;,
+                            symbolContext,
+                            quoteUri,
+<span class="fc" id="L194">                            attempt,</span>
+<span class="fc" id="L195">                            maxAttempts,</span>
+                            ex);
+<span class="fc" id="L197">                    backoff(attempt);</span>
+<span class="fc" id="L198">                    continue;</span>
+                }
+
+<span class="nc" id="L201">                LOGGER.error(</span>
+                    &quot;Quote lookup failed after retries for symbols {} at {}&quot;,
+                    symbolContext,
+                    quoteUri,
+                    ex);
+
+<span class="nc" id="L207">                throw new QuoteUnavailableException(</span>
+                        symbolContext,
+                        &quot;Quote lookup failed after retries&quot;,
+                        ex);
+<span class="nc" id="L211">            } catch (InterruptedException ex) {</span>
+<span class="nc" id="L212">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L213">                throw new QuoteUnavailableException(</span>
+                        symbolContext,
+                        &quot;Quote lookup interrupted&quot;,
+                        ex);
+            }
+        }
+
+<span class="nc" id="L220">        throw new QuoteUnavailableException(symbolContext, &quot;Quote lookup failed after retries&quot;);</span>
+    }
+
+    private Map&lt;String, LiveQuote&gt; parseQuotes(String body) throws IOException {
+<span class="pc bpc" id="L224" title="2 of 4 branches missed.">        if (body == null || body.isBlank()) {</span>
+<span class="nc" id="L225">            return Map.of();</span>
+        }
+
+<span class="fc" id="L228">        JsonNode root = objectMapper.readTree(body);</span>
+<span class="fc" id="L229">        Map&lt;String, LiveQuote&gt; quotes = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L230">        collectQuotes(root, quotes);</span>
+<span class="fc" id="L231">        return quotes;</span>
+    }
+
+    private void collectQuotes(JsonNode node, Map&lt;String, LiveQuote&gt; quotes) {
+<span class="pc bpc" id="L235" title="2 of 4 branches missed.">        if (node == null || node.isNull()) {</span>
+<span class="nc" id="L236">            return;</span>
+        }
+
+<span class="fc bfc" id="L239" title="All 2 branches covered.">        if (node.isObject()) {</span>
+<span class="fc" id="L240">            JsonNode symbolNode = node.get(&quot;symbol&quot;);</span>
+<span class="fc" id="L241">            JsonNode priceNode = node.get(&quot;price&quot;);</span>
+<span class="pc bpc" id="L242" title="3 of 6 branches missed.">            if (symbolNode != null &amp;&amp; priceNode != null &amp;&amp; symbolNode.isTextual()) {</span>
+<span class="fc" id="L243">                String symbol = symbolNode.asText().trim();</span>
+<span class="fc" id="L244">                BigDecimal price = extractPrice(priceNode);</span>
+<span class="pc bpc" id="L245" title="3 of 6 branches missed.">                if (!symbol.isBlank() &amp;&amp; price != null &amp;&amp; price.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L246">                    quotes.put(symbol, new LiveQuote(symbol, price));</span>
+                }
+            }
+
+<span class="fc" id="L250">            node.fields().forEachRemaining(entry -&gt; collectQuotes(entry.getValue(), quotes));</span>
+<span class="fc" id="L251">            return;</span>
+        }
+
+<span class="pc bpc" id="L254" title="1 of 2 branches missed.">        if (node.isArray()) {</span>
+<span class="nc" id="L255">            node.forEach(child -&gt; collectQuotes(child, quotes));</span>
+        }
+<span class="fc" id="L257">    }</span>
+
+    private BigDecimal extractPrice(JsonNode priceNode) {
+<span class="pc bpc" id="L260" title="2 of 4 branches missed.">        if (priceNode == null || priceNode.isNull()) {</span>
+<span class="nc" id="L261">            return null;</span>
+        }
+<span class="pc bpc" id="L263" title="1 of 2 branches missed.">        if (priceNode.isNumber()) {</span>
+<span class="fc" id="L264">            return priceNode.decimalValue();</span>
+        }
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        if (priceNode.isTextual()) {</span>
+<span class="nc" id="L267">            String value = priceNode.asText().trim();</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">            if (value.isEmpty()) {</span>
+<span class="nc" id="L269">                return null;</span>
+            }
+            try {
+<span class="nc" id="L272">                return new BigDecimal(value);</span>
+<span class="nc" id="L273">            } catch (NumberFormatException ex) {</span>
+<span class="nc" id="L274">                return null;</span>
+            }
+        }
+<span class="nc" id="L277">        return null;</span>
+    }
+
+    private URI resolveQuoteUri(String symbol) {
+<span class="fc" id="L281">        String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);</span>
+<span class="fc" id="L282">        return baseUri.resolve(&quot;quotes/&quot; + encodedSymbol);</span>
+    }
+
+    private URI resolveBatchQuoteUri(List&lt;String&gt; symbols) {
+<span class="nc" id="L286">        String joinedSymbols = symbols.stream()</span>
+<span class="nc" id="L287">                .map(String::trim)</span>
+<span class="nc" id="L288">                .collect(Collectors.joining(&quot;,&quot;));</span>
+<span class="nc" id="L289">        String encodedSymbols = URLEncoder.encode(joinedSymbols, StandardCharsets.UTF_8);</span>
+<span class="nc" id="L290">        return baseUri.resolve(&quot;quotes?symbols=&quot; + encodedSymbols);</span>
+    }
+
+    private boolean isRetryable(int statusCode) {
+<span class="pc bpc" id="L294" title="8 of 14 branches missed.">        return statusCode == 408</span>
+                || statusCode == 425
+                || statusCode == 429
+                || statusCode == 500
+                || statusCode == 502
+                || statusCode == 503
+                || statusCode == 504;
+    }
+
+    private void backoff(int attempt) {
+<span class="pc bpc" id="L304" title="1 of 2 branches missed.">        if (retryDelayMillis &lt;= 0) {</span>
+<span class="nc" id="L305">            return;</span>
+        }
+
+<span class="fc" id="L308">        long delay = retryDelayMillis * Math.max(1, attempt);</span>
+        try {
+<span class="fc" id="L310">            Thread.sleep(delay);</span>
+<span class="nc" id="L311">        } catch (InterruptedException ex) {</span>
+<span class="nc" id="L312">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L313">            throw new QuoteUnavailableException(&quot;unknown&quot;, &quot;Quote retry interrupted&quot;, ex);</span>
+<span class="fc" id="L314">        }</span>
+<span class="fc" id="L315">    }</span>
+
+}
+
+
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

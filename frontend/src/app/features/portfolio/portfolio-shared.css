@@ -1,0 +1,85 @@
+.panel,
+.holdings {
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-head .card-title {
+  margin-bottom: 0;
+  margin-right: auto;
+}
+
+.section-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.portfolio-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portfolio-state.is-empty {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  border: 1px dashed var(--surface-line-subtle);
+  border-radius: 10px;
+  color: var(--surface-foreground-subtle);
+  text-align: center;
+}
+
+.portfolio-state.is-empty > i {
+  font-size: 26px;
+}
+
+.portfolio-state.is-error {
+  color: var(--status-error-container-fg);
+  border-color: var(--status-error-container-line);
+}
+
+.portfolio-state.is-error p {
+  flex: 1;
+}
+
+.range-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.range-form .form-group {
+  margin-bottom: 0;
+}
+
+.portfolio-note {
+  color: var(--surface-foreground-subtle);
+}
+
+/* The one-line takeaway under a chart's title: what the chart says in words. */
+.chart-takeaway {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}

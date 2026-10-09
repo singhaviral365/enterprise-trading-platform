@@ -1,0 +1,1080 @@
+openapi: 3.1.0
+
+info:
+  title: Auth service
+  version: 1.0.0
+  summary: Registration, login, token refresh and current-user lookup for the Enterprise Trading Platform.
+  description: |
+    Binding contract for the NestJS auth service built in Sprint 8. The Trade REST API and Angular
+    UI must depend on this contract rather than on implementation details.
+
+    ## JWT claims contract
+
+    This section is normative. A token that does not carry exactly these claims breaks the Trade
+    REST API's authorisation check.
+
+    | Claim | Type | Meaning |
+    |---|---|---|
+    | `sub` | integer | The user identifier: the numeric `users.id`, stable for the life of the user. Not the username, not the email, because both can change. The Trade REST API reads it as the authenticated user. |
+    | `roles` | array of string | Authorisation roles. `CUSTOMER` for a normal trading user, `ADMIN` for an operator. Always present, never empty. |
+    | `iat` | integer | Issued-at, seconds since the Unix epoch. |
+    | `exp` | integer | Expiry, seconds since the Unix epoch. Fifteen minutes after `iat` for an access token. |
+    | `iss` | string | Issuer. Use `auth-service` for the Sprint 8 service. Consumers must validate the configured issuer. |
+
+    Decoded example:
+
+    ```json
+    {
+      "sub": 1000,
+      "roles": ["CUSTOMER"],
+      "iat": 1790000000,
+      "exp": 1790000900,
+      "iss": "auth-service"
+    }
+    ```
+
+    There is deliberately no `accountId` claim. A user is linked to a trading account inside the Trade
+    REST API (`GET /api/v1/accounts/link`), which resolves the account from `sub`. See
+    `CONTRACT-CHANGES.md`.
+
+    Signing: `HS256` with a shared secret in development, read from `JWT_SECRET`. The auth service
+    and Trade REST API must use the same algorithm and secret. Move to `RS256` with a published public key
+    if a team wants the Trade REST API to verify without holding the signing secret. That is a
+    documented upgrade, not a requirement.
+
+    Lifetimes: access token 15 minutes, refresh token 7 days. Access tokens are not revocable, which
+    is why they are short. Refresh tokens are stored and can be revoked.
+
+    ## Browser sessions: HttpOnly cookies
+
+    `POST /auth/login` and `POST /auth/refresh` also put the token pair into cookies, so a browser app never
+    has to keep a token in JavaScript-readable storage (an XSS bug cannot steal what script cannot read):
+
+    | Cookie | Value | Path | Lifetime |
+    |---|---|---|---|
+    | `access_token` | the access JWT | `/` | 15 minutes |
+    | `refresh_token` | the opaque refresh token | `/auth` (only refresh and logout ever receive it) | 7 days |
+
+    Both are `HttpOnly`, `SameSite=Strict` by default and `Secure` in production (`AUTH_COOKIE_SECURE`,
+    `AUTH_COOKIE_SAMESITE`). The Trade REST API accepts the `access_token` cookie when there is no
+    `Authorization` header. Because a browser attaches cookies to any request, a state-changing request
+    authenticated by a cookie alone must carry an `X-Requested-With` header, which a cross-site form cannot
+    add. The response body is unchanged, so clients that prefer an `Authorization: Bearer` header keep working.
+
+    A cookie is not encrypted. It is a transport and storage choice: `HttpOnly` hides it from scripts and
+    `Secure` keeps it off plain HTTP. The JWT is signed, not encrypted, whatever carries it.
+
+    ## Security rules
+
+    These are assessed in the Sprint 8 security review.
+
+    - Store passwords with argon2id or bcrypt at cost 12 or above. Never MD5, never SHA-256, never
+      an unsalted hash.
+    - Never log a password, a token, or a refresh token, including inside an error object.
+    - Return the same response body, the same status and comparable timing for an unknown user and
+      for a wrong password. A different response for each is a user enumeration vulnerability.
+    - Rotate the refresh token on every refresh, and invalidate the one that was presented. A
+      refresh token that is presented twice indicates theft: revoke the whole chain.
+    - Validate the signature, the expiry and the issuer on every protected request. Never trust a
+      decoded payload that has not had its signature checked.
+    - Do not put anything in a JWT that you would not publish. The payload is base64, not encrypted.
+  contact:
+    name: Enterprise Trading Platform, programme materials
+  license:
+    name: Instructional use only
+
+servers:
+  - url: http://localhost:3000
+    description: Local development.
+  - url: http://auth-service:3000
+    description: Service name inside the Docker Compose network.
+
+tags:
+  - name: Auth
+    description: Registration, login and token lifecycle.
+  - name: Profile
+    description: The authenticated user.
+  - name: Health
+    description: Liveness probe.
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      security: []
+      summary: Register, step one - check the details and email a code to the address typed
+      description: |
+        Registering verifies the email address first. Nothing is created yet: a six-digit code is emailed to the address
+        in the request, the details wait (the password already hashed) and the answer carries a `challenge`. The login is
+        created only when the code is sent to `POST /auth/register/verify`. An address nobody can read therefore never
+        becomes a login. A taken username or email is `AUTH-409`; if the code cannot be sent, `OTP-503`.
+
+        With email verification switched off in the service (`AUTH_EMAIL_VERIFICATION_ENABLED=false`) the login is
+        created at once and the answer holds the `user`.
+
+        Neither step returns tokens: the client signs in afterwards. It does not create or link a trading account: after the first
+        sign-in the client calls the Trade REST API, `GET /api/v1/accounts/link` and `POST /api/v1/accounts/create`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: The details were accepted. `verificationRequired` says whether a code is now to be entered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '409':
+          description: The username or email is already taken.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                taken:
+                  value:
+                    errorCode: AUTH-409
+                    message: Registration failed
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+        '503':
+          $ref: '#/components/responses/CodeNotSent'
+
+  /auth/register/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyRegistration
+      security: []
+      summary: Register, step two - send the emailed code and the login is created
+      description: |
+        A right code, used once, creates the login from the details that were typed. Wrong, expired and used codes are all
+        `OTP-401`. If the username or email was taken meanwhile, `AUTH-409` and nothing is created.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '201':
+          description: The email is verified and the login was created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '409':
+          description: The username or email was taken in the meantime.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+
+  /auth/register/resend:
+    post:
+      tags: [Auth]
+      operationId: resendRegistrationCode
+      security: []
+      summary: Register, step two - email the code again
+      description: A fresh code to the address that was typed, and the old one stops working. Not too soon, and at most three emails.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendCodeRequest'
+      responses:
+        '200':
+          description: A new code was sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpChallenge'
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+        '503':
+          $ref: '#/components/responses/CodeNotSent'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      summary: Log in, step one - check the password and email a code
+      description: |
+        Verifies the credentials. Every failure, whatever its cause, returns the same `AUTH-401` body.
+
+        **Two-step sign-in (the default).** The password alone does not sign anyone in. A six-digit code is emailed to the
+        address on the user's record and the answer carries a `challenge` and no tokens, so no session and no cookie exists
+        yet. The client then calls `POST /auth/login/verify` with the code. If the code cannot be sent the answer is
+        `OTP-503`: nobody is told a code is on its way when it is not.
+
+        With two-step sign-in switched off in the service (`AUTH_TWO_FACTOR_ENABLED=false`) the answer holds the `tokens`
+        straight away, and the pair is set as HttpOnly `access_token` and `refresh_token` cookies, as before.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              login:
+                value:
+                  username: priya.menon
+                  password: 'correct horse battery staple'
+      responses:
+        '200':
+          description: |
+            The password was right. `twoFactorRequired` says what happens next: true means a code was emailed and
+            `challenge` is to be answered at `/auth/login/verify`; false means `tokens` are here and the cookies are set.
+          headers:
+            Set-Cookie:
+              description: 'Only when `twoFactorRequired` is false: the `access_token` and `refresh_token` HttpOnly cookies.'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '503':
+          $ref: '#/components/responses/CodeNotSent'
+
+  /auth/login/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyLogin
+      security: []
+      summary: Log in, step two - send the emailed code and receive tokens
+      description: |
+        Checks the code against the challenge. A right code, used once, issues the access and refresh tokens and sets them
+        as HttpOnly cookies. A wrong, expired or already used code is always `OTP-401`, whichever it is. Five wrong guesses
+        kill the code, and a caller who keeps guessing is `OTP-429` for a few minutes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '200':
+          description: Authenticated.
+          headers:
+            Set-Cookie:
+              description: The `access_token` and `refresh_token` HttpOnly cookies (two header lines).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+
+  /auth/login/resend:
+    post:
+      tags: [Auth]
+      operationId: resendLoginCode
+      security: []
+      summary: Log in, step two - email the code again
+      description: |
+        Sends a fresh code for a sign-in that is waiting for one, and the old code stops working. Not sooner than
+        `resendAfter` seconds after the last one, and at most three emails per sign-in attempt (`OTP-429`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendCodeRequest'
+      responses:
+        '200':
+          description: A new code was sent.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpChallenge'
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+        '503':
+          $ref: '#/components/responses/CodeNotSent'
+
+  /auth/password/forgot:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      security: []
+      summary: Forgot password - email a reset code to the address on the account
+      description: |
+        Takes a username and the email on the account. **The answer is the same whether or not they match an account**
+        (same status, same shape, similar time), so nobody can use it to find out who is registered. When they do match, a
+        six-digit code is emailed to the address on the account's own record; the request never chooses the destination.
+        When they do not, nothing is sent and the challenge in the answer can never be verified.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '202':
+          description: If the details matched, a code is on its way.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+
+  /auth/password/resend:
+    post:
+      tags: [Auth]
+      operationId: resendResetCode
+      security: []
+      summary: Forgot password - email the code again
+      description: |
+        Always answers `202` in the same shape, whatever the state of the challenge (unknown, used, expired, too soon), so
+        it cannot be used to find out whether a challenge is real.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendCodeRequest'
+      responses:
+        '202':
+          description: If the challenge was live and not asked too soon, a new code is on its way.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+
+  /auth/password/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyResetCode
+      security: []
+      summary: Forgot password - send the emailed code and receive a one-time reset token
+      description: |
+        A right code, used once, returns a `resetToken` that lets the next call set the new password. Wrong, expired and
+        used codes are all `OTP-401`; a caller who keeps guessing is `OTP-429`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '200':
+          description: The code was right.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetTokenResponse'
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+        '429':
+          $ref: '#/components/responses/TooManyCodeRequests'
+
+  /auth/password/reset:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      security: []
+      summary: Forgot password - set the new password
+      description: |
+        Sets the password with the reset token. The password follows the registration rules (at least 12 characters, a
+        capital letter, a number and a special symbol), must differ from the username (`VAL-422`) and from the current
+        password (`PWD-422`). A refused password does **not** use the token up, so another can be tried. When it is accepted
+        the token is spent, every session the user had is ended, and a notice is emailed. The person then signs in again,
+        with the new password and a new code.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: The password was changed and every session ended.
+        '401':
+          $ref: '#/components/responses/CodeRefused'
+        '422':
+          description: |
+            The password breaks the rules (`VAL-422`) or is the same as the current one (`PWD-422`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid:
+                  value:
+                    errorCode: VAL-422
+                    message: Invalid input
+                reused:
+                  value:
+                    errorCode: PWD-422
+                    message: New password must be different from your current password
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refresh
+      security: []
+      summary: Exchange a refresh token for a new token pair
+      description: |
+        Consumes the presented refresh token and issues a new pair. The presented token stops working
+        immediately. Presenting a token that has already been consumed is treated as theft: revoke
+        every refresh token for that user and return `AUTH-401`.
+
+        A browser sends no body: the token is read from the HttpOnly `refresh_token` cookie, and the
+        request must carry an `X-Requested-With` header. A client without cookies sends the token in
+        the body instead. Either way the new pair is set as cookies again.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: A new token pair.
+          headers:
+            Set-Cookie:
+              description: The rotated `access_token` and `refresh_token` HttpOnly cookies (two header lines).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '422':
+          $ref: '#/components/responses/InvalidInput'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      security: []
+      summary: Log out
+      description: |
+        Revokes the refresh token (the HttpOnly cookie, or the body for a client without cookies) and
+        clears both session cookies. Always `204`, so it cannot be used to probe whether a token
+        existed. The access token is a stateless JWT: it stops working when it expires, within 15
+        minutes. A cookie-only request must carry an `X-Requested-With` header, otherwise `AUTH-401`.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Signed out.
+          headers:
+            Set-Cookie:
+              description: Expires the `access_token` and `refresh_token` cookies (two header lines).
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+
+  /auth/me:
+    get:
+      tags: [Profile]
+      operationId: getCurrentUser
+      summary: Get the authenticated user
+      description: |
+        Returns the user identified by the access token. Protected. The UI calls it after login to
+        populate the dashboard greeting. To learn which trading account the user has, call the Trade REST
+        API, `GET /api/v1/accounts/link`.
+
+        Read the identity from the verified token, never from a query parameter or a header the
+        client controls. Accepting a client-supplied user identifier here is OWASP A01.
+      responses:
+        '200':
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+
+  /auth/me/two-factor:
+    put:
+      tags: [Profile]
+      operationId: setTwoFactor
+      summary: Switch two-step sign-in on or off for yourself
+      description: |
+        Two-step sign-in is each user's own choice and is off until they switch it on. With it on, signing in asks for a
+        code emailed to the address on the account. Switching it ON is refused (`OTP-503`) when no code could be emailed
+        here, so nobody locks themselves out; switching it off always works. Cookie-authenticated, so it needs the
+        `X-Requested-With` header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorRequest'
+      responses:
+        '200':
+          description: The user, with the new setting.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '503':
+          $ref: '#/components/responses/CodeNotSent'
+
+  /auth/me/password:
+    post:
+      tags: [Profile]
+      operationId: changePassword
+      summary: Change your password (the current one first; three wrong tries end the session)
+      description: |
+        The current password is checked first. A wrong one is `PWD-403` with `attemptsLeft`; the **third** wrong one in a
+        session ends that session (its refresh token is revoked and both cookies cleared) and answers `PWD-423`, and from
+        then on that session is refused even with the right password. It is a 403, not a 401, so a client does not treat it
+        as an expired session and retry it.
+
+        A right current password then has the new one checked: the registration rules (`VAL-422`), different from the
+        username (`VAL-422`) and from the current password (`PWD-422`). On success every session of the user is ended, a
+        fresh token pair is issued (and set as cookies) so the user stays signed in here, and a notice is emailed.
+        Cookie-authenticated, so it needs the `X-Requested-With` header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: The password was changed. A fresh session replaces the old ones.
+          headers:
+            Set-Cookie:
+              description: 'The new `access_token` and `refresh_token` HttpOnly cookies (two header lines).'
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorised'
+        '403':
+          description: The current password is wrong. `attemptsLeft` says how many more wrong ones are allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                wrong:
+                  value:
+                    errorCode: PWD-403
+                    message: Current password is incorrect
+                    attemptsLeft: 2
+        '422':
+          description: The new password breaks the rules (`VAL-422`) or is the same as the current one (`PWD-422`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '423':
+          description: Too many wrong current passwords. The session was ended and the cookies cleared.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                locked:
+                  value:
+                    errorCode: PWD-423
+                    message: Too many wrong passwords. You have been signed out
+
+  /.well-known/jwks.json:
+    get:
+      tags: [Health]
+      operationId: getJwks
+      security: []
+      summary: The public key for payload encryption
+      description: |
+        Unauthenticated. Publishes the service's RSA public key (JWK, `kid`, `alg` RSA-OAEP-256) when `ENC_MODE` is `optional` or
+        `required`; `404 ENCRYPTION_OFF` while encryption is off, which is how a browser learns not to encrypt. When encryption is on, a
+        request and its answer travel as a JWE (`Content-Type: application/jose`, or the `X-Envelope` header when the request has no body)
+        around the plain JSON bodies described in this file; see documentation/todo/02-payload-encryption.md. Refusals that come before
+        decryption are plaintext `ErrorResponse`s with `ENCRYPTION_INVALID`, `ENCRYPTION_EXPIRED`, `ENCRYPTION_REPLAY` (409) or `ENCRYPTION_REQUIRED`.
+      x-encrypted: false
+      responses:
+        '200':
+          description: The key set.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              description: public, max-age=300
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [keys]
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '404':
+          description: Encryption is off (`errorCode` ENCRYPTION_OFF).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      security: []
+      summary: Liveness probe
+      description: Unauthenticated. Used by Docker Compose and monitoring. Not part of the `/auth` surface.
+      responses:
+        '200':
+          description: The service is up.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: An access token issued by `/auth/login` or `/auth/refresh`.
+
+  responses:
+    Unauthorised:
+      description: |
+        Authentication failed. Returned for an unknown username, a wrong password, an expired token,
+        a wrongly signed token, a consumed refresh token and a malformed header. The body is
+        identical in every case, on purpose.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorised:
+              value:
+                errorCode: AUTH-401
+                message: Unauthorised
+    CodeRefused:
+      description: |
+        The code (or reset token) is wrong, expired, already used, or never existed. One answer for all of them, on
+        purpose.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            refused:
+              value:
+                errorCode: OTP-401
+                message: Invalid or expired code
+    TooManyCodeRequests:
+      description: Too many wrong codes, or a new code asked for too soon or too often.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            tooMany:
+              value:
+                errorCode: OTP-429
+                message: Too many attempts. Please wait and try again
+    CodeNotSent:
+      description: The code could not be sent (the mail server did not take it, or email is not available).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notSent:
+              value:
+                errorCode: OTP-503
+                message: We could not send the code
+    InvalidInput:
+      description: The request failed field validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid:
+              value:
+                errorCode: VAL-422
+                message: Invalid input
+
+  schemas:
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+          pattern: '^[a-zA-Z0-9._-]+$'
+          example: priya.menon
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: |
+            Minimum twelve characters. Length beats character-class rules, so do not impose a
+            symbol requirement that pushes users towards a shorter password.
+          writeOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Optional. The service defaults it to `<username>@local.auth` when omitted.
+          example: priya.menon@example.com
+        roles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Role'
+          description: |
+            Optional. Defaults to `["CUSTOMER"]`. Ignore this field on a public registration route
+            unless the caller already holds an `ADMIN` token. Accepting a self-declared role is a
+            privilege-escalation bug, and the Sprint 8 security review looks for it.
+      example:
+        username: priya.menon
+        password: 'correct horse battery staple'
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          maxLength: 64
+        password:
+          type: string
+          maxLength: 128
+          writeOnly: true
+
+    RegisterResponse:
+      type: object
+      additionalProperties: false
+      required: [verificationRequired]
+      properties:
+        verificationRequired:
+          type: boolean
+          description: True when a code was emailed and `challenge` must be answered; false when the login was created and `user` is here.
+        challenge:
+          $ref: '#/components/schemas/OtpChallenge'
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    TwoFactorRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 128
+          writeOnly: true
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: The registration rules; must differ from the username and from the current password.
+
+    OtpChallenge:
+      type: object
+      additionalProperties: false
+      required: [challengeId, email, expiresIn, resendAfter]
+      description: A code that has been emailed and is waiting to be entered.
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+          description: Quote this when sending the code.
+        email:
+          type: string
+          description: Where the code went, partly hidden (`a***@example.com`).
+          example: a***@example.com
+        expiresIn:
+          type: integer
+          description: Seconds the code works for.
+          example: 300
+        resendAfter:
+          type: integer
+          description: Seconds to wait before another code can be asked for.
+          example: 30
+
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required: [twoFactorRequired]
+      properties:
+        twoFactorRequired:
+          type: boolean
+          description: True when a code was emailed and `challenge` must be answered; false when `tokens` are here.
+        challenge:
+          $ref: '#/components/schemas/OtpChallenge'
+        tokens:
+          $ref: '#/components/schemas/TokenResponse'
+
+    VerifyCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [challengeId, code]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: The six digits from the email.
+          example: '482913'
+
+    ResendCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [challengeId]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [username, email]
+      properties:
+        username:
+          type: string
+          maxLength: 64
+        email:
+          type: string
+          format: email
+          maxLength: 255
+
+    ForgotPasswordResponse:
+      type: object
+      additionalProperties: false
+      required: [challengeId, expiresIn, resendAfter]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        expiresIn:
+          type: integer
+          description: Seconds the code works for.
+          example: 600
+        resendAfter:
+          type: integer
+          description: Seconds to wait before another code can be asked for.
+          example: 30
+
+    ResetTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [resetToken, expiresIn]
+      properties:
+        resetToken:
+          type: string
+          description: Send this, once, with the new password.
+        expiresIn:
+          type: integer
+          description: Seconds it works for.
+          example: 600
+
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [resetToken, newPassword]
+      properties:
+        resetToken:
+          type: string
+          minLength: 32
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+          writeOnly: true
+          description: The registration rules; must differ from the username and from the current password.
+
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refreshToken:
+          type: string
+          description: |
+            The refresh token issued by the previous login or refresh. Omit it to use the HttpOnly
+            `refresh_token` cookie (what a browser does).
+
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, refreshToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: Signed JWT carrying the claims contract described in the service description.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ZjE0ZTQ1Zi1jZWVhLTRjMWItOWQzYi0xYTJiM2M0ZDVlNmYifQ.signature
+        refreshToken:
+          type: string
+          description: Opaque, stored server-side, revocable, rotated on every use.
+          example: 9c1f7a2e4b6d8e0a2c4e6a8c0e2a4c6e8a0c2e4a6c8e0a2c
+        tokenType:
+          type: string
+          const: Bearer
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds.
+          example: 900
+
+    UserResponse:
+      type: object
+      additionalProperties: false
+      required: [id, username, email, roles, twoFactorEnabled]
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: The user's numeric key, the value carried in the `sub` claim.
+          example: 1000
+        username:
+          type: string
+          example: priya.menon
+        email:
+          type: string
+          format: email
+          example: priya.menon@example.com
+        roles:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Role'
+          example: [CUSTOMER]
+        createdOn:
+          type: string
+          format: date-time
+          example: '2026-10-05T08:00:00Z'
+        twoFactorEnabled:
+          type: boolean
+          description: The user asked for an emailed code at every sign-in. Off unless they switch it on.
+          example: false
+
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
+
+    Role:
+      type: string
+      enum: [CUSTOMER, ADMIN]
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [errorCode, message]
+      description: |
+        The same envelope the Trade REST API uses, so the Angular UI has one error handler.
+      properties:
+        errorCode:
+          type: string
+          enum: [AUTH-401, AUTH-409, VAL-422, OTP-401, OTP-429, OTP-503, PWD-422, PWD-403, PWD-423]
+          description: |
+            | Code | HTTP | Meaning |
+            |---|---|---|
+            | `AUTH-401` | 401 | Unauthorised or invalid token |
+            | `AUTH-409` | 409 | Username already taken |
+            | `VAL-422` | 422 | Invalid input |
+            | `OTP-401` | 401 | A one-time code or reset token is wrong, expired or used |
+            | `OTP-429` | 429 | Too many wrong codes, or a code asked for too soon or too often |
+            | `OTP-503` | 503 | The code could not be sent |
+            | `PWD-422` | 422 | The new password is the same as the current one |
+            | `PWD-403` | 403 | The current password given while changing the password is wrong (see `attemptsLeft`) |
+            | `PWD-423` | 423 | Too many wrong current passwords: the session was ended |
+
+            `AUTH-409` extends the platform error catalogue and is scoped to this service. The
+            catalogue in `trade-api.yaml` has no registration-conflict code because registration is
+            not a trading operation.
+          example: AUTH-401
+        attemptsLeft:
+          type: integer
+          description: Only on `PWD-403`. How many more wrong current passwords are allowed before the session is ended.
+          example: 2
+        message:
+          type: string
+          description: |
+            Deliberately vague on this service. `Unauthorised` and `Registration failed` are the
+            only two messages that should appear on a failure path, because a more helpful message
+            tells an attacker which half of the credential pair was wrong.
+          example: Unauthorised
+
+security:
+  - bearerAuth: []

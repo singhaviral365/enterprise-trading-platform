@@ -1,0 +1,122 @@
+@if (mode() === 'order') {
+  <app-trade-panel
+    [row]="row()"
+    [(side)]="side"
+    (cancelled)="mode.set('quote')"
+    (done)="closed.emit()"
+    (closed)="closed.emit()"
+  />
+} @else {
+  <app-quote-summary [row]="row()" (closed)="closed.emit()" />
+
+  <section class="price-chart" aria-labelledby="price-chart-title" data-testid="quote-chart">
+    <header class="chart-header">
+      <h3 id="price-chart-title" class="chart-title">Price · 1 year</h3>
+      @if (candles().length) {
+        <div class="chart-kind" role="group" aria-label="Chart style">
+          <button
+            type="button"
+            class="btn is-small"
+            [class.is-primary]="chartKind() === 'line'"
+            [class.is-tertiary]="chartKind() !== 'line'"
+            [attr.aria-pressed]="chartKind() === 'line'"
+            data-testid="quote-chart-line"
+            (click)="chartKind.set('line')"
+          >
+            Line
+          </button>
+          <button
+            type="button"
+            class="btn is-small"
+            [class.is-primary]="chartKind() === 'candles'"
+            [class.is-tertiary]="chartKind() !== 'candles'"
+            [attr.aria-pressed]="chartKind() === 'candles'"
+            data-testid="quote-chart-candles"
+            (click)="chartKind.set('candles')"
+          >
+            Candles
+          </button>
+        </div>
+      }
+      @if (yearChange(); as change) {
+        <span
+          class="chart-change"
+          [class.is-up]="change.amount >= 0"
+          [class.is-down]="change.amount < 0"
+          data-testid="quote-chart-change"
+        >
+          {{ change.amount >= 0 ? '+' : '-' }}{{ formatPrice()(Math.abs(change.amount)) }}
+          ({{ change.amount >= 0 ? '+' : '-' }}{{ Math.abs(change.percent).toFixed(2) }}%)
+        </span>
+      }
+    </header>
+
+    @if (chartKind() === 'candles' && candles().length) {
+      <app-candle-chart [candles]="candles()" [valueFormatter]="formatPrice()" [ariaLabel]="chartLabel() + ', as candlesticks'" [height]="300" />
+    } @else if (chartPoints().length) {
+      <app-line-chart
+        [points]="chartPoints()"
+        [seriesName]="'Close'"
+        [valueFormatter]="formatPrice()"
+        [axisFormatter]="formatAxis()"
+        [step]="false"
+        [zeroBased]="false"
+        [ariaLabel]="chartLabel()"
+      />
+    } @else {
+      <div class="chart-placeholder" [attr.aria-busy]="history.isLoading()">
+        <svg class="chart-skeleton" viewBox="0 0 300 100" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            d="M0,78 L30,70 L60,74 L90,56 L120,60 L150,42 L180,48 L210,30 L240,36 L270,18 L300,24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+            stroke-dasharray="5 5"
+          />
+        </svg>
+        <p class="chart-label" role="status" data-testid="quote-chart-status">
+          @if (history.isLoading()) {
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            Loading price history…
+          } @else if (chartError(); as message) {
+            <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+            {{ message }}
+          } @else {
+            <i class="fas fa-chart-line" aria-hidden="true"></i>
+            No price history for this instrument
+          }
+        </p>
+      </div>
+    }
+  </section>
+
+  <app-signal-card [symbol]="symbol()" />
+
+  @if (chatInline()) {
+    <app-assistant-chat [symbol]="symbol()" layout="inline" />
+  }
+
+  <footer class="quote-actions">
+    <div class="action-buttons">
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="quote-buy"
+        (click)="openTicket(OrderSide.Buy)"
+      >
+        <i class="fas fa-circle-plus" aria-hidden="true"></i>
+        Buy
+      </button>
+      <button
+        type="button"
+        class="btn is-primary is-large"
+        data-testid="quote-sell"
+        (click)="openTicket(OrderSide.Sell)"
+      >
+        <i class="fas fa-circle-minus" aria-hidden="true"></i>
+        Sell
+      </button>
+    </div>
+  </footer>
+}

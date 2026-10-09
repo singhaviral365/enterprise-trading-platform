@@ -1,0 +1,48 @@
+<div
+  #container
+  class="split"
+  [class.is-open]="inline() && open()"
+  [class.has-aside]="asideVisible()"
+  [class.is-cards]="layout() === 'cards'"
+  data-testid="split-view"
+>
+  <div class="split-list">
+    <ng-content select="[list]" />
+  </div>
+
+  @if (inline()) {
+    <aside
+      #pane
+      class="split-detail"
+      tabindex="-1"
+      [attr.aria-labelledby]="open() ? labelledBy() : null"
+      [attr.data-testid]="testId()"
+      (keydown.escape)="closed.emit()"
+    >
+      @if (open()) {
+        <div class="split-detail-panel">
+          <ng-container [ngTemplateOutlet]="detail" />
+        </div>
+      }
+    </aside>
+
+    <aside class="split-aside" aria-label="Assistant" data-testid="split-aside" (keydown.escape)="closed.emit()">
+      <div class="split-aside-panel">
+        <ng-content select="[aside]" />
+      </div>
+    </aside>
+  }
+</div>
+
+@if (!inline()) {
+  <app-sheet-dialog
+    [open]="open()"
+    [labelledBy]="labelledBy()"
+    [testId]="testId()"
+    (closed)="closed.emit()"
+  >
+    <ng-container [ngTemplateOutlet]="detail" />
+  </app-sheet-dialog>
+}
+
+<ng-template #detail><ng-content select="[detail]" /></ng-template>

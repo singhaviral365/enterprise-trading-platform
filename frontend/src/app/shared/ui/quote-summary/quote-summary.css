@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+.quote-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.quote-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.quote-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.quote-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--surface-foreground-subtle);
+}
+
+.asset-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--status-info-container-fg);
+  background: var(--status-info-container-bg);
+}
+
+.quote-date {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--surface-foreground-subtle);
+}
+
+.quote-close {
+  flex: none;
+  align-self: flex-start;
+}
+
+/* Price card: gradient face with a soft sheen, like the dashboard's balance card. */
+.quote-hero {
+  position: relative;
+  overflow: hidden;
+  margin: 20px 0;
+  padding: 20px 22px;
+  border-radius: 18px;
+  color: var(--hero-foreground);
+  background: var(--hero-gradient);
+}
+
+.quote-hero::after {
+  content: '';
+  position: absolute;
+  inset: -50% -20% auto auto;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.2), transparent 65%);
+  pointer-events: none;
+}
+
+/* Price and change on the left, previous close on the right. */
+.quote-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero-main {
+  position: relative;
+  min-width: 0;
+}
+
+.hero-side {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+
+.hero-side-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.85);
+}
+
+.hero-side-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-price {
+  position: relative;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-equivalent {
+  position: relative;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.quote-move {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  background: rgb(255 255 255 / 0.16);
+}

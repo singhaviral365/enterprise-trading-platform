@@ -1,0 +1,235 @@
+<section class="card panel performance" aria-labelledby="performance-title" data-testid="portfolio-performance" [attr.aria-busy]="store.performance.isLoading()">
+  <div class="performance-head">
+    <h2 id="performance-title" class="card-title">Performance</h2>
+    @if (store.performance.isLoading() && store.performance.hasValue()) {
+      <app-spinner [inline]="true" label="Refreshing performance" />
+    }
+    @if (lastHistory() && lastHistory()!.points.length > 1) {
+      <div class="performance-controls">
+        <div class="range-group" role="group" aria-label="Range">
+          @for (option of ranges; track option.id) {
+            <button
+              type="button"
+              class="btn is-small"
+              [class.is-primary]="range() === option.id"
+              [class.is-tertiary]="range() !== option.id"
+              [attr.aria-pressed]="range() === option.id"
+              [attr.data-testid]="'performance-range-' + option.id"
+              (click)="pick(option.id)"
+            >
+              {{ option.id }}
+            </button>
+          }
+        </div>
+        <label class="benchmark-toggle">
+          <input type="checkbox" data-testid="performance-benchmark" [checked]="benchmarkOn()" (change)="toggleBenchmark($event)" />
+          Compare with {{ benchmarkSymbol }}
+        </label>
+      </div>
+    }
+  </div>
+
+  @if (store.performance.isLoading() && !store.performance.hasValue()) {
+    <div class="performance-state" aria-live="polite" data-testid="performance-loading">
+      <app-spinner [inline]="true" label="Loading performance" />
+      <span>Loading performance…</span>
+    </div>
+  } @else if (store.historyBuilding()) {
+    <div class="performance-state" role="status" data-testid="performance-building">
+      <app-spinner [inline]="true" label="Preparing your history" />
+      <span>We are preparing your history. The first time this can take a minute.</span>
+    </div>
+  } @else if (store.historyErrorMessage() && !history()) {
+    <div class="performance-state is-error" role="alert" data-testid="performance-error">
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      <p>{{ store.historyErrorMessage() }}</p>
+      <button type="button" class="btn is-secondary is-small" (click)="store.reloadHistory()">Try again</button>
+    </div>
+  } @else if (history(); as h) {
+    @if (visible().length < 2) {
+      <div class="performance-state is-empty" data-testid="performance-short">
+        <i class="fas fa-chart-line" aria-hidden="true"></i>
+        <p>Your curve starts tomorrow. It needs at least two closed days of history.</p>
+      </div>
+    } @else if (stats(); as s) {
+      <dl class="stats" data-testid="performance-stats">
+        <div class="stat">
+          <dt>Return</dt>
+          <dd data-testid="performance-return" [class.is-gain]="s.returnPct > 0" [class.is-loss]="s.returnPct < 0">
+            @if (s.returnPct === 0) {
+              <span class="zero-mark" aria-hidden="true">-</span>
+              <span class="visually-hidden">Unchanged</span>
+            } @else {
+              <i class="fas" [class.fa-arrow-trend-up]="s.returnPct > 0" [class.fa-arrow-trend-down]="s.returnPct < 0" aria-hidden="true"></i>
+            }
+            {{ formatPercent(s.returnPct) }}
+          </dd>
+        </div>
+        <div class="stat">
+          <dt>Profit</dt>
+          <dd data-testid="performance-pnl"><app-pnl-value [compact]="true" [amount]="s.pnl" [currency]="currency()" /></dd>
+        </div>
+        @if (s.annualisedPct !== null) {
+          <div class="stat">
+            <dt>Annualised</dt>
+            <dd data-testid="performance-annualised">{{ formatPercent(s.annualisedPct) }}</dd>
+          </div>
+        }
+        <div class="stat">
+          <dt>Max drawdown</dt>
+          <dd data-testid="performance-drawdown">{{ formatPercent(s.maxDrawdownPct) }}</dd>
+        </div>
+        @if (s.bestDayPct !== null && s.worstDayPct !== null) {
+          <div class="stat">
+            <dt>Best day</dt>
+            <dd data-testid="performance-best">{{ formatPercent(s.bestDayPct) }}</dd>
+          </div>
+          <div class="stat">
+            <dt>Worst day</dt>
+            <dd data-testid="performance-worst">{{ formatPercent(s.worstDayPct) }}</dd>
+          </div>
+        }
+      </dl>
+
+      <div class="chart-box">
+        <app-line-chart
+          [points]="line()"
+          [comparison]="comparison()"
+          [comparisonName]="benchmarkSymbol"
+          seriesName="Portfolio"
+          [step]="false"
+          [zeroBased]="false"
+          [valueFormatter]="formatPercent"
+          [ariaLabel]="chartLabel()"
+        />
+      </div>
+
+      @if (estimated()) {
+        <p class="performance-note is-warning" data-testid="performance-estimated">
+          <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+          Some prices in this range were estimated (a missing or synthetic close, or today's exchange rate), so those days are approximate.
+        </p>
+      }
+      @if (benchmarkMissing()) {
+        <p class="performance-note" data-testid="performance-benchmark-missing">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          The {{ benchmarkSymbol }} history is not available yet, so only your portfolio is drawn.
+        </p>
+      }
+      @if (h.availableFrom) {
+        <p class="performance-note" data-testid="performance-from">
+          <i class="fas fa-circle-info" aria-hidden="true"></i>
+          History starts {{ h.availableFrom | date: 'mediumDate' }}. Money put in or taken out does not move this curve.
+        </p>
+      }
+
+      @if (layout() === 'full') {
+      <div class="analysis" data-testid="performance-analysis">
+        @if (hasSplit()) {
+          <section class="analysis-card" aria-labelledby="value-split-title" data-testid="performance-value-split">
+            <h3 id="value-split-title" class="analysis-title">Cash and holdings</h3>
+            @if (investedPct() !== null) {
+              <p class="chart-takeaway" data-testid="performance-invested">{{ investedPct()!.toFixed(0) }}% of your account is working in the market, the rest is cash.</p>
+            }
+            <app-area-chart
+              [series]="valueSeries()"
+              [stacked]="true"
+              [legend]="true"
+              [valueFormatter]="formatMoney()"
+              [axisFormatter]="formatAxisMoney()"
+              [ariaLabel]="valueLabel()"
+            />
+          </section>
+        }
+
+        <section class="analysis-card" aria-labelledby="daily-pnl-title" data-testid="performance-daily">
+          <h3 id="daily-pnl-title" class="analysis-title">Profit and loss, day by day</h3>
+          <p class="chart-takeaway" data-testid="performance-daily-takeaway">{{ daysUp() }} of {{ visible().length }} days made money. The line is what you have banked in total.</p>
+          <app-bar-chart
+            [bars]="dailyBars()"
+            [timeAxis]="true"
+            seriesName="Day's profit or loss"
+            [line]="realisedLine()"
+            lineName="Realised so far"
+            [valueFormatter]="formatMoney()"
+            [axisFormatter]="formatAxisMoney()"
+            [ariaLabel]="dailyLabel()"
+          />
+        </section>
+
+        <section class="analysis-card" aria-labelledby="drawdown-title" data-testid="performance-drawdown-card">
+          <h3 id="drawdown-title" class="analysis-title">How far below its peak</h3>
+          <p class="chart-takeaway" data-testid="performance-drawdown-takeaway">
+            The deepest fall was {{ formatPercent(s.maxDrawdownPct) }}.
+            @if (currentDrawdown() < -0.005) {
+              Today it is {{ formatPercent(currentDrawdown()) }} from its high.
+            } @else {
+              It is at its high now.
+            }
+          </p>
+          <app-area-chart
+            [series]="drawdown()"
+            [zeroBased]="false"
+            [valueFormatter]="formatPercent"
+            [ariaLabel]="drawdownLabel()"
+            [height]="200"
+          />
+        </section>
+
+        <section class="analysis-card" aria-labelledby="monthly-title" data-testid="performance-monthly">
+          <h3 id="monthly-title" class="analysis-title">Month by month</h3>
+          <app-monthly-returns [points]="visible()" />
+        </section>
+      </div>
+
+      <details class="statements" data-testid="performance-statements">
+        <summary>Daily statements ({{ visible().length }} {{ visible().length === 1 ? 'day' : 'days' }})</summary>
+        <div class="row-table-scroll">
+          <table class="row-table">
+            <caption class="visually-hidden">
+              Closed-day statements, newest first: value, the day's profit and loss, unrealised and cumulative realised profit and loss, and NAV.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Day</th>
+                <th scope="col" class="num">Value</th>
+                <th scope="col" class="num">Day P&amp;L</th>
+                <th scope="col" class="num col-extra">Unrealised</th>
+                <th scope="col" class="num col-extra">Realised (total)</th>
+                <th scope="col" class="num col-last">NAV</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of statements(); track row.date) {
+                <tr [attr.data-testid]="'statement-' + row.date">
+                  <th scope="row">
+                    {{ row.date | date: 'mediumDate' }}
+                    @if (row.estimated) {
+                      <span class="estimated-flag">Estimated</span>
+                    }
+                  </th>
+                  <td class="num">{{ row.value | currency: currency() }}</td>
+                  <td class="num"><app-pnl-value [amount]="row.dayPnl" [currency]="currency()" /></td>
+                  <td class="num col-extra"><app-pnl-value [amount]="row.unrealisedPnl" [currency]="currency()" /></td>
+                  <td class="num col-extra"><app-pnl-value [amount]="row.realisedPnlCumulative" [currency]="currency()" /></td>
+                  <td class="num col-last">{{ row.nav | number: '1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (hiddenStatements() > 0 && !showAllStatements()) {
+          <button type="button" class="btn is-tertiary is-small" data-testid="performance-show-all" (click)="showAllStatements.set(true)">
+            Show all {{ visible().length }} days
+          </button>
+        }
+      </details>
+      }
+    }
+  } @else {
+    <div class="performance-state is-empty" data-testid="performance-none">
+      <i class="fas fa-chart-line" aria-hidden="true"></i>
+      <p>There is no history to show yet.</p>
+    </div>
+  }
+</section>

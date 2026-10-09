@@ -1,0 +1,32 @@
+<span class="form-label" [id]="labelId">{{ label() }}</span>
+<button
+  type="button"
+  class="multi-trigger"
+  [id]="buttonId"
+  [attr.popovertarget]="panelId"
+  [attr.aria-labelledby]="labelId + ' ' + buttonId"
+  [style.anchor-name]="anchorName"
+  [disabled]="disabled()"
+>
+  <span class="multi-summary">{{ summary() }}</span>
+  <i class="fas fa-chevron-down" aria-hidden="true"></i>
+</button>
+<div popover class="multi-panel" role="group" [id]="panelId" [attr.aria-labelledby]="labelId" [style.position-anchor]="anchorName">
+  @for (option of options(); track option.value) {
+    <label class="multi-option">
+      <input
+        type="checkbox"
+        [checked]="isSelected(option.value)"
+        [disabled]="option.disabled ?? false"
+        [attr.data-value]="option.value"
+        (change)="toggle(option.value, $event)"
+      />
+      {{ option.label }}
+    </label>
+  }
+  @if (!atLeastOne()) {
+    <button type="button" class="btn is-small is-tertiary multi-clear" [disabled]="selected().length === 0" (click)="clear()">
+      Clear selection
+    </button>
+  }
+</div>

@@ -1,0 +1,78 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.history-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.history-header .page-title {
+  margin-bottom: 4px;
+}
+
+.history-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-filters .form-label {
+  margin-bottom: 6px;
+}
+
+/* Delete (when something is selected) and Reset sit together at the right end of the filter row. */
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Selected working orders: tinted like the destructive action they are about to get, plus a check mark so
+   colour is never the only signal. */
+.data-table tbody tr.is-selected th,
+.data-table tbody tr.is-selected td {
+  background: var(--status-error-container-bg);
+}
+
+.select-mark {
+  margin-right: 6px;
+  color: var(--status-error-container-fg);
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.sort-button i {
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.sort-button.is-sorted i {
+  color: var(--surface-foreground-link);
+}

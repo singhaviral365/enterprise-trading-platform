@@ -1,0 +1,248 @@
+@if (step() === 'details') {
+<form class="auth-form" novalidate (submit)="onSubmit($event)" data-testid="register-form">
+  @if (serverError()) {
+    <div class="auth-alert" role="alert" data-testid="register-error">
+      <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+      <span>{{ serverError() }}</span>
+    </div>
+  }
+
+  <div class="form-group">
+    <label class="form-label" for="register-username">Username</label>
+    <div class="input-with-icon">
+      <i class="fas fa-user" aria-hidden="true"></i>
+      <input
+        id="register-username"
+        class="form-input"
+        type="text"
+        autocomplete="username"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="e.g. letters + a number + . _ -"
+        data-testid="register-username"
+        [formField]="registerForm.username"
+        [class.is-error]="registerForm.username().touched() && registerForm.username().invalid()"
+        [attr.aria-invalid]="registerForm.username().touched() && registerForm.username().invalid()"
+        [attr.aria-describedby]="registerForm.username().touched() && registerForm.username().invalid() ? 'register-username-error register-username-rules' : 'register-username-rules'"
+      />
+    </div>
+    @if (registerForm.username().touched() && registerForm.username().invalid()) {
+      <p id="register-username-error" class="form-error-text">{{ registerForm.username().errors()[0].message }}</p>
+    }
+    <!-- <ul id="register-username-rules" class="rule-list" aria-label="Username requirements" data-testid="register-username-rules">
+      @for (rule of usernameChecklist(); track rule.id) {
+        <li
+          class="rule"
+          [class.is-met]="rule.met"
+          [class.is-missing]="!rule.met && registerForm.username().touched()"
+          [attr.data-rule]="rule.id"
+        >
+          <i class="fas" [class.fa-circle-check]="rule.met" [class.fa-circle]="!rule.met" aria-hidden="true"></i>
+          {{ rule.label }}
+          <span class="visually-hidden">{{ rule.met ? '(done)' : '(not yet)' }}</span>
+        </li>
+      }
+    </ul> -->
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="register-email">Email</label>
+    <div class="input-with-icon">
+      <i class="fas fa-envelope" aria-hidden="true"></i>
+      <input
+        id="register-email"
+        class="form-input"
+        type="email"
+        autocomplete="email"
+        autocapitalize="none"
+        spellcheck="false"
+        placeholder="you@example.com"
+        data-testid="register-email"
+        [formField]="registerForm.email"
+        [class.is-error]="registerForm.email().touched() && registerForm.email().invalid()"
+        [attr.aria-invalid]="registerForm.email().touched() && registerForm.email().invalid()"
+        [attr.aria-describedby]="registerForm.email().touched() && registerForm.email().invalid() ? 'register-email-error' : null"
+      />
+    </div>
+    @if (registerForm.email().touched() && registerForm.email().invalid()) {
+      <p id="register-email-error" class="form-error-text">{{ registerForm.email().errors()[0].message }}</p>
+    }
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="register-password">Password</label>
+    <div class="input-with-icon has-toggle">
+      <i class="fas fa-lock" aria-hidden="true"></i>
+      <input
+        id="register-password"
+        class="form-input"
+        autocomplete="new-password"
+        placeholder="12+ characters with A-Z, 0-9 and a symbol"
+        data-testid="register-password"
+        appNoClipboard
+        (clipboardBlocked)="onClipboardBlocked()"
+        [type]="showPassword() ? 'text' : 'password'"
+        [formField]="registerForm.password"
+        [class.is-error]="registerForm.password().touched() && registerForm.password().invalid()"
+        [attr.aria-invalid]="registerForm.password().touched() && registerForm.password().invalid()"
+        [attr.aria-describedby]="registerForm.password().touched() && registerForm.password().invalid() ? 'register-password-error register-password-rules' : 'register-password-rules'"
+      />
+      <button
+        type="button"
+        class="password-toggle"
+        [attr.aria-label]="showPassword() ? 'Hide passwords' : 'Show passwords'"
+        [attr.aria-pressed]="showPassword()"
+        (click)="showPassword.update((v) => !v)"
+      >
+        <i class="fas" [class.fa-eye]="!showPassword()" [class.fa-eye-slash]="showPassword()" aria-hidden="true"></i>
+      </button>
+    </div>
+    @if (registerForm.password().touched() && registerForm.password().invalid()) {
+      <p id="register-password-error" class="form-error-text">{{ registerForm.password().errors()[0].message }}</p>
+    }
+    <!-- <ul id="register-password-rules" class="rule-list" aria-label="Password requirements" data-testid="register-password-rules">
+      @for (rule of passwordChecklist(); track rule.id) {
+        <li
+          class="rule"
+          [class.is-met]="rule.met"
+          [class.is-missing]="!rule.met && registerForm.password().touched()"
+          [attr.data-rule]="rule.id"
+        >
+          <i class="fas" [class.fa-circle-check]="rule.met" [class.fa-circle]="!rule.met" aria-hidden="true"></i>
+          {{ rule.label }}
+          <span class="visually-hidden">{{ rule.met ? '(done)' : '(not yet)' }}</span>
+        </li>
+      }
+    </ul> -->
+  </div>
+
+  <div class="form-group">
+    <label class="form-label" for="register-confirm-password">Confirm password</label>
+    <div class="input-with-icon">
+      <i class="fas fa-lock" aria-hidden="true"></i>
+      <input
+        id="register-confirm-password"
+        class="form-input"
+        autocomplete="new-password"
+        placeholder="Re-enter your password"
+        data-testid="register-confirm-password"
+        appNoClipboard
+        (clipboardBlocked)="onClipboardBlocked()"
+        [type]="showPassword() ? 'text' : 'password'"
+        [formField]="registerForm.confirmPassword"
+        [class.is-error]="registerForm.confirmPassword().touched() && registerForm.confirmPassword().invalid()"
+        [attr.aria-invalid]="registerForm.confirmPassword().touched() && registerForm.confirmPassword().invalid()"
+        [attr.aria-describedby]="registerForm.confirmPassword().touched() && registerForm.confirmPassword().invalid() ? 'register-confirm-password-error' : null"
+      />
+    </div>
+    @if (registerForm.confirmPassword().touched() && registerForm.confirmPassword().invalid()) {
+      <p id="register-confirm-password-error" class="form-error-text">
+        {{ registerForm.confirmPassword().errors()[0].message }}
+      </p>
+    }
+  </div>
+
+  <p class="form-hint clipboard-notice" aria-live="polite" data-testid="register-clipboard-notice">{{ clipboardNotice() }}</p>
+
+  <button
+    type="submit"
+    class="btn is-primary is-large full-width-btn"
+    data-testid="register-submit"
+    [disabled]="registerForm().invalid() || registerForm().submitting()"
+  >
+    @if (registerForm().submitting()) {
+      <app-spinner [inline]="true" label="Creating account" />
+      Creating account…
+    } @else {
+      Create account
+    }
+  </button>
+
+  <p class="auth-switch">
+    Already have an account?
+    <button type="button" class="link-button" (click)="switchToLogin.emit()">Sign in</button>
+  </p>
+</form>
+} @else {
+  <form class="auth-form" novalidate (submit)="onVerify($event)" data-testid="register-code-form">
+    <p class="auth-step-text" data-testid="register-code-info">
+      We sent a 6-digit code to <strong>{{ challenge()?.email }}</strong
+      >. Enter it to verify your email and create your login.
+    </p>
+
+    @if (codeInfo()) {
+      <div class="auth-notice" role="status" data-testid="register-code-notice">
+        <i class="fas fa-circle-check" aria-hidden="true"></i>
+        <span>{{ codeInfo() }}</span>
+      </div>
+    }
+    @if (serverError()) {
+      <div class="auth-alert" role="alert" data-testid="register-code-error">
+        <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+        <span>{{ serverError() }}</span>
+      </div>
+    }
+
+    <div class="form-group">
+      <label class="form-label" for="register-code">Verification code</label>
+      <div class="input-with-icon">
+        <i class="fas fa-envelope-circle-check" aria-hidden="true"></i>
+        <input
+          id="register-code"
+          class="form-input code-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          spellcheck="false"
+          placeholder="123456"
+          data-testid="register-code"
+          [formField]="codeForm.code"
+          [class.is-error]="codeForm.code().touched() && codeForm.code().invalid()"
+          [attr.aria-invalid]="codeForm.code().touched() && codeForm.code().invalid()"
+          [attr.aria-describedby]="codeForm.code().touched() && codeForm.code().invalid() ? 'register-code-field-error' : null"
+        />
+      </div>
+      @if (codeForm.code().touched() && codeForm.code().invalid()) {
+        <p id="register-code-field-error" class="form-error-text" data-testid="register-code-field-error">
+          {{ codeForm.code().errors()[0].message }}
+        </p>
+      }
+    </div>
+
+    <button
+      type="submit"
+      class="btn is-primary is-large full-width-btn"
+      data-testid="register-code-submit"
+      [disabled]="codeForm().invalid() || codeForm().submitting()"
+    >
+      @if (codeForm().submitting()) {
+        <app-spinner [inline]="true" label="Checking the code" />
+        Checking…
+      } @else {
+        Verify and create account
+      }
+    </button>
+
+    <p class="auth-switch">
+      Did not get it?
+      <button
+        type="button"
+        class="link-button"
+        data-testid="register-resend"
+        [disabled]="resending() || secondsUntilResend() > 0"
+        (click)="onResend()"
+      >
+        @if (secondsUntilResend() > 0) {
+          Send again in {{ secondsUntilResend() }}s
+        } @else {
+          Send a new code
+        }
+      </button>
+    </p>
+    <p class="auth-switch">
+      <button type="button" class="link-button" data-testid="register-code-back" (click)="onBack()">
+        Change my email address
+      </button>
+    </p>
+  </form>
+}

@@ -1,0 +1,31 @@
+:host {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.range-bar {
+  display: inline-flex;
+  align-items: center;
+  width: 84px;
+  height: 20px;
+}
+
+.range-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-line);
+}
+
+/* The marker is a pill with a ring in the surface colour, so it stays visible on the selected row too. */
+.range-marker {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--accent-primary-background);
+  border: 2px solid var(--surface-background-bright);
+  transform: translate(-50%, -50%);
+}

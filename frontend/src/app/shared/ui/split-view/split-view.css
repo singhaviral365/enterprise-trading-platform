@@ -1,0 +1,151 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+/* Three tracks: list, detail, aside. Grid tracks only interpolate between like values (a `fr` track does not animate
+   to a length), so every track is a length or a percentage at both ends and the gaps are folded into the track sizes.
+     closed:            100%                            0                                0
+     open:              list                            100% - list                      0
+     open with aside:   list                            100% - list - aside - gap        aside + gap
+   The panels keep their final width the whole time and the tracks just clip them, so the panes reveal rather than reflow. */
+.split {
+  --split-gap: 20px;
+  --split-list-width: 260px;
+  --split-aside-width: 340px;
+  --split-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: 100% 0 0;
+  align-items: start;
+  transition: grid-template-columns 0.45s var(--split-ease);
+}
+
+.split.is-open {
+  grid-template-columns: var(--split-list-width) calc(100% - var(--split-list-width)) 0;
+}
+
+.split.is-open.has-aside {
+  grid-template-columns:
+    var(--split-list-width)
+    calc(100% - var(--split-list-width) - var(--split-aside-width) - var(--split-gap))
+    calc(var(--split-aside-width) + var(--split-gap));
+}
+
+.split-list {
+  min-width: 0;
+}
+
+/* Hidden (and out of the accessibility tree) once the slide-out has finished. */
+.split-detail,
+.split-aside {
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+  min-width: 0;
+  overflow: hidden auto;
+  border-radius: 22px;
+  outline: none;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.25s ease,
+    visibility 0s linear 0.45s;
+}
+
+.split-detail {
+  max-height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+}
+
+/* The aside is as tall as the screen allows, so a conversation can use the whole height. */
+.split-aside {
+  height: calc(100vh - var(--header-height) - var(--footer-height) - 32px);
+}
+
+.split.is-open .split-detail,
+.split.is-open.has-aside .split-aside {
+  visibility: visible;
+  opacity: 1;
+  transition:
+    opacity 0.35s ease 0.1s,
+    visibility 0s;
+}
+
+.split-detail:focus-visible {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}
+
+.split-detail-panel {
+  box-sizing: border-box;
+  width: calc(100cqw - var(--split-list-width) - var(--split-gap));
+  margin-left: var(--split-gap);
+  padding: 24px;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 22px;
+}
+
+.split.has-aside .split-detail-panel {
+  width: calc(100cqw - var(--split-list-width) - var(--split-aside-width) - 2 * var(--split-gap));
+}
+
+.split-aside-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: var(--split-aside-width);
+  height: 100%;
+  margin-left: var(--split-gap);
+  overflow: hidden;
+  background: var(--surface-background-bright);
+  color: var(--surface-foreground);
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 22px;
+}
+
+/* Card grids: no column animation (the cards would re-wrap every frame). The columns change at once, the cards
+   settle with a short fade, and the detail panel glides in from the right edge, clipped by its column. */
+.split.is-cards {
+  transition: none;
+}
+
+.split.is-cards.is-open .split-list {
+  animation: split-cards-settle 0.4s ease both;
+}
+
+.split.is-cards .split-detail-panel {
+  transform: translateX(48px);
+  transition: transform 0.45s var(--split-ease);
+}
+
+.split.is-cards.is-open .split-detail-panel {
+  transform: none;
+}
+
+@keyframes split-cards-settle {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .split.is-cards .split-detail-panel,
+  .split.is-cards.is-open .split-list {
+    transform: none;
+    animation: none;
+    transition: none;
+  }
+
+  .split,
+  .split-detail,
+  .split-aside,
+  .split.is-open .split-detail,
+  .split.is-open.has-aside .split-aside {
+    transition: none;
+  }
+}

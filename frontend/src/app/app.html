@@ -1,0 +1,28 @@
+<a class="skip-link" href="#main-content" (click)="$event.preventDefault(); mainElement.focus()">
+  Skip to main content
+</a>
+
+<app-notification />
+<app-dialog />
+<app-auth-dialog />
+<app-animated-cat [isSidebarExpanded]="session.isLoggedIn() && sidebarOpen()" />
+
+<app-header [sidebarOpen]="sidebarOpen()" (toggleSidebar)="toggleSidebar()" />
+
+@if (session.isLoggedIn()) {
+  <app-sidebar [open]="sidebarOpen()" [items]="navItems" />
+}
+
+<main
+  #mainElement
+  id="main-content"
+  tabindex="-1"
+  class="app-main"
+  [class.logged-in]="session.isLoggedIn()"
+  [class.sidebar-open]="session.isLoggedIn() && sidebarOpen()"
+  [class.sidebar-closed]="session.isLoggedIn() && !sidebarOpen()"
+>
+  <router-outlet />
+</main>
+
+<app-footer />

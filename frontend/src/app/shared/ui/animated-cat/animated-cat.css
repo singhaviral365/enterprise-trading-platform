@@ -1,0 +1,324 @@
+.marshmallow-container {
+  --outline: #6f87ab;
+  --face-ink: #2f3140;
+  --blue-eye: #3d8ee8;
+  --blush: #ffb0c8;
+  --cap-main: #7ea4d8;
+  --cap-accent: #e9f2ff;
+  position: fixed;
+  left: 0;
+  bottom: 10px;
+  width: 170px;
+  height: 170px;
+  pointer-events: none;
+  z-index: 9000;
+  opacity: 1;
+  transform-origin: left bottom;
+  transform: scale(0.35);
+  transition: transform 320ms ease;
+}
+
+:host(.sidebar-expanded) .marshmallow-container {
+  transform: scale(1.03);
+}
+
+.marshmallow-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: floaty 3.2s ease-in-out infinite;
+}
+
+.marshmallow-body {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 132px;
+  height: 116px;
+  transform: translateX(-50%);
+  border: 4px solid var(--outline);
+  border-radius: 28% 28% 34% 34% / 24% 24% 38% 38%;
+  background: linear-gradient(180deg, #f8fdff 0%, currentColor 72%);
+  box-shadow: inset 0 12px 18px rgb(255 255 255 / 0.72), 0 6px 0 rgb(111 135 171 / 0.22);
+}
+
+.marshmallow-cap {
+  position: absolute;
+  left: 50%;
+  top: -28px;
+  width: 118px;
+  height: 52px;
+  transform: translateX(-50%) rotate(-8deg);
+  transform-origin: bottom center;
+  animation: cap-wiggle 3.6s ease-in-out infinite;
+  z-index: 2;
+}
+
+.cap-crown {
+  position: absolute;
+  left: 13px;
+  top: 8px;
+  width: 86px;
+  height: 30px;
+  border: 3px solid var(--outline);
+  border-bottom: 0;
+  border-radius: 18px 18px 8px 8px;
+  background: linear-gradient(180deg, var(--cap-accent) 0%, var(--cap-main) 95%);
+}
+
+.cap-brim {
+  position: absolute;
+  left: 6px;
+  bottom: 2px;
+  width: 104px;
+  height: 16px;
+  border: 3px solid var(--outline);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, var(--cap-accent) 100%);
+}
+
+.cap-pom {
+  position: absolute;
+  right: 8px;
+  top: -3px;
+  width: 15px;
+  height: 15px;
+  border: 3px solid var(--outline);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset;
+}
+
+.marshmallow-top-cap {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 98px;
+  height: 20px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border: 3px solid #d8f4ff;
+  background: linear-gradient(180deg, #fdfefe 0%, #eaf8ff 100%);
+}
+
+.marshmallow-highlight {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 96px;
+  height: 26px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgb(255 255 255 / 0.85) 0%, rgb(255 255 255 / 0) 70%);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+}
+
+.eye {
+  position: absolute;
+  top: 44px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #412a33;
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.18);
+  animation: blink 5.4s ease-in-out infinite;
+}
+
+.left-eye {
+  left: 26px;
+}
+
+.right-eye {
+  right: 26px;
+}
+
+.eye-pupil {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #97c6ff 0%, var(--blue-eye) 55%, #1c5fb6 100%);
+  transition: transform 0.06s linear;
+}
+
+.eye-gloss {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.eye-gloss.major {
+  width: 5px;
+  height: 5px;
+  top: 2px;
+  left: 3px;
+}
+
+.eye-gloss.minor {
+  width: 3px;
+  height: 3px;
+  right: 2px;
+  bottom: 3px;
+  opacity: 0.7;
+}
+
+.mouth {
+  position: absolute;
+  left: 50%;
+  top: 79px;
+  width: 28px;
+  height: 13px;
+  transform: translateX(-50%);
+}
+
+.mouth-dot {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--face-ink);
+}
+
+.mouth-smile {
+  position: absolute;
+  top: 3px;
+  width: 9px;
+  height: 8px;
+  border: 2px solid var(--face-ink);
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.mouth-smile.left {
+  left: 4px;
+}
+
+.mouth-smile.right {
+  right: 4px;
+}
+
+.blush {
+  position: absolute;
+  top: 71px;
+  width: 13px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blush) 80%, transparent);
+  filter: blur(0.2px);
+  animation: blush-pop 2.6s ease-in-out infinite;
+}
+
+.left-blush {
+  left: 19px;
+}
+
+.right-blush {
+  right: 19px;
+}
+
+.marshmallow-ground-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 132px;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgb(94 132 173 / 0.35) 0%, rgb(94 132 173 / 0.1) 52%, transparent 75%);
+  animation: shadow-float 3.2s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes shadow-float {
+  0% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(0.88);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes blink {
+  0%,
+  42%,
+  46%,
+  82%,
+  86%,
+  100% {
+    transform: scaleY(1);
+  }
+  44%,
+  84% {
+    transform: scaleY(0.15);
+  }
+}
+
+@keyframes blush-pop {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes cap-wiggle {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-8deg);
+  }
+  50% {
+    transform: translateX(-50%) rotate(-4deg);
+  }
+}
+
+/* Page color variations (body tint changes, eye color stays blue). */
+.marshmallow-color-orange {
+  color: #eef6ff;
+}
+
+.marshmallow-color-gray {
+  color: #ebf0fb;
+}
+
+.marshmallow-color-white {
+  color: #f7fbff;
+}
+
+.marshmallow-color-black {
+  color: #e4ebf8;
+}
+
+.marshmallow-color-brown {
+  color: #edf3ff;
+}

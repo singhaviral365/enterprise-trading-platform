@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StrategyWorker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy</a> &gt; <span class="el_source">StrategyWorker.java</span></div><h1>StrategyWorker.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy;
+
+import org.example.backend.entities.Account;
+import org.example.backend.entities.Holding;
+import org.example.backend.enums.AccountStatus;
+import org.example.backend.enums.OrderSide;
+import org.example.backend.mapper.AccountMapper;
+import org.example.backend.mapper.HoldingMapper;
+import org.example.trade_executor.fx.CurrencyConversionService;
+import org.example.trade_executor.fx.ExchangeRateUnavailableException;
+import org.example.trade_executor.strategy.OrderApiClient.Duplicate;
+import org.example.trade_executor.strategy.OrderApiClient.Placed;
+import org.example.trade_executor.strategy.OrderApiClient.Refused;
+import org.example.trade_executor.strategy.OrderApiClient.Result;
+import org.example.trade_executor.strategy.OrderApiClient.Unavailable;
+import org.example.trade_executor.strategy.config.StrategySettings;
+import org.example.trade_executor.strategy.mapper.StrategyMapper;
+import org.example.trade_executor.strategy.model.ExistingOrder;
+import org.example.trade_executor.strategy.model.RunOutcome;
+import org.example.trade_executor.strategy.model.RunnableStrategy;
+import org.example.trade_executor.strategy.model.StrategyQuote;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * What happens for each quote, for each strategy waiting on that instrument. This is the whole of the decision to trade, so
+ * it is deliberately a straight line of small steps, each of which can only stop it:
+ *
+ * &lt;ol&gt;
+ *   &lt;li&gt;the kill switch, then the strategies read fresh from the table (never a cache: a cache would hide a switch-off);&lt;/li&gt;
+ *   &lt;li&gt;the trigger: an un-armed strategy is armed by a quote on the safe side and never fires on any quote; an armed one
+ *       fires only on a quote that satisfies its condition, is not too old, and falls in its window;&lt;/li&gt;
+ *   &lt;li&gt;&lt;b&gt;the claim&lt;/b&gt;: one UPDATE that succeeds only if the strategy is still ACTIVE. This is the gate. A strategy the
+ *       customer switched off, cancelled, or that another worker already claimed, is not claimed and nothing happens;&lt;/li&gt;
+ *   &lt;li&gt;the limits, read fresh, before any order exists: the most it may spend, the largest position it may build, the
+ *       holding it needs to sell;&lt;/li&gt;
+ *   &lt;li&gt;a token for the owner, and a last look that the claim is still held, so a switch-off during the steps above still
+ *       stops the order;&lt;/li&gt;
+ *   &lt;li&gt;the order, through {@code POST /api/v1/orders}, whose key is the same for every retry of the run;&lt;/li&gt;
+ *   &lt;li&gt;what happened, written down with the strategy's new state in one transaction.&lt;/li&gt;
+ * &lt;/ol&gt;
+ *
+ * Whatever goes wrong after the claim is counted as a failure and the claim is given back; a strategy that fails
+ * {@code max_failures} times in a row is stopped. One strategy's problem never stops the others on the same quote.
+ */
+@Component
+public class StrategyWorker {
+
+<span class="fc" id="L59">    private static final Logger LOGGER = LoggerFactory.getLogger(StrategyWorker.class);</span>
+
+    private final StrategyMapper strategies;
+    private final StrategyRunRecorder recorder;
+    private final AccountMapper accounts;
+    private final HoldingMapper holdings;
+    private final CurrencyConversionService currencies;
+    private final ExecutorTokenMinter tokens;
+    private final OrderApiClient orderApi;
+    private final StrategySettings settings;
+    private final Clock clock;
+
+    @Autowired
+    public StrategyWorker(
+            StrategyMapper strategies,
+            StrategyRunRecorder recorder,
+            AccountMapper accounts,
+            HoldingMapper holdings,
+            CurrencyConversionService currencies,
+            ExecutorTokenMinter tokens,
+            OrderApiClient orderApi,
+            StrategySettings settings) {
+<span class="fc" id="L81">        this(strategies, recorder, accounts, holdings, currencies, tokens, orderApi, settings, Clock.systemUTC());</span>
+<span class="fc" id="L82">    }</span>
+
+    StrategyWorker(
+            StrategyMapper strategies,
+            StrategyRunRecorder recorder,
+            AccountMapper accounts,
+            HoldingMapper holdings,
+            CurrencyConversionService currencies,
+            ExecutorTokenMinter tokens,
+            OrderApiClient orderApi,
+            StrategySettings settings,
+<span class="fc" id="L93">            Clock clock) {</span>
+<span class="fc" id="L94">        this.strategies = strategies;</span>
+<span class="fc" id="L95">        this.recorder = recorder;</span>
+<span class="fc" id="L96">        this.accounts = accounts;</span>
+<span class="fc" id="L97">        this.holdings = holdings;</span>
+<span class="fc" id="L98">        this.currencies = currencies;</span>
+<span class="fc" id="L99">        this.tokens = tokens;</span>
+<span class="fc" id="L100">        this.orderApi = orderApi;</span>
+<span class="fc" id="L101">        this.settings = settings;</span>
+<span class="fc" id="L102">        this.clock = clock;</span>
+<span class="fc" id="L103">    }</span>
+
+    public void onQuote(StrategyQuote quote) {
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (!settings.enabled()) {</span>
+<span class="fc" id="L107">            LOGGER.debug(&quot;Strategy execution is switched off; ignoring the {} quote&quot;, quote.symbol());</span>
+<span class="fc" id="L108">            return;</span>
+        }
+
+<span class="fc" id="L111">        List&lt;RunnableStrategy&gt; waiting = strategies.selectActiveForTicker(quote.symbol());</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        for (RunnableStrategy strategy : waiting) {</span>
+            try {
+<span class="fc" id="L114">                handle(strategy, quote);</span>
+<span class="fc" id="L115">            } catch (RuntimeException ex) {</span>
+                // Before the claim there is nothing to give back; after it, handle() has already done so.
+<span class="fc" id="L117">                LOGGER.error(&quot;Strategy {} could not be evaluated for the {} quote&quot;, strategy.strategyId(), quote.symbol(), ex);</span>
+<span class="fc" id="L118">            }</span>
+<span class="fc" id="L119">        }</span>
+<span class="fc" id="L120">    }</span>
+
+    private void handle(RunnableStrategy strategy, StrategyQuote quote) {
+<span class="fc" id="L123">        boolean reached = strategy.direction().reachedBy(quote.price(), strategy.triggerPrice());</span>
+
+<span class="fc bfc" id="L125" title="All 2 branches covered.">        if (!strategy.armed()) {</span>
+            // A crossing needs the price to have been on the safe side first. This quote may arm it; it never fires it.
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            if (!reached) {</span>
+<span class="fc" id="L128">                strategies.arm(strategy.strategyId());</span>
+            }
+<span class="fc" id="L130">            return;</span>
+        }
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (!reached) {</span>
+<span class="fc" id="L133">            return;</span>
+        }
+
+<span class="fc" id="L136">        OffsetDateTime now = OffsetDateTime.now(clock);</span>
+<span class="fc bfc" id="L137" title="All 2 branches covered.">        if (outsideWindow(strategy, now)) {</span>
+<span class="fc" id="L138">            return;</span>
+        }
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        if (Duration.between(quote.quotedAt(), now).compareTo(settings.maxQuoteAge()) &gt; 0) {</span>
+<span class="fc" id="L141">            recorder.stale(strategy, quote);</span>
+<span class="fc" id="L142">            return;</span>
+        }
+<span class="fc bfc" id="L144" title="All 2 branches covered.">        if (!tokens.isConfigured()) {</span>
+<span class="fc" id="L145">            LOGGER.warn(&quot;Strategy {} was triggered but the token secret is not configured; nothing is claimed&quot;,</span>
+<span class="fc" id="L146">                    strategy.strategyId());</span>
+<span class="fc" id="L147">            return;</span>
+        }
+
+<span class="fc" id="L150">        Optional&lt;Account&gt; account = accounts.selectAccountById(strategy.accountId());</span>
+<span class="pc bpc" id="L151" title="1 of 4 branches missed.">        if (account.isEmpty() || account.get().getAccountStatus() != AccountStatus.ACTIVE) {</span>
+<span class="fc" id="L152">            LOGGER.info(&quot;Strategy {} was triggered but its account is not active; left as it is&quot;, strategy.strategyId());</span>
+<span class="fc" id="L153">            return;</span>
+        }
+
+        // The gate. From here the strategy is ours until we give it back.
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        if (strategies.claim(strategy.strategyId()) == 0) {</span>
+<span class="fc" id="L158">            LOGGER.info(&quot;Strategy {} was triggered but could not be claimed (switched off, claimed, or finished)&quot;,</span>
+<span class="fc" id="L159">                    strategy.strategyId());</span>
+<span class="fc" id="L160">            return;</span>
+        }
+
+        try {
+<span class="fc" id="L164">            run(strategy, quote, account.get());</span>
+<span class="fc" id="L165">        } catch (RuntimeException ex) {</span>
+<span class="fc" id="L166">            LOGGER.error(&quot;Strategy {} failed after being claimed&quot;, strategy.strategyId(), ex);</span>
+<span class="fc" id="L167">            giveBackAsFailure(strategy, quote, RunOutcome.API_ERROR, &quot;An unexpected error stopped this run&quot;);</span>
+<span class="fc" id="L168">        }</span>
+<span class="fc" id="L169">    }</span>
+
+    /** Everything that happens while the claim is held. */
+    private void run(RunnableStrategy strategy, StrategyQuote quote, Account account) {
+<span class="fc" id="L173">        pauseForDemonstration(strategy);</span>
+
+        Optional&lt;String&gt; breach;
+        try {
+<span class="fc" id="L177">            breach = limitBreach(strategy, quote.price(), account);</span>
+<span class="fc" id="L178">        } catch (ExchangeRateUnavailableException ex) {</span>
+<span class="fc" id="L179">            giveBackAsFailure(strategy, quote, RunOutcome.API_ERROR, &quot;The exchange rate was not available&quot;);</span>
+<span class="fc" id="L180">            return;</span>
+<span class="fc" id="L181">        }</span>
+<span class="fc bfc" id="L182" title="All 2 branches covered.">        if (breach.isPresent()) {</span>
+<span class="fc" id="L183">            giveBackAsFailure(strategy, quote, RunOutcome.BLOCKED_LIMIT, breach.get());</span>
+<span class="fc" id="L184">            return;</span>
+        }
+
+<span class="fc" id="L187">        String token = tokens.mint(strategy.ownerUserId(), strategy.strategyId());</span>
+
+        // The last look before the order leaves. A switch-off during the checks above lands here and stops the order.
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        if (strategies.confirmClaim(strategy.strategyId()) == 0) {</span>
+<span class="fc" id="L191">            recorder.disabledBeforeSend(strategy, quote);</span>
+<span class="fc" id="L192">            LOGGER.info(&quot;Strategy {} was switched off before its order was sent; no order placed&quot;, strategy.strategyId());</span>
+<span class="fc" id="L193">            return;</span>
+        }
+
+<span class="fc" id="L196">        Result result = orderApi.placeMarketOrder(strategy, token);</span>
+<span class="fc bfc" id="L197" title="All 4 branches covered.">        switch (result) {</span>
+<span class="fc" id="L198">            case Placed placed -&gt; {</span>
+<span class="fc" id="L199">                recorder.ordered(strategy, quote, placed.orderId(), false);</span>
+<span class="fc" id="L200">                LOGGER.info(&quot;Strategy {} placed order {} (run {})&quot;, strategy.strategyId(), placed.orderId(), strategy.runNumber());</span>
+<span class="fc" id="L201">            }</span>
+<span class="fc" id="L202">            case Duplicate ignored -&gt; {</span>
+<span class="fc" id="L203">                Optional&lt;ExistingOrder&gt; existing = strategies.selectOrderByKey(strategy.orderKey());</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">                if (existing.isPresent()) {</span>
+<span class="fc" id="L205">                    recorder.ordered(strategy, quote, existing.get().orderId(), true);</span>
+<span class="fc" id="L206">                    LOGGER.info(&quot;Strategy {} had already placed order {} (run {})&quot;,</span>
+<span class="fc" id="L207">                            strategy.strategyId(), existing.get().orderId(), strategy.runNumber());</span>
+                } else {
+<span class="fc" id="L209">                    giveBackAsFailure(strategy, quote, RunOutcome.API_ERROR, &quot;The order route reported a duplicate that was not found&quot;);</span>
+                }
+<span class="fc" id="L211">            }</span>
+<span class="fc" id="L212">            case Refused refused -&gt; giveBackAsFailure(strategy, quote, RunOutcome.REJECTED,</span>
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">                    &quot;The order was refused (HTTP &quot; + refused.status() + (refused.errorCode() == null ? &quot;&quot; : &quot; &quot; + refused.errorCode()) + &quot;)&quot;);</span>
+<span class="fc" id="L214">            case Unavailable unavailable -&gt; giveBackAsFailure(strategy, quote, RunOutcome.API_ERROR,</span>
+<span class="fc" id="L215">                    &quot;The order was not placed: &quot; + unavailable.detail());</span>
+        }
+<span class="fc" id="L217">    }</span>
+
+    /**
+     * The checks that bound the damage, made with fresh reads at the point of decision. The customer's own limits, not the
+     * order route's: the route checks funds only when the order settles, so it cannot be the cap on what a strategy spends.
+     *
+     * @return why the order must not be placed, or empty if every limit allows it
+     */
+    Optional&lt;String&gt; limitBreach(RunnableStrategy strategy, BigDecimal price, Account account) {
+<span class="fc" id="L226">        BigDecimal accountPrice = currencies.convert(price, strategy.instrumentCurrency(), account.getCurrency());</span>
+<span class="fc" id="L227">        BigDecimal orderValue = accountPrice</span>
+<span class="fc" id="L228">                .multiply(BigDecimal.valueOf(strategy.quantity()))</span>
+<span class="fc" id="L229">                .setScale(2, RoundingMode.HALF_UP);</span>
+
+<span class="fc bfc" id="L231" title="All 2 branches covered.">        if (orderValue.compareTo(strategy.maxOrderValue()) &gt; 0) {</span>
+<span class="fc" id="L232">            return Optional.of(&quot;The order would cost &quot; + orderValue.toPlainString() + &quot; &quot; + account.getCurrency()</span>
+<span class="fc" id="L233">                    + &quot;, over the limit of &quot; + strategy.maxOrderValue().toPlainString());</span>
+        }
+
+<span class="fc" id="L236">        long held = holdings.selectHoldingByAccountAndInstrument(strategy.accountId(), strategy.instrumentId())</span>
+<span class="fc" id="L237">                .map(Holding::getQuantity)</span>
+<span class="fc" id="L238">                .orElse(0L);</span>
+
+<span class="fc bfc" id="L240" title="All 2 branches covered.">        if (strategy.side() == OrderSide.BUY) {</span>
+<span class="fc" id="L241">            long after = held + strategy.quantity();</span>
+<span class="fc bfc" id="L242" title="All 2 branches covered.">            if (after &gt; strategy.maxPositionQty()) {</span>
+<span class="fc" id="L243">                return Optional.of(&quot;The position would be &quot; + after + &quot; units, over the limit of &quot; + strategy.maxPositionQty());</span>
+            }
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">        } else if (held &lt; strategy.quantity()) {</span>
+<span class="nc" id="L246">            return Optional.of(&quot;The holding of &quot; + held + &quot; units is smaller than the &quot; + strategy.quantity() + &quot; to sell&quot;);</span>
+        }
+<span class="fc" id="L248">        return Optional.empty();</span>
+    }
+
+    private void giveBackAsFailure(RunnableStrategy strategy, StrategyQuote quote, RunOutcome outcome, String detail) {
+        try {
+<span class="fc" id="L253">            recorder.failed(strategy, quote, outcome, detail);</span>
+<span class="fc" id="L254">        } catch (RuntimeException ex) {</span>
+            // Left EXECUTING, the sweeper gives the claim back after its timeout.
+<span class="fc" id="L256">            LOGGER.error(&quot;Could not record the failure of strategy {}; the sweeper will release it&quot;, strategy.strategyId(), ex);</span>
+<span class="fc" id="L257">        }</span>
+<span class="fc" id="L258">    }</span>
+
+    private static boolean outsideWindow(RunnableStrategy strategy, OffsetDateTime now) {
+<span class="pc bpc" id="L261" title="1 of 4 branches missed.">        return (strategy.validFrom() != null &amp;&amp; now.isBefore(strategy.validFrom()))</span>
+<span class="pc bpc" id="L262" title="1 of 4 branches missed.">                || (strategy.validUntil() != null &amp;&amp; !now.isBefore(strategy.validUntil()));</span>
+    }
+
+    /** Development only: holds the claim for a while so a switch-off can be shown landing in the middle of a run. */
+    private void pauseForDemonstration(RunnableStrategy strategy) {
+<span class="fc" id="L267">        long millis = settings.demoDelayMillis();</span>
+<span class="fc bfc" id="L268" title="All 2 branches covered.">        if (millis &lt;= 0) {</span>
+<span class="fc" id="L269">            return;</span>
+        }
+<span class="fc" id="L271">        LOGGER.warn(&quot;DEMONSTRATION: holding the claim on strategy {} for {} ms before its order is sent&quot;,</span>
+<span class="fc" id="L272">                strategy.strategyId(), millis);</span>
+        try {
+<span class="fc" id="L274">            Thread.sleep(millis);</span>
+<span class="nc" id="L275">        } catch (InterruptedException ex) {</span>
+<span class="nc" id="L276">            Thread.currentThread().interrupt();</span>
+<span class="fc" id="L277">        }</span>
+<span class="fc" id="L278">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

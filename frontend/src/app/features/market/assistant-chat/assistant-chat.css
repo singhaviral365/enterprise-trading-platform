@@ -1,0 +1,149 @@
+:host {
+  display: block;
+}
+
+:host(.is-pane) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Inline: the compact card inside the quote detail. Borders and tokens only, no shadows. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 16px;
+  background: var(--surface-container-background);
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--surface-foreground-subtle);
+}
+
+.chat-symbol {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-foreground);
+  background: var(--surface-background-bright);
+  border: 1px solid var(--surface-line-subtle);
+}
+
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  background: var(--surface-background-bright);
+}
+
+.log-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+}
+
+.message {
+  max-width: 92%;
+  padding: 8px 12px;
+  border: 1px solid var(--surface-line-subtle);
+  border-radius: 12px;
+  background: var(--surface-container-background);
+}
+
+.message p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.message.is-user {
+  align-self: flex-end;
+  color: var(--accent-primary-foreground);
+  background: var(--accent-primary-background);
+  border-color: var(--accent-primary-background);
+}
+
+.message.is-problem {
+  color: var(--status-error-container-fg);
+  background: var(--status-error-container-bg);
+  border-color: var(--status-error-container-line);
+}
+
+.message-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--surface-foreground-subtle);
+}
+
+.ask {
+  display: flex;
+  gap: 8px;
+}
+
+.ask .form-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Pane: fills the aside. The header and the quick questions keep their height, the conversation takes the rest and scrolls,
+   and the input stays at the bottom. The panel around it (the split view's aside) already has the border. */
+.chat.is-pane {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  margin-top: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.chat.is-pane .log {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}

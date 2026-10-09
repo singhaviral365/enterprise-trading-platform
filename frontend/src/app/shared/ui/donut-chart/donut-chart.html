@@ -1,0 +1,24 @@
+<div class="donut-chart" data-testid="donut-chart">
+  <div class="donut-figure">
+    <div #plot class="donut-plot" role="img" [attr.aria-label]="ariaLabel()"></div>
+    <div class="donut-center" aria-hidden="true">
+      @if (centerLabel()) {
+        <span class="donut-center-label">{{ centerLabel() }}</span>
+      }
+      <span class="donut-center-value" data-testid="donut-center-value">{{ centerValue() }}</span>
+    </div>
+  </div>
+
+  <ul class="visually-hidden" data-testid="donut-legend">
+    @for (item of legend(); track item.name) {
+      <li class="donut-legend-item">
+        <span class="donut-legend-title">{{ item.name }}</span>
+        @if (item.detail) {
+          <span class="donut-legend-detail">{{ item.detail }}</span>
+        }
+        <span class="donut-legend-share">{{ item.share * 100 | number: '1.0-1' }}%</span>
+        <span class="donut-legend-value">{{ valueFormatter()(item.value) }}</span>
+      </li>
+    }
+  </ul>
+</div>

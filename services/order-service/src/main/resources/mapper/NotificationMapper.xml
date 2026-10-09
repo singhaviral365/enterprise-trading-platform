@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.backend.notifications.mapper.NotificationMapper">
+
+    <resultMap id="NotificationResultMap" type="org.example.backend.notifications.model.Notification">
+        <constructor>
+            <idArg column="notification_id" javaType="_long" name="notificationId"/>
+            <arg column="account_id" javaType="_long" name="accountId"/>
+            <arg column="category" javaType="org.example.backend.preferences.model.NotificationCategory" name="category"/>
+            <arg column="title" javaType="String" name="title"/>
+            <arg column="message" javaType="String" name="message"/>
+            <arg column="channels" javaType="String" name="channels"/>
+            <arg column="created_at" javaType="java.time.OffsetDateTime" name="createdAt"/>
+            <arg column="read_at" javaType="java.time.OffsetDateTime" name="readAt"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="QueuedEmailResultMap" type="org.example.backend.notifications.model.QueuedEmail">
+        <constructor>
+            <idArg column="delivery_id" javaType="_long" name="deliveryId"/>
+            <arg column="notification_id" javaType="_long" name="notificationId"/>
+            <arg column="attempts" javaType="_int" name="attempts"/>
+            <arg column="title" javaType="String" name="title"/>
+            <arg column="message" javaType="String" name="message"/>
+            <arg column="recipient" javaType="String" name="recipient"/>
+        </constructor>
+    </resultMap>
+
+    <!--
+      The event key is unique, so a replayed event inserts nothing and the generated key stays unset.
+      Two consumers racing on one event: the database decides, one of them inserts, the other gets 0 rows.
+    -->
+    <insert id="insertNotificationIfNew" useGeneratedKeys="true" keyProperty="notificationId" keyColumn="notification_id">
+        INSERT INTO notification (
+            account_id,
+            category,
+            event_key,
+            title,
+            message,
+            channels,
+            in_app,
+            created_at
+        ) VALUES (
+            #{accountId},
+            #{category},
+            #{eventKey},
+            #{title},
+            #{message},
+            #{channels},
+            #{inApp},
+            #{createdAt}
+        )
+        ON CONFLICT (event_key) DO NOTHING
+    </insert>
+
+    <insert id="insertDelivery">
+        INSERT INTO notification_delivery (
+            notification_id,
+            channel,
+            status,
+            detail
+        ) VALUES (
+            #{notificationId},
+            #{channel},
+            #{status},
+            #{detail}
+        )
+        ON CONFLICT (notification_id, channel) DO NOTHING
+    </insert>
+
+    <!--
+      The inbox filter, shared by the page and its count. Always scoped to the account. includeUnread / includeRead choose
+      the read states (the service guarantees at least one). With a readCutoff a read notification stays listed only until
+      it passes, so a message that was just opened does not vanish under the customer's cursor; without one every read
+      notification qualifies. from / to bound created_at inclusively.
+      The pattern is bound, never concatenated, and arrives with its % and _ already escaped; ESCAPE names the escape.
+    -->
+    <sql id="inboxWhere">
+        WHERE account_id = #{accountId}
+          AND in_app
+          AND (
+            <trim prefixOverrides="OR ">
+              <if test="includeUnread">OR read_at IS NULL</if>
+              <if test="includeRead">OR (read_at IS NOT NULL<if test="readCutoff != null"> AND read_at &gt; #{readCutoff}</if>)</if>
+            </trim>
+          )
+        <if test="from != null">
+          AND created_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND created_at &lt;= #{to}
+        </if>
+        <if test="pattern != null">
+          AND (title ILIKE #{pattern} ESCAPE '\' OR message ILIKE #{pattern} ESCAPE '\')
+        </if>
+        <if test="categories != null and !categories.isEmpty()">
+          AND category IN
+          <foreach collection="categories" item="category" open="(" separator="," close=")">#{category}</foreach>
+        </if>
+    </sql>
+
+    <select id="selectInbox" resultMap="NotificationResultMap">
+        SELECT notification_id, account_id, category, title, message, channels, created_at, read_at
+        FROM notification
+        <include refid="inboxWhere"/>
+        ORDER BY created_at DESC, notification_id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countInbox" resultType="long">
+        SELECT COUNT(*)
+        FROM notification
+        <include refid="inboxWhere"/>
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*)
+        FROM notification
+        WHERE account_id = #{accountId}
+          AND in_app
+          AND read_at IS NULL
+    </select>
+
+    <update id="markRead">
+        UPDATE notification
+        SET read_at = COALESCE(read_at, #{readAt})
+        WHERE notification_id = #{notificationId}
+          AND account_id = #{accountId}
+          AND in_app
+    </update>
+
+    <select id="selectInboxEntry" resultMap="NotificationResultMap">
+        SELECT notification_id, account_id, category, title, message, channels, created_at, read_at
+        FROM notification
+        WHERE notification_id = #{notificationId}
+          AND account_id = #{accountId}
+          AND in_app
+    </select>
+
+    <!-- FOR UPDATE ... SKIP LOCKED: a second dispatcher (or a second instance) passes over rows already being sent. -->
+    <select id="selectQueuedEmails" resultMap="QueuedEmailResultMap">
+        SELECT d.delivery_id,
+               d.notification_id,
+               d.attempts,
+               n.title,
+               n.message,
+               c.email AS recipient
+        FROM notification_delivery d
+        JOIN notification n ON n.notification_id = d.notification_id
+        LEFT JOIN account c ON c.account_id = n.account_id
+        WHERE d.channel = 'EMAIL'
+          AND d.status = 'QUEUED'
+        ORDER BY d.created_at ASC, d.delivery_id ASC
+        LIMIT #{limit}
+        FOR UPDATE OF d SKIP LOCKED
+    </select>
+
+    <update id="updateDelivery">
+        UPDATE notification_delivery
+        SET status = #{status},
+            detail = #{detail},
+            attempts = attempts + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE delivery_id = #{deliveryId}
+    </update>
+
+    <!-- The address kept on the account itself: the Auth service's database is out of the Trade API's reach. -->
+    <select id="selectAccountEmail" resultType="string">
+        SELECT email
+        FROM account
+        WHERE account_id = #{accountId}
+          AND email IS NOT NULL
+    </select>
+
+</mapper>

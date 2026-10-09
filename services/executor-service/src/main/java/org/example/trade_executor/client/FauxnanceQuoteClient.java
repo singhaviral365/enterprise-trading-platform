@@ -1,0 +1,504 @@
+package org.example.trade_executor.client;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Component
+public class FauxnanceQuoteClient implements QuoteClient {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(FauxnanceQuoteClient.class);
+
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final URI baseUri;
+    private final int maxAttempts;
+    private final long retryDelayMillis;
+    private final Duration requestTimeout;
+    private final String apiKey;
+
+    @Autowired
+    public FauxnanceQuoteClient(
+            @Value("${trading.quote.base-url}") String baseUrl,
+            @Value("${trading.quote.api-key:}") String apiKey,
+            @Value("${trading.quote.max-attempts:3}") int maxAttempts,
+            @Value("${trading.quote.retry-delay-millis:100}") long retryDelayMillis,
+            @Value("${trading.quote.request-timeout-millis:1000}") long requestTimeoutMillis) {
+
+        this(HttpClient.newBuilder()
+                        .connectTimeout(Duration.ofMillis(requestTimeoutMillis))
+                        .build(),
+            new ObjectMapper(),
+                URI.create(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"),
+                apiKey,
+                maxAttempts,
+                retryDelayMillis,
+                Duration.ofMillis(requestTimeoutMillis));
+    }
+
+    public FauxnanceQuoteClient(
+            String baseUrl,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis) {
+
+        this(baseUrl, "", maxAttempts, retryDelayMillis, requestTimeoutMillis, new ObjectMapper());
+        }
+
+        FauxnanceQuoteClient(
+            String baseUrl,
+            String apiKey,
+            int maxAttempts,
+            long retryDelayMillis,
+            long requestTimeoutMillis,
+            ObjectMapper objectMapper) {
+
+        this(HttpClient.newBuilder()
+                .connectTimeout(Duration.ofMillis(requestTimeoutMillis))
+                .build(),
+            objectMapper,
+            URI.create(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/"),
+            apiKey,
+            maxAttempts,
+            retryDelayMillis,
+            Duration.ofMillis(requestTimeoutMillis));
+    }
+
+    FauxnanceQuoteClient(
+            HttpClient httpClient,
+            ObjectMapper objectMapper,
+            URI baseUri,
+            String apiKey,
+            int maxAttempts,
+            long retryDelayMillis,
+            Duration requestTimeout) {
+
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
+        this.baseUri = baseUri;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        this.maxAttempts = Math.max(1, maxAttempts);
+        this.retryDelayMillis = Math.max(0L, retryDelayMillis);
+        this.requestTimeout = requestTimeout;
+    }
+
+    @Override
+    public Optional<LiveQuote> getQuote(String symbol) {
+        URI quoteUri = resolveQuoteUri(symbol);
+        Map<String, LiveQuote> quotes = fetchQuotes(quoteUri, symbol);
+        if (quotes.isEmpty()) {
+            return Optional.empty();
+        }
+
+        LiveQuote quote = quotes.get(symbol);
+        if (quote != null) {
+            return Optional.of(quote);
+        }
+
+        return quotes.values().stream().findFirst();
+    }
+
+    @Override
+    public Map<String, LiveQuote> getQuotes(Collection<String> symbols) {
+        if (symbols == null) {
+            return Map.of();
+        }
+
+        List<String> cleanSymbols = symbols.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        if (cleanSymbols.isEmpty()) {
+            return Map.of();
+        }
+
+        URI quoteUri = resolveBatchQuoteUri(cleanSymbols);
+        return fetchQuotes(quoteUri, String.join(",", cleanSymbols));
+    }
+
+    @Override
+    public Map<String, QuoteDetails> getQuoteDetails(Collection<String> symbols) {
+        if (symbols == null) {
+            return Map.of();
+        }
+
+        List<String> cleanSymbols = symbols.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+
+        if (cleanSymbols.isEmpty()) {
+            return Map.of();
+        }
+
+        URI quoteUri = resolveBatchQuoteUri(cleanSymbols);
+        return fetch(quoteUri, String.join(",", cleanSymbols), this::parseQuoteDetails, Map.of());
+    }
+
+    @Override
+    public PriceHistory getCandles(String symbol, LocalDate from, LocalDate to, String interval) {
+        String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+        URI candlesUri = baseUri.resolve("candles/" + encodedSymbol
+                + "?from=" + from
+                + "&to=" + to
+                + "&interval=" + URLEncoder.encode(interval, StandardCharsets.UTF_8));
+        return fetch(candlesUri, symbol, body -> parseCandles(body, symbol, interval), PriceHistory.empty(symbol, interval));
+    }
+
+    /** Reads {@code {"data": {"symbol", "interval", "currency", "candles": [...]}}}; candles without a close are skipped. */
+    private PriceHistory parseCandles(String body, String symbol, String interval) throws IOException {
+        if (body == null || body.isBlank()) {
+            return PriceHistory.empty(symbol, interval);
+        }
+
+        JsonNode root = objectMapper.readTree(body);
+        JsonNode data = root.has("data") ? root.get("data") : root;
+        JsonNode candleNodes = data.get("candles");
+        if (candleNodes == null || !candleNodes.isArray()) {
+            return PriceHistory.empty(symbol, interval);
+        }
+
+        List<PriceHistory.Candle> candles = new java.util.ArrayList<>(candleNodes.size());
+        for (JsonNode node : candleNodes) {
+            JsonNode date = node.get("date");
+            BigDecimal close = extractPrice(node.get("close"));
+            if (date == null || !date.isTextual() || close == null) {
+                continue;
+            }
+            JsonNode volume = node.get("volume");
+            JsonNode synthetic = node.get("synthetic");
+            candles.add(new PriceHistory.Candle(
+                    date.asText(),
+                    extractPrice(node.get("open")),
+                    extractPrice(node.get("high")),
+                    extractPrice(node.get("low")),
+                    close,
+                    volume != null && volume.isNumber() ? volume.asLong() : null,
+                    synthetic != null && synthetic.asBoolean(false)));
+        }
+
+        return new PriceHistory(
+                textOr(data.get("symbol"), symbol),
+                textOr(data.get("currency"), null),
+                textOr(data.get("interval"), interval),
+                candles);
+    }
+
+    private static String textOr(JsonNode node, String fallback) {
+        return node != null && node.isTextual() && !node.asText().isBlank() ? node.asText() : fallback;
+    }
+
+    private Map<String, LiveQuote> fetchQuotes(URI quoteUri, String symbolContext) {
+        return fetch(quoteUri, symbolContext, this::parseQuotes, Map.of());
+    }
+
+    @FunctionalInterface
+    private interface BodyParser<T> {
+        T parse(String body) throws IOException;
+    }
+
+    /** GET with the client's retry/backoff rules; {@code empty} is returned for 204/404. */
+    private <T> T fetch(URI quoteUri, String symbolContext, BodyParser<T> parser, T empty) {
+
+        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(quoteUri)
+            .timeout(requestTimeout)
+            .GET();
+
+        if (!apiKey.isEmpty()) {
+            requestBuilder.header("X-Api-Key", apiKey);
+        }
+
+        HttpRequest request = requestBuilder.build();
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                HttpResponse<String> response = httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == 200) {
+                    return parser.parse(response.body());
+                }
+
+                if (response.statusCode() == 404 || response.statusCode() == 204) {
+                    LOGGER.info("No quote available for symbols {} (HTTP {})", symbolContext, response.statusCode());
+                    return empty;
+                }
+
+                if (isRetryable(response.statusCode()) && attempt < maxAttempts) {
+                    LOGGER.warn(
+                            "Retryable quote lookup failure for symbols {} at {} (HTTP {}, attempt {} of {})",
+                            symbolContext,
+                            quoteUri,
+                            response.statusCode(),
+                            attempt,
+                            maxAttempts);
+                    backoff(attempt);
+                    continue;
+                }
+
+                LOGGER.error(
+                    "Quote lookup failed for symbols {} at {} with HTTP {}",
+                    symbolContext,
+                    quoteUri,
+                    response.statusCode());
+
+                throw new QuoteUnavailableException(
+                        symbolContext,
+                        "Quote lookup failed with HTTP status " + response.statusCode());
+            } catch (IOException ex) {
+                if (attempt < maxAttempts) {
+                    LOGGER.warn(
+                            "I/O error during quote lookup for symbols {} at {} (attempt {} of {})",
+                            symbolContext,
+                            quoteUri,
+                            attempt,
+                            maxAttempts,
+                            ex);
+                    backoff(attempt);
+                    continue;
+                }
+
+                LOGGER.error(
+                    "Quote lookup failed after retries for symbols {} at {}",
+                    symbolContext,
+                    quoteUri,
+                    ex);
+
+                throw new QuoteUnavailableException(
+                        symbolContext,
+                        "Quote lookup failed after retries",
+                        ex);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new QuoteUnavailableException(
+                        symbolContext,
+                        "Quote lookup interrupted",
+                        ex);
+            }
+        }
+
+        throw new QuoteUnavailableException(symbolContext, "Quote lookup failed after retries");
+    }
+
+    private Map<String, LiveQuote> parseQuotes(String body) throws IOException {
+        if (body == null || body.isBlank()) {
+            return Map.of();
+        }
+
+        JsonNode root = objectMapper.readTree(body);
+        Map<String, LiveQuote> quotes = new LinkedHashMap<>();
+        collectQuotes(root, quotes);
+        return quotes;
+    }
+
+    private Map<String, QuoteDetails> parseQuoteDetails(String body) throws IOException {
+        if (body == null || body.isBlank()) {
+            return Map.of();
+        }
+
+        Map<String, QuoteDetails> details = new LinkedHashMap<>();
+        collectQuoteDetails(objectMapper.readTree(body), details);
+        return details;
+    }
+
+    /**
+     * Finds every quote in the response. Fauxnance wraps each one as
+     * {@code {"symbol", "source", "stale", "quote": {...}}} (or {@code {"symbol", "error": {...}}} when the
+     * symbol is unknown, which is skipped); a bare {@code {"symbol", "price", ...}} object is accepted too.
+     * The wrapper's {@code source} and {@code stale} are kept alongside the quote fields.
+     */
+    private void collectQuoteDetails(JsonNode node, Map<String, QuoteDetails> details) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isArray()) {
+            node.forEach(child -> collectQuoteDetails(child, details));
+            return;
+        }
+
+        if (!node.isObject()) {
+            return;
+        }
+
+        JsonNode inner = node.get("quote");
+        if (inner != null && inner.isObject() && addQuote(inner, node, details)) {
+            return;
+        }
+        if (addQuote(node, null, details)) {
+            return;
+        }
+
+        node.fields().forEachRemaining(entry -> collectQuoteDetails(entry.getValue(), details));
+    }
+
+    private boolean addQuote(JsonNode quote, JsonNode wrapper, Map<String, QuoteDetails> details) {
+        JsonNode symbolNode = quote.get("symbol");
+        if ((symbolNode == null || !symbolNode.isTextual()) && wrapper != null) {
+            symbolNode = wrapper.get("symbol");
+        }
+        BigDecimal price = extractPrice(quote.get("price"));
+        if (symbolNode == null || !symbolNode.isTextual() || price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            return false;
+        }
+
+        String symbol = symbolNode.asText().trim();
+        if (symbol.isBlank()) {
+            return false;
+        }
+
+        Map<String, Object> fields = new LinkedHashMap<>();
+        quote.fields().forEachRemaining(entry -> fields.put(entry.getKey(), toPlainValue(entry.getValue())));
+        if (wrapper != null) {
+            for (String key : List.of("source", "stale")) {
+                JsonNode value = wrapper.get(key);
+                if (value != null && !fields.containsKey(key)) {
+                    fields.put(key, toPlainValue(value));
+                }
+            }
+        }
+
+        details.putIfAbsent(symbol, new QuoteDetails(symbol, price, fields));
+        return true;
+    }
+
+    /** JSON value → plain Java value (numbers keep full precision as BigDecimal/Long). */
+    private Object toPlainValue(JsonNode value) {
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isTextual()) {
+            return value.asText();
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        if (value.isIntegralNumber()) {
+            return value.canConvertToLong() ? value.asLong() : value.bigIntegerValue();
+        }
+        if (value.isNumber()) {
+            return value.decimalValue();
+        }
+        if (value.isArray()) {
+            List<Object> items = new java.util.ArrayList<>();
+            value.forEach(item -> items.add(toPlainValue(item)));
+            return items;
+        }
+        Map<String, Object> nested = new LinkedHashMap<>();
+        value.fields().forEachRemaining(entry -> nested.put(entry.getKey(), toPlainValue(entry.getValue())));
+        return nested;
+    }
+
+    private void collectQuotes(JsonNode node, Map<String, LiveQuote> quotes) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isObject()) {
+            JsonNode symbolNode = node.get("symbol");
+            JsonNode priceNode = node.get("price");
+            if (symbolNode != null && priceNode != null && symbolNode.isTextual()) {
+                String symbol = symbolNode.asText().trim();
+                BigDecimal price = extractPrice(priceNode);
+                if (!symbol.isBlank() && price != null && price.compareTo(BigDecimal.ZERO) > 0) {
+                    JsonNode currencyNode = node.get("currency");
+                    String currency = currencyNode != null && currencyNode.isTextual() ? currencyNode.asText() : null;
+                    quotes.put(symbol, new LiveQuote(symbol, price, currency));
+                }
+            }
+
+            node.fields().forEachRemaining(entry -> collectQuotes(entry.getValue(), quotes));
+            return;
+        }
+
+        if (node.isArray()) {
+            node.forEach(child -> collectQuotes(child, quotes));
+        }
+    }
+
+    private BigDecimal extractPrice(JsonNode priceNode) {
+        if (priceNode == null || priceNode.isNull()) {
+            return null;
+        }
+        if (priceNode.isNumber()) {
+            return priceNode.decimalValue();
+        }
+        if (priceNode.isTextual()) {
+            String value = priceNode.asText().trim();
+            if (value.isEmpty()) {
+                return null;
+            }
+            try {
+                return new BigDecimal(value);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private URI resolveQuoteUri(String symbol) {
+        String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+        return baseUri.resolve("quotes/" + encodedSymbol);
+    }
+
+    private URI resolveBatchQuoteUri(List<String> symbols) {
+        String joinedSymbols = symbols.stream()
+                .map(String::trim)
+                .collect(Collectors.joining(","));
+        String encodedSymbols = URLEncoder.encode(joinedSymbols, StandardCharsets.UTF_8);
+        return baseUri.resolve("quotes?symbols=" + encodedSymbols);
+    }
+
+    private boolean isRetryable(int statusCode) {
+        return statusCode == 408
+                || statusCode == 425
+                || statusCode == 429
+                || statusCode == 500
+                || statusCode == 502
+                || statusCode == 503
+                || statusCode == 504;
+    }
+
+    private void backoff(int attempt) {
+        if (retryDelayMillis <= 0) {
+            return;
+        }
+
+        long delay = retryDelayMillis * Math.max(1, attempt);
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new QuoteUnavailableException("unknown", "Quote retry interrupted", ex);
+        }
+    }
+
+}
+
+
+

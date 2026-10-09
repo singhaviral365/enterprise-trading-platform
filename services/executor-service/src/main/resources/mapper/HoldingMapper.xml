@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  HoldingMapper.xml - MyBatis XML mapper for Holding entity (Positions)
+
+  SECURITY NOTICE:
+  - ALL external parameters are bound as JDBC bind parameters (#{...})
+  - NO string interpolation or ${...} syntax used for external parameters
+  - Prevents SQL injection attacks that could expose other account positions
+-->
+
+<mapper namespace="org.example.backend.mapper.HoldingMapper">
+
+    <!--
+      Result mapping for Holding entity.
+      Maps database columns to Holding object properties.
+    -->
+    <resultMap id="HoldingResultMap" type="org.example.backend.entities.Holding">
+        <constructor>
+            <idArg column="holding_id" javaType="_long" name="holdingId"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="purchase_price" javaType="java.math.BigDecimal" name="purchasePrice"/>
+            <arg column="account_id" javaType="_int" name="accountId"/>
+            <arg column="instrument_id" javaType="_int" name="instrumentId"/>
+        </constructor>
+    </resultMap>
+
+    <!-- ===================================================
+         INSERT Operations
+         =================================================== -->
+
+    <!--
+      Insert a new holding.
+      All values are bound as parameters.
+      Returns the number of rows affected (1 on success).
+      Constraint violations (duplicate account-instrument pair) are surfaced.
+    -->
+    <insert id="insertHolding" parameterType="org.example.backend.entities.Holding">
+        INSERT INTO holdings (
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        ) VALUES (
+        #{holdingId},
+        #{quantity},
+        #{purchasePrice},
+        #{accountId},
+        #{instrumentId}
+        )
+    </insert>
+
+    <!-- ===================================================
+         SELECT Operations (Single Row)
+         =================================================== -->
+
+    <!--
+      Select holding by holding ID.
+      Holding ID is bound as a parameter.
+      Safe from SQL injection.
+    -->
+    <select id="selectHoldingById" parameterType="long" resultMap="HoldingResultMap">
+        SELECT
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        FROM holdings
+        WHERE holding_id = #{holdingId}
+    </select>
+
+    <!--
+      Select holding by account and instrument.
+      Both account ID and instrument ID are bound as parameters.
+      This is a natural unique key: (account_id, instrument_id).
+    -->
+    <select id="selectHoldingByAccountAndInstrument" resultMap="HoldingResultMap">
+        SELECT
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        FROM holdings
+        WHERE account_id = #{accountId}
+          AND instrument_id = #{instrumentId}
+    </select>
+
+    <!-- ===================================================
+         SELECT Operations (Multiple Rows)
+         =================================================== -->
+
+    <!--
+      Select all holdings for a specific account.
+      Account ID is bound as a parameter.
+      This is the critical query for retrieving account positions.
+      Safe from SQL injection via account ID manipulation.
+    -->
+    <select id="selectHoldingsByAccountId" parameterType="int" resultMap="HoldingResultMap">
+        SELECT
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        FROM holdings
+        WHERE account_id = #{accountId}
+        ORDER BY instrument_id
+    </select>
+
+    <!--
+      Select all holdings for a specific instrument.
+      Instrument ID is bound as a parameter.
+      Used for reporting which accounts hold a particular instrument.
+    -->
+    <select id="selectHoldingsByInstrumentId" parameterType="int" resultMap="HoldingResultMap">
+        SELECT
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        FROM holdings
+        WHERE instrument_id = #{instrumentId}
+        ORDER BY account_id
+    </select>
+
+    <!--
+      Select holdings with quantity greater than zero (active positions).
+      Account ID is bound as a parameter.
+      An active holding represents a current position (quantity > 0).
+    -->
+    <select id="selectActiveHoldingsByAccountId" parameterType="int" resultMap="HoldingResultMap">
+        SELECT
+            holding_id,
+            quantity,
+            purchase_price,
+            account_id,
+            instrument_id
+        FROM holdings
+        WHERE account_id = #{accountId}
+          AND quantity > 0
+        ORDER BY instrument_id
+    </select>
+
+    <!-- ===================================================
+         UPDATE Operations
+         =================================================== -->
+
+    <!--
+      Update holding quantity.
+      Holding ID and new quantity are bound as parameters.
+      Returns the number of rows affected.
+    -->
+    <update id="updateHoldingQuantity">
+        UPDATE holdings
+      SET quantity = #{quantity}
+        WHERE holding_id = #{holdingId}
+    </update>
+
+    <!--
+      Update holding quantity and purchase price.
+      All values are bound as parameters.
+    -->
+    <update id="updateHoldingQuantityAndPrice">
+        UPDATE holdings
+        SET
+        quantity = #{quantity},
+        purchase_price = #{purchasePrice}
+        WHERE holding_id = #{holdingId}
+    </update>
+
+    <!-- ===================================================
+         DELETE Operations
+         =================================================== -->
+
+    <!--
+      Delete a holding by ID.
+      Holding ID is bound as a parameter.
+      Returns the number of rows affected.
+    -->
+    <delete id="deleteHoldingById" parameterType="long">
+        DELETE FROM holdings
+        WHERE holding_id = #{holdingId}
+    </delete>
+
+    <!-- ===================================================
+         COUNT Operations
+         =================================================== -->
+
+    <!--
+      Count holdings for an account.
+      Account ID is bound as a parameter.
+    -->
+    <select id="countHoldingsByAccountId" parameterType="int" resultType="long">
+        SELECT COUNT(*) FROM holdings WHERE account_id = #{accountId}
+    </select>
+
+    <!--
+      Count active holdings for an account.
+      Account ID is bound as a parameter.
+      An active holding has quantity > 0.
+    -->
+    <select id="countActiveHoldingsByAccountId" parameterType="int" resultType="long">
+        SELECT COUNT(*) FROM holdings WHERE account_id = #{accountId} AND quantity > 0
+    </select>
+
+    <!-- ===================================================
+         EXISTS Check Operations
+         =================================================== -->
+
+    <!--
+      Check if a holding exists for account and instrument.
+      Both account ID and instrument ID are bound as parameters.
+      Used for uniqueness validation before insert.
+    -->
+    <select id="holdingExists" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM holdings
+        WHERE account_id = #{accountId}
+          AND instrument_id = #{instrumentId}
+    </select>
+
+    <!-- ===================================================
+         Story 5 - Generate Holding ID
+         =================================================== -->
+
+    <select id="nextHoldingId"
+            resultType="long">
+
+        SELECT nextval(
+                       pg_get_serial_sequence(
+                               'holdings',
+                               'holding_id'
+                       )
+               )
+
+    </select>
+
+</mapper>

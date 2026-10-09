@@ -1,0 +1,18 @@
+info:
+  name: Account Balance
+  type: http
+  seq: 3
+
+http:
+  method: get
+  url: accounts/1001/balance
+  auth:
+    type: bearer
+    token: "{{JWT_KEY}}"
+
+settings:
+  encodeUrl: false
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

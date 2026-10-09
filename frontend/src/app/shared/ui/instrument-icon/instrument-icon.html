@@ -1,0 +1,14 @@
+@if (showImage()) {
+  <img
+    class="icon-image"
+    [ngSrc]="iconUrl()!"
+    [width]="size()"
+    [height]="size()"
+    alt=""
+    (error)="onError()"
+  />
+} @else {
+  <span class="icon-fallback" data-testid="instrument-icon-fallback" aria-hidden="true">{{
+    initials()
+  }}</span>
+}

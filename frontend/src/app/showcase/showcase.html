@@ -1,0 +1,146 @@
+@if (pageLoading()) {
+  <app-spinner label="Loading page" />
+}
+
+<div class="main-page">
+  <h1 class="page-title">Component showcase</h1>
+
+  <section class="card mb-24" aria-labelledby="session-heading">
+    <h2 id="session-heading" class="card-title">Session</h2>
+    <p class="form-hint mb-16">The sidebar only appears after login.</p>
+    @if (session.isLoggedIn()) {
+      <button type="button" class="btn is-secondary" (click)="signOut()">Sign out</button>
+    } @else {
+      <button type="button" class="btn is-primary" (click)="authDialog.open()">Sign in</button>
+    }
+  </section>
+
+  <section class="card mb-24" aria-labelledby="form-heading">
+    <h2 id="form-heading" class="card-title">Dropdown, multiselect and inline spinner</h2>
+    <form class="showcase-form" (submit)="$event.preventDefault(); submit()">
+      <app-dropdown
+        label="Sector"
+        placeholder="Select a sector"
+        errorText="Please choose a sector."
+        [options]="sectors"
+        [invalid]="sectorInvalid()"
+        [(value)]="sector"
+      />
+
+      <div class="form-group mt-16">
+        <app-multi-dropdown label="Sectors (multi-select dropdown)" [options]="sectors" [(selected)]="sectorFilter" />
+      </div>
+
+      <div class="form-group mt-16">
+        <app-date-range label="Date range" [(range)]="dateRange" />
+      </div>
+
+      <div class="form-group mt-16">
+        <span class="form-label">Watchlist</span>
+        <app-multiselect label="Watchlist" [options]="symbols" [(selected)]="watchlist" />
+      </div>
+
+      <div class="flex items-center gap-12">
+        <button type="submit" class="btn is-primary" [disabled]="saving()">Save</button>
+        @if (saving()) {
+          <app-spinner [inline]="true" label="Saving" />
+        }
+      </div>
+    </form>
+  </section>
+
+  <section class="card mb-24" aria-labelledby="feedback-heading">
+    <h2 id="feedback-heading" class="card-title">Notification, dialog, tooltip and page spinner</h2>
+    <div class="flex wrap gap-12">
+      <button type="button" class="btn is-success" (click)="notify('success')">Success</button>
+      <button type="button" class="btn is-error" (click)="notify('error')">Error</button>
+      <button type="button" class="btn is-warning" (click)="notify('warning')">Warning</button>
+      <button type="button" class="btn is-info" (click)="notify('info')">Info</button>
+      <button type="button" class="btn is-secondary" (click)="cancelOrder()">Open dialog</button>
+      <button type="button" class="btn is-secondary" (click)="showPageSpinner()">Page spinner</button>
+      <app-tooltip text="Tooltips also open on keyboard focus" position="bottom">
+        <button type="button" class="btn is-tertiary">Hover or focus me</button>
+      </app-tooltip>
+    </div>
+  </section>
+
+  <section aria-labelledby="table-heading">
+    <h2 id="table-heading" class="section-heading mb-16">Table and pagination</h2>
+    <div class="table-container">
+      <table class="data-table">
+        <caption>
+          Recent trades
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Symbol</th>
+            <th scope="col">Side</th>
+            <th scope="col" class="is-numeric">Quantity</th>
+            <th scope="col" class="is-numeric">Price</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (trade of pageRows(); track trade.id) {
+            <tr>
+              <th scope="row">{{ trade.symbol }}</th>
+              <td>{{ trade.side }}</td>
+              <td class="is-numeric">{{ trade.quantity }}</td>
+              <td class="is-numeric">{{ trade.price | currency }}</td>
+              <td>
+                <span [class]="statusClass(trade.status)">{{ trade.status }}</span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination [totalPages]="totalPages" [(currentPage)]="page" />
+  </section>
+
+  <section class="card mb-24" aria-labelledby="sized-pagination-heading">
+    <h2 id="sized-pagination-heading" class="card-title">Pagination with rows per page</h2>
+    <p class="form-hint mb-16">
+      Give the pagination <code>pageSizeOptions</code>, <code>[(pageSize)]</code> and <code>totalItems</code> and it adds the
+      compact dropdown and the range.
+    </p>
+    <ul class="showcase-list">
+      @for (trade of sizedRows(); track trade.id) {
+        <li>{{ trade.symbol }} · {{ trade.side }} · {{ trade.quantity }}</li>
+      }
+    </ul>
+    <app-pagination
+      [pageSizeOptions]="pageSizes"
+      [(pageSize)]="sizedPageSize"
+      [totalItems]="tradeCount"
+      [totalPages]="sizedTotalPages()"
+      [(currentPage)]="sizedPage"
+    />
+  </section>
+
+  <section class="card mb-24" aria-labelledby="instrument-heading">
+    <h2 id="instrument-heading" class="card-title">Instrument icon and label</h2>
+    <p class="form-hint mb-16">
+      Logos come from <code>public/assets/icons/&lt;TICKER&gt;.svg</code>; a missing file falls back to the symbol's initials.
+    </p>
+    <div class="flex items-center gap-24 wrap">
+      <app-instrument-icon symbol="AAPL" iconUrl="/assets/icons/AAPL.svg" [size]="48" />
+      <app-instrument-icon symbol="NOPE" iconUrl="/assets/icons/NOPE.svg" [size]="48" />
+      <app-instrument-icon symbol="MSFT" [size]="32" />
+      <app-instrument-label symbol="INFY.NS" name="Infosys Ltd" iconUrl="/assets/icons/INFY.NS.svg" />
+    </div>
+  </section>
+
+  <section class="card mb-24" aria-labelledby="donut-heading">
+    <h2 id="donut-heading" class="card-title">Donut chart</h2>
+    <div class="showcase-donut">
+      <app-donut-chart
+        [slices]="allocation"
+        centerLabel="Invested"
+        centerValue="$16,950.00"
+        ariaLabel="Donut chart of four sample holdings by cost"
+        [valueFormatter]="formatUsd"
+      />
+    </div>
+  </section>
+</div>

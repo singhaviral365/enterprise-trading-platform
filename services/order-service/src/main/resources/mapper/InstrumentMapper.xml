@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.backend.mapper.InstrumentMapper">
+
+    <resultMap id="InstrumentResultMap"
+               type="org.example.backend.entities.Instrument">
+
+        <constructor>
+            <idArg column="instrument_id"
+                   javaType="_int"
+                   name="instrumentId"/>
+
+            <arg column="instrument_ticker"
+                 javaType="String"
+                 name="instrumentTicker"/>
+
+            <arg column="instrument_name"
+                 javaType="String"
+                 name="instrumentName"/>
+
+            <arg column="asset_class"
+                 javaType="org.example.backend.enums.InstrumentAssetClass"
+                 name="assetClass"/>
+
+            <arg column="instrument_status"
+                 javaType="org.example.backend.enums.InstrumentStatus"
+                 name="instrumentStatus"/>
+
+            <arg column="currency"
+                 javaType="String"
+                 name="currency"/>
+
+            <arg column="icon_url"
+                 javaType="String"
+                 name="iconUrl"/>
+        </constructor>
+
+    </resultMap>
+
+    <select id="selectInstrumentById"
+            resultMap="InstrumentResultMap">
+
+        SELECT
+            instrument_id,
+            instrument_ticker,
+            instrument_name,
+            asset_class,
+            instrument_status,
+            currency,
+            icon_url
+
+        FROM instrument
+
+        WHERE instrument_id = #{instrumentId}
+
+    </select>
+
+    <select id="selectInstrumentByTicker"
+            resultMap="InstrumentResultMap">
+
+        SELECT
+            instrument_id,
+            instrument_ticker,
+            instrument_name,
+            asset_class,
+            instrument_status,
+            currency,
+            icon_url
+
+        FROM instrument
+
+        WHERE instrument_ticker = #{ticker}
+
+    </select>
+
+</mapper>

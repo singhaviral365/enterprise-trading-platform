@@ -1,0 +1,170 @@
+import { Component, ElementRef, computed, effect, inject, viewChild } from '@angular/core';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { TradeApi } from '../../../api/trade-api.service';
+import { accountIdFromNumber } from '../../../core/account-overview.store';
+import { AuthDialogService, AuthMode } from '../../../core/auth-dialog.service';
+import { NotificationService } from '../../../core/notification.service';
+import { safeReturnUrl } from '../../../core/guards/return-url';
+import { PreferencesStore } from '../../../core/preferences.store';
+import { SessionService } from '../../../core/session.service';
+import { AccountSetupForm } from '../account-setup-form/account-setup-form';
+import { ForgotPasswordForm, PasswordResetEvent } from '../forgot-password-form/forgot-password-form';
+import { LoginForm } from '../login-form/login-form';
+import { RegisterForm } from '../register-form/register-form';
+import { SignedInEvent } from '../signed-in-event';
+
+const HEADINGS: Record<AuthMode, { title: string; subtitle: string }> = {
+  login: { title: 'Welcome back', subtitle: 'Sign in to continue to your dashboard.' },
+  register: { title: 'Create your login', subtitle: 'Step 1 of 2: choose how you will sign in.' },
+  account: {
+    title: 'Open your trading account',
+    subtitle: 'Step 2 of 2: tell us about you to link a trading account to your login.',
+  },
+  forgot: {
+    title: 'Reset your password',
+    subtitle: 'We will email a code to the address on your account.',
+  },
+};
+
+/**
+ * Sign-in / register dialog on the native `<dialog>` element (focus trap, Esc and top layer come
+ * from the browser). The page behind is blurred through `::backdrop`. Render once in the app shell.
+ *
+ * Flow: sign in (or register, then sign in) → ask the Trade API whether an account is linked to
+ * this user → linked: go to the dashboard; not linked: show the account set-up step.
+ */
+@Component({
+  selector: 'app-auth-dialog',
+  imports: [LoginForm, RegisterForm, AccountSetupForm, ForgotPasswordForm],
+  templateUrl: './auth-dialog.html',
+  styleUrl: './auth-dialog.css',
+})
+export class AuthDialog {
+  protected readonly authDialog = inject(AuthDialogService);
+  private readonly trade = inject(TradeApi);
+  private readonly session = inject(SessionService);
+  private readonly notifications = inject(NotificationService);
+  private readonly router = inject(Router);
+  private readonly preferences = inject(PreferencesStore);
+  /** The account the sign-in check found, so the page to open on can be read before the dialog closes. */
+  private linkedAccountNumber: string | null = null;
+  private readonly element = viewChild<ElementRef<HTMLDialogElement>>('dialogElement');
+
+  protected readonly modes: readonly { id: AuthMode; label: string }[] = [
+    { id: 'login', label: 'Sign in' },
+    { id: 'register', label: 'Register' },
+  ];
+  protected readonly heading = computed(() => HEADINGS[this.authDialog.mode()]);
+
+  constructor() {
+    effect(() => {
+      const node = this.element()?.nativeElement;
+      if (!node) {
+        return;
+      }
+      if (this.authDialog.isOpen()) {
+        if (!node.open) {
+          node.showModal();
+        }
+      } else if (node.open) {
+        node.close();
+      }
+    });
+  }
+
+  protected async onSignedIn({ username, email }: SignedInEvent): Promise<void> {
+    let linked = true;
+    this.linkedAccountNumber = null;
+    try {
+      const link = await firstValueFrom(this.trade.accountLink());
+      linked = link.linked;
+      this.linkedAccountNumber = link.linked ? (link.accountNumber ?? null) : null;
+    } catch {
+      // Trade API unavailable: carry on to the dashboard, which reports the problem and can retry.
+    }
+    if (linked) {
+      this.notifications.success(`Welcome, ${username}`);
+      await this.finish();
+      return;
+    }
+    this.authDialog.setPrefillEmail(email ?? this.authDialog.prefillEmail());
+    this.authDialog.setMode('account');
+  }
+
+  protected async onAccountCompleted(): Promise<void> {
+    this.notifications.success('Your trading account is ready');
+    await this.finish();
+  }
+
+  /**
+   * A login was created. The email it was created with is kept for the account step that follows the first sign-in,
+   * and the sign-in form opens with the username filled in.
+   */
+  protected onRegistered({ username, email }: SignedInEvent): void {
+    this.authDialog.setPrefillEmail(email ?? '');
+    this.authDialog.returnToLogin(username, 'Your login was created. Sign in to continue: we will email you a code.');
+  }
+
+  /** "Forgot password?" on the sign-in form: the reset, with the username typed so far. */
+  protected onForgotPassword(username: string): void {
+    this.authDialog.startPasswordReset(username);
+  }
+
+  /** The password was changed. Nobody is signed in: back to the sign-in form, which then needs the new password and a code. */
+  protected onPasswordReset(event: PasswordResetEvent): void {
+    this.authDialog.returnToLogin(event.username, 'Your password was changed. Sign in with your new password.');
+  }
+
+  /** Closing from any step: a signed-in user without an account still lands on the dashboard. */
+  protected async dismiss(): Promise<void> {
+    if (this.authDialog.mode() === 'account' && this.session.isLoggedIn()) {
+      await this.finish();
+    } else {
+      this.authDialog.close();
+    }
+  }
+
+  private async finish(): Promise<void> {
+    const target = safeReturnUrl(this.authDialog.returnUrl()) ?? (await this.landingPage());
+    this.authDialog.close();
+    await this.router.navigateByUrl(target);
+  }
+
+  /**
+   * The page the customer chose to open on, when they came here without a page in mind. The preferences are read now
+   * rather than waited for, so the very first page is the right one; a slow or failed read just means the dashboard.
+   */
+  private async landingPage(): Promise<string> {
+    const accountId = accountIdFromNumber(this.linkedAccountNumber);
+    if (accountId === null) {
+      return '/dashboard';
+    }
+    return this.preferences.landingRouteFor(accountId);
+  }
+
+  /** Arrow keys move between the two tabs, as in the WAI-ARIA tabs pattern. */
+  protected onTabKeydown(event: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    const next: AuthMode = this.authDialog.mode() === 'login' ? 'register' : 'login';
+    const target: AuthMode = event.key === 'Home' ? 'login' : event.key === 'End' ? 'register' : next;
+    this.authDialog.setMode(target);
+    this.element()?.nativeElement.querySelector<HTMLElement>(`#auth-tab-${target}`)?.focus();
+  }
+
+  /** Esc: route through `dismiss` so the service state stays in sync with the element. */
+  protected onCancel(event: Event): void {
+    event.preventDefault();
+    void this.dismiss();
+  }
+
+  /** Clicks on the blurred backdrop land on the <dialog> element itself (the panel is a child). */
+  protected onClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      void this.dismiss();
+    }
+  }
+}

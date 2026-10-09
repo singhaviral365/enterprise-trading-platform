@@ -1,0 +1,12 @@
+<dialog
+  #dialogElement
+  class="sheet"
+  [attr.aria-labelledby]="labelledBy()"
+  [attr.data-testid]="testId()"
+  (cancel)="onCancel($event)"
+  (click)="onClick($event)"
+>
+  <div class="sheet-panel">
+    <ng-content />
+  </div>
+</dialog>

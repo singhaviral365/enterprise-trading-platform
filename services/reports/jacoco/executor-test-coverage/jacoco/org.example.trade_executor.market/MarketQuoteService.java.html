@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MarketQuoteService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.market</a> &gt; <span class="el_source">MarketQuoteService.java</span></div><h1>MarketQuoteService.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.market;
+
+import org.example.backend.entities.Instrument;
+import org.example.backend.mapper.InstrumentMapper;
+import org.example.trade_executor.client.QuoteClient;
+import org.example.trade_executor.client.QuoteDetails;
+import org.example.trade_executor.client.QuoteUnavailableException;
+import org.example.trade_executor.fx.CurrencyConversionService;
+import org.example.trade_executor.fx.ExchangeRates;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+@Service
+public class MarketQuoteService {
+
+    static final int MAX_SYMBOLS_PER_REQUEST = 25;
+
+<span class="fc" id="L35">    private static final Logger LOGGER = LoggerFactory.getLogger(MarketQuoteService.class);</span>
+
+    private final InstrumentMapper instrumentMapper;
+    private final QuoteClient quoteClient;
+    private final CurrencyConversionService currencyConversionService;
+    private final Duration cacheTtl;
+    private final Clock clock;
+
+    private volatile Snapshot cachedSnapshot;
+
+    // Two constructors exist (the other is for tests), so Spring must be told which one to use.
+    @Autowired
+    public MarketQuoteService(
+            InstrumentMapper instrumentMapper,
+            QuoteClient quoteClient,
+            CurrencyConversionService currencyConversionService,
+            @Value(&quot;${trading.market.cache-ttl-seconds:30}&quot;) long cacheTtlSeconds) {
+
+<span class="fc" id="L53">        this(instrumentMapper, quoteClient, currencyConversionService, cacheTtlSeconds, Clock.systemUTC());</span>
+<span class="fc" id="L54">    }</span>
+
+    MarketQuoteService(
+            InstrumentMapper instrumentMapper,
+            QuoteClient quoteClient,
+            CurrencyConversionService currencyConversionService,
+            long cacheTtlSeconds,
+<span class="fc" id="L61">            Clock clock) {</span>
+
+<span class="fc" id="L63">        this.instrumentMapper = instrumentMapper;</span>
+<span class="fc" id="L64">        this.quoteClient = quoteClient;</span>
+<span class="fc" id="L65">        this.currencyConversionService = currencyConversionService;</span>
+<span class="fc" id="L66">        this.cacheTtl = Duration.ofSeconds(Math.max(1L, cacheTtlSeconds));</span>
+<span class="fc" id="L67">        this.clock = clock;</span>
+<span class="fc" id="L68">    }</span>
+
+    public synchronized MarketBoard getBoard() {
+<span class="fc" id="L71">        Instant now = clock.instant();</span>
+<span class="fc" id="L72">        Snapshot snapshot = cachedSnapshot;</span>
+
+<span class="fc bfc" id="L74" title="All 4 branches covered.">        if (snapshot != null &amp;&amp; Duration.between(snapshot.fetchedAt(), now).compareTo(cacheTtl) &lt; 0) {</span>
+<span class="fc" id="L75">            return snapshot.board();</span>
+        }
+
+<span class="fc" id="L78">        List&lt;Instrument&gt; instruments = instrumentMapper.selectTradableInstruments();</span>
+<span class="pc bpc" id="L79" title="2 of 4 branches missed.">        if (instruments == null || instruments.isEmpty()) {</span>
+<span class="nc" id="L80">            MarketBoard emptyBoard = new MarketBoard(List.of(), OffsetDateTime.ofInstant(now, ZoneOffset.UTC).toString(), false);</span>
+<span class="nc" id="L81">            cachedSnapshot = new Snapshot(emptyBoard, now);</span>
+<span class="nc" id="L82">            return emptyBoard;</span>
+        }
+
+        // Skip rows without a ticker: they cannot be quoted, and a null ticker would break the sort.
+<span class="fc" id="L86">        List&lt;Instrument&gt; ordered = instruments.stream()</span>
+<span class="fc" id="L87">                .filter(Objects::nonNull)</span>
+<span class="fc bfc" id="L88" title="All 2 branches covered.">                .filter(instrument -&gt; instrument.getInstrumentTicker() != null</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">                        &amp;&amp; !instrument.getInstrumentTicker().isBlank())</span>
+<span class="fc" id="L90">                .sorted(Comparator.comparing(Instrument::getInstrumentTicker))</span>
+<span class="fc" id="L91">                .toList();</span>
+
+<span class="fc" id="L93">        List&lt;String&gt; symbols = ordered.stream()</span>
+<span class="fc" id="L94">                .map(Instrument::getInstrumentTicker)</span>
+<span class="fc" id="L95">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L96">                .map(String::trim)</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                .filter(value -&gt; !value.isBlank())</span>
+<span class="fc" id="L98">                .distinct()</span>
+<span class="fc" id="L99">                .toList();</span>
+
+        try {
+            // Fauxnance accepts at most MAX_SYMBOLS_PER_REQUEST symbols per call (same limit as MarketDataPoller).
+<span class="fc" id="L103">            Map&lt;String, QuoteDetails&gt; safeQuotes = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">            for (int start = 0; start &lt; symbols.size(); start += MAX_SYMBOLS_PER_REQUEST) {</span>
+<span class="fc" id="L105">                List&lt;String&gt; batch = symbols.subList(start, Math.min(symbols.size(), start + MAX_SYMBOLS_PER_REQUEST));</span>
+<span class="fc" id="L106">                Map&lt;String, QuoteDetails&gt; batchQuotes = quoteClient.getQuoteDetails(batch);</span>
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">                if (batchQuotes != null) {</span>
+<span class="fc" id="L108">                    safeQuotes.putAll(batchQuotes);</span>
+                }
+            }
+
+<span class="fc" id="L112">            List&lt;MarketQuote&gt; marketQuotes = new ArrayList&lt;&gt;(ordered.size());</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">            for (Instrument instrument : ordered) {</span>
+<span class="fc" id="L114">                String symbol = instrument.getInstrumentTicker();</span>
+<span class="fc" id="L115">                QuoteDetails quote = safeQuotes.get(symbol);</span>
+
+                // details carries every field Fauxnance returned (change, changePercent, marketState, bid, ask, ...).
+<span class="fc" id="L118">                marketQuotes.add(new MarketQuote(</span>
+                        symbol,
+<span class="fc" id="L120">                        instrument.getInstrumentName(),</span>
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">                        instrument.getAssetClass() == null ? null : instrument.getAssetClass().name(),</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">                        quote == null ? null : quote.price(),</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">                        quote == null ? null : quote.fields(),</span>
+<span class="fc" id="L124">                        quoteCurrency(quote, instrument),</span>
+<span class="fc" id="L125">                        instrument.getIconUrl()));</span>
+<span class="fc" id="L126">            }</span>
+
+            // Rates are best effort: without them the board still works, it just cannot show converted amounts.
+<span class="fc" id="L129">            ExchangeRates rates = currencyConversionService.currentRatesIfAvailable().orElse(null);</span>
+<span class="fc" id="L130">            MarketBoard freshBoard = new MarketBoard(</span>
+                    marketQuotes,
+<span class="fc" id="L132">                    OffsetDateTime.ofInstant(now, ZoneOffset.UTC).toString(),</span>
+                    false,
+<span class="fc bfc" id="L134" title="All 2 branches covered.">                    rates == null ? null : rates.baseCode(),</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">                    rates == null ? null : rates.rates());</span>
+
+<span class="fc" id="L137">            cachedSnapshot = new Snapshot(freshBoard, now);</span>
+<span class="fc" id="L138">            return freshBoard;</span>
+<span class="fc" id="L139">        } catch (QuoteUnavailableException ex) {</span>
+<span class="fc" id="L140">            LOGGER.warn(&quot;Market quote refresh failed&quot;, ex);</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">            if (snapshot != null) {</span>
+<span class="fc" id="L142">                MarketBoard staleBoard = new MarketBoard(</span>
+<span class="fc" id="L143">                        snapshot.board().quotes(),</span>
+<span class="fc" id="L144">                        snapshot.board().asOf(),</span>
+                        true,
+<span class="fc" id="L146">                        snapshot.board().baseCurrency(),</span>
+<span class="fc" id="L147">                        snapshot.board().fxRates());</span>
+                // Re-arm the TTL so an outage costs one Fauxnance call per TTL, not one per request.
+<span class="fc" id="L149">                cachedSnapshot = new Snapshot(staleBoard, now);</span>
+<span class="fc" id="L150">                return staleBoard;</span>
+            }
+
+<span class="fc" id="L153">            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, &quot;Live market data unavailable&quot;, ex);</span>
+        }
+    }
+
+    /** The quote API's own currency when it reports one, else the instrument's. */
+    private static String quoteCurrency(QuoteDetails quote, Instrument instrument) {
+<span class="fc bfc" id="L159" title="All 2 branches covered.">        Object reported = quote == null ? null : quote.fields().get(&quot;currency&quot;);</span>
+<span class="pc bpc" id="L160" title="1 of 4 branches missed.">        return reported instanceof String code &amp;&amp; code.trim().length() == 3</span>
+<span class="fc" id="L161">                ? code.trim().toUpperCase()</span>
+<span class="fc" id="L162">                : instrument.getCurrency();</span>
+    }
+
+<span class="fc" id="L165">    private record Snapshot(MarketBoard board, Instant fetchedAt) {</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,138 @@
+<section class="advisor" aria-labelledby="advisor-title" data-testid="signal-advisor">
+  <header class="advisor-header">
+    <h3 id="advisor-title" class="advisor-title">
+      <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+      Trade signal
+    </h3>
+    @if (data(); as signal) {
+      <span
+        class="badge"
+        [class.is-buy]="signal.direction === SignalDirection.Buy"
+        [class.is-sell]="signal.direction === SignalDirection.Sell"
+        [class.is-hold]="signal.direction === SignalDirection.Hold"
+        data-testid="signal-badge"
+      >
+        <i
+          class="fas"
+          [class.fa-arrow-trend-up]="signal.direction === SignalDirection.Buy"
+          [class.fa-arrow-trend-down]="signal.direction === SignalDirection.Sell"
+          [class.fa-pause]="signal.direction === SignalDirection.Hold"
+          aria-hidden="true"
+        ></i>
+        {{ signal.direction }}
+      </span>
+    }
+  </header>
+
+  @if (lookup.isLoading() && !data()) {
+    <p class="advisor-note" aria-live="polite" data-testid="signal-loading">
+      <app-spinner [inline]="true" label="Working out the signal" />
+      Working out the signal…
+    </p>
+  } @else if (noHistory()) {
+    <p class="advisor-note" data-testid="signal-no-history">
+      <i class="fas fa-circle-info" aria-hidden="true"></i>
+      There is not enough price history for this instrument to work out a signal yet.
+    </p>
+  } @else if (errorMessage() && !data()) {
+    <div class="advisor-note is-error" role="alert" data-testid="signal-error">
+      <p>{{ errorMessage() }}</p>
+      <button type="button" class="btn is-secondary is-small" (click)="reload()">Try again</button>
+    </div>
+  } @else if (data(); as signal) {
+    <div class="strength">
+      <div class="strength-head">
+        <span class="strength-label" id="strength-label">{{ strengthLabel() }}</span>
+        <span class="strength-value" data-testid="signal-strength">{{ signal.strength }} / 100</span>
+      </div>
+      <div
+        class="meter"
+        role="meter"
+        aria-labelledby="strength-label"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="signal.strength"
+        [attr.aria-valuetext]="signal.strength + ' out of 100'"
+      >
+        <div
+          class="meter-fill"
+          [class.is-buy]="signal.direction === SignalDirection.Buy"
+          [class.is-sell]="signal.direction === SignalDirection.Sell"
+          [class.is-hold]="signal.direction === SignalDirection.Hold"
+          [style.width.%]="signal.strength"
+        ></div>
+      </div>
+    </div>
+
+    <dl class="facts" data-testid="signal-facts">
+      <div>
+        <dt>20-day average</dt>
+        <dd>{{ signal.sma20 | number: '1.2-2' }}</dd>
+      </div>
+      <div>
+        <dt>50-day average</dt>
+        <dd>{{ signal.sma50 | number: '1.2-2' }}</dd>
+      </div>
+      <div>
+        <dt>RSI (14)</dt>
+        <dd>
+          {{ signal.rsiValue | number: '1.0-1' }}
+          <span class="fact-hint">{{ rsiZone() }}</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Latest close</dt>
+        <dd>{{ signal.price | number: '1.2-2' }}</dd>
+      </div>
+    </dl>
+
+    @if (signal.explanation) {
+      <div class="explanation" data-testid="signal-explanation">
+        <p class="explanation-text">{{ signal.explanation }}</p>
+        <div class="explanation-foot">
+          <span class="source">
+            @if (signal.explanationSource === SignalExplanationSource.Gemini) {
+              <i class="fas fa-robot" aria-hidden="true"></i> Written by the AI assistant
+            } @else {
+              <i class="fas fa-list-check" aria-hidden="true"></i> Standard explanation
+            }
+          </span>
+          <button
+            type="button"
+            class="btn is-tertiary is-small"
+            data-testid="signal-copy"
+            aria-label="Copy the explanation"
+            (click)="copy(signal.explanation)"
+          >
+            <i class="fas fa-copy" aria-hidden="true"></i>
+            Copy
+          </button>
+        </div>
+      </div>
+    }
+
+    <p class="as-of">
+      As of {{ signal.asOf | date: 'mediumDate' }}, from {{ signal.sessions }} trading days.
+      @if (signal.stale) {
+        <span class="stale"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> The price history could not be refreshed, so this may be out of date.</span>
+      }
+    </p>
+
+    @if (!assistantOn()) {
+      <p class="advisor-note" data-testid="signal-assistant-off">
+        <i class="fas fa-comments" aria-hidden="true"></i>
+        Want to ask questions about this signal? Turn on the AI assistant in
+        <a routerLink="/settings">Settings</a>. Until then, nothing about your account is sent to it.
+      </p>
+    }
+
+    <details class="method">
+      <summary>How is this worked out?</summary>
+      <p>{{ signal.methodology }}</p>
+    </details>
+    <p class="disclaimer" data-testid="signal-disclaimer">
+      <i class="fas fa-scale-balanced" aria-hidden="true"></i>
+      {{ signal.disclaimer }}
+    </p>
+  }
+</section>

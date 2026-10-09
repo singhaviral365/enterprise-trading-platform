@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  The portfolio module's SQL. Every value is a bound parameter; nothing is substituted into the SQL text.
+
+  READ-ONLY RULE: the trading tables (account, orders, holdings, instrument, ...) are only ever SELECTed here. The one
+  table written is realised_pnl_entry, which this module owns. PortfolioIsReadOnlyTest enforces that.
+-->
+<mapper namespace="org.example.backend.portfolio.mapper.PortfolioMapper">
+
+    <resultMap id="FilledOrderResultMap" type="org.example.backend.portfolio.model.FilledOrder">
+        <constructor>
+            <idArg column="order_id" javaType="_long" name="orderId"/>
+            <arg column="instrument_ticker" javaType="String" name="tickerSymbol"/>
+            <arg column="order_type" javaType="org.example.backend.enums.OrderSide" name="side"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="price" javaType="java.math.BigDecimal" name="price"/>
+            <arg column="transaction_date" javaType="java.time.OffsetDateTime" name="transactionDate"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="SymbolRealisedResultMap" type="org.example.backend.portfolio.model.SymbolRealised">
+        <constructor>
+            <idArg column="ticker_symbol" javaType="String" name="tickerSymbol"/>
+            <arg column="realised_pnl" javaType="java.math.BigDecimal" name="realisedPnl"/>
+        </constructor>
+    </resultMap>
+
+    <resultMap id="HoldingSnapshotResultMap" type="org.example.backend.portfolio.model.HoldingSnapshot">
+        <constructor>
+            <idArg column="instrument_ticker" javaType="String" name="tickerSymbol"/>
+            <arg column="quantity" javaType="_long" name="quantity"/>
+            <arg column="purchase_price" javaType="java.math.BigDecimal" name="averageCost"/>
+        </constructor>
+    </resultMap>
+
+    <!-- The order id is the primary key: a sale booked twice (a replayed event, or the reconciler overlapping the consumer) inserts nothing. -->
+    <insert id="insertEntryIfNew">
+        INSERT INTO realised_pnl_entry (
+            order_id,
+            account_id,
+            ticker_symbol,
+            quantity,
+            fill_price,
+            average_cost_at_sale,
+            realised_pnl,
+            currency,
+            booked_at
+        ) VALUES (
+            #{orderId},
+            #{accountId},
+            #{tickerSymbol},
+            #{quantity},
+            #{fillPrice},
+            #{averageCostAtSale},
+            #{realisedPnl},
+            #{currency},
+            #{bookedAt}
+        )
+        ON CONFLICT (order_id) DO NOTHING
+    </insert>
+
+    <select id="sumRealised" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(realised_pnl), 0)
+        FROM realised_pnl_entry
+        WHERE account_id = #{accountId}
+        <if test="from != null">
+          AND booked_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND booked_at &lt; #{to}
+        </if>
+    </select>
+
+    <select id="sumRealisedBySymbol" resultMap="SymbolRealisedResultMap">
+        SELECT ticker_symbol, SUM(realised_pnl) AS realised_pnl
+        FROM realised_pnl_entry
+        WHERE account_id = #{accountId}
+        <if test="from != null">
+          AND booked_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+          AND booked_at &lt; #{to}
+        </if>
+        GROUP BY ticker_symbol
+        ORDER BY ticker_symbol
+    </select>
+
+    <select id="countUnbookedSales" resultType="long">
+        SELECT COUNT(*)
+        FROM orders o
+        WHERE o.account_id = #{accountId}
+          AND o.order_status = 'FILLED'
+          AND o.order_type = 'SELL'
+          AND NOT EXISTS (SELECT 1 FROM realised_pnl_entry r WHERE r.order_id = o.order_id)
+    </select>
+
+    <select id="selectAccountsWithUnbookedSales" resultType="long">
+        SELECT DISTINCT o.account_id
+        FROM orders o
+        WHERE o.order_status = 'FILLED'
+          AND o.order_type = 'SELL'
+          AND NOT EXISTS (SELECT 1 FROM realised_pnl_entry r WHERE r.order_id = o.order_id)
+        ORDER BY o.account_id
+    </select>
+
+    <!-- Read only: what is held now. Used to account for a position that the filled orders do not explain. -->
+    <select id="selectHoldings" resultMap="HoldingSnapshotResultMap">
+        SELECT i.instrument_ticker,
+               h.quantity,
+               h.purchase_price
+        FROM holdings h
+        JOIN instrument i ON i.instrument_id = h.instrument_id
+        WHERE h.account_id = #{accountId}
+    </select>
+
+    <select id="selectFilledOrders" resultMap="FilledOrderResultMap">
+        SELECT o.order_id,
+               i.instrument_ticker,
+               o.order_type,
+               o.quantity,
+               o.price,
+               o.transaction_date
+        FROM orders o
+        JOIN instrument i ON i.instrument_id = o.instrument_id
+        WHERE o.account_id = #{accountId}
+          AND o.order_status = 'FILLED'
+        ORDER BY o.transaction_date ASC, o.order_id ASC
+    </select>
+
+</mapper>

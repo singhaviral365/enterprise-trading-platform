@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.backend.preferences.mapper.PreferencesMapper">
+
+    <resultMap id="PreferenceRowResultMap" type="org.example.backend.preferences.model.PreferenceRow">
+        <constructor>
+            <idArg column="account_id" javaType="_long" name="accountId"/>
+            <arg column="preferred_currency" javaType="String" name="preferredCurrency"/>
+            <arg column="channel_sms" javaType="_boolean" name="channelSms"/>
+            <arg column="channel_email" javaType="_boolean" name="channelEmail"/>
+            <arg column="channel_in_app" javaType="_boolean" name="channelInApp"/>
+            <arg column="notify_order_status" javaType="_boolean" name="notifyOrderStatus"/>
+            <arg column="notify_watchlist_alerts" javaType="_boolean" name="notifyWatchlistAlerts"/>
+            <arg column="notify_strategy_execution" javaType="_boolean" name="notifyStrategyExecution"/>
+            <arg column="date_format" javaType="org.example.backend.preferences.model.DateFormatOption" name="dateFormat"/>
+            <arg column="time_format" javaType="org.example.backend.preferences.model.TimeFormatOption" name="timeFormat"/>
+            <arg column="number_format" javaType="org.example.backend.preferences.model.NumberFormatOption" name="numberFormat"/>
+            <arg column="ai_assistant_enabled" javaType="_boolean" name="aiAssistantEnabled"/>
+            <arg column="theme" javaType="org.example.backend.preferences.model.ThemeOption" name="theme"/>
+            <arg column="landing_page" javaType="org.example.backend.preferences.model.LandingPage" name="landingPage"/>
+            <arg column="default_order_type" javaType="org.example.backend.preferences.model.OrderTypeOption" name="defaultOrderType"/>
+            <arg column="updated_at" javaType="java.time.OffsetDateTime" name="updatedAt"/>
+        </constructor>
+    </resultMap>
+
+    <!-- A primary-key lookup: one row, no joins, no scan. -->
+    <select id="selectByAccountId" resultMap="PreferenceRowResultMap">
+        SELECT
+            account_id,
+            preferred_currency,
+            channel_sms,
+            channel_email,
+            channel_in_app,
+            notify_order_status,
+            notify_watchlist_alerts,
+            notify_strategy_execution,
+            date_format,
+            time_format,
+            number_format,
+            ai_assistant_enabled,
+            theme,
+            landing_page,
+            default_order_type,
+            updated_at
+        FROM customer_preference
+        WHERE account_id = #{accountId}
+    </select>
+
+    <!-- The row is created by the first save and replaced by every later one. -->
+    <insert id="upsert">
+        INSERT INTO customer_preference (
+            account_id,
+            preferred_currency,
+            channel_sms,
+            channel_email,
+            channel_in_app,
+            notify_order_status,
+            notify_watchlist_alerts,
+            notify_strategy_execution,
+            date_format,
+            time_format,
+            number_format,
+            ai_assistant_enabled,
+            theme,
+            landing_page,
+            default_order_type,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{row.accountId},
+            #{row.preferredCurrency},
+            #{row.channelSms},
+            #{row.channelEmail},
+            #{row.channelInApp},
+            #{row.notifyOrderStatus},
+            #{row.notifyWatchlistAlerts},
+            #{row.notifyStrategyExecution},
+            #{row.dateFormat},
+            #{row.timeFormat},
+            #{row.numberFormat},
+            #{row.aiAssistantEnabled},
+            #{row.theme},
+            #{row.landingPage},
+            #{row.defaultOrderType},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (account_id) DO UPDATE SET
+            preferred_currency = EXCLUDED.preferred_currency,
+            channel_sms = EXCLUDED.channel_sms,
+            channel_email = EXCLUDED.channel_email,
+            channel_in_app = EXCLUDED.channel_in_app,
+            notify_order_status = EXCLUDED.notify_order_status,
+            notify_watchlist_alerts = EXCLUDED.notify_watchlist_alerts,
+            notify_strategy_execution = EXCLUDED.notify_strategy_execution,
+            date_format = EXCLUDED.date_format,
+            time_format = EXCLUDED.time_format,
+            number_format = EXCLUDED.number_format,
+            ai_assistant_enabled = EXCLUDED.ai_assistant_enabled,
+            theme = EXCLUDED.theme,
+            landing_page = EXCLUDED.landing_page,
+            default_order_type = EXCLUDED.default_order_type,
+            updated_at = CURRENT_TIMESTAMP
+    </insert>
+
+</mapper>

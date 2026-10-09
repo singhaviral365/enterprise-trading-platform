@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StrategyRunRecorder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy</a> &gt; <span class="el_source">StrategyRunRecorder.java</span></div><h1>StrategyRunRecorder.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy;
+
+import org.example.trade_executor.strategy.mapper.StrategyMapper;
+import org.example.trade_executor.strategy.model.ExistingOrder;
+import org.example.trade_executor.strategy.model.NewRun;
+import org.example.trade_executor.strategy.model.RunOutcome;
+import org.example.trade_executor.strategy.model.RunnableStrategy;
+import org.example.trade_executor.strategy.model.StrategyQuote;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+/**
+ * Writes down what came of an attempt, in one transaction each: the row on the strategy's trail and the move of the strategy
+ * itself, so the two can never disagree. It is a bean of its own because a transaction needs a call across beans.
+ */
+@Service
+public class StrategyRunRecorder {
+
+<span class="fc" id="L24">    private static final Logger LOGGER = LoggerFactory.getLogger(StrategyRunRecorder.class);</span>
+
+    private final StrategyMapper mapper;
+
+<span class="fc" id="L28">    public StrategyRunRecorder(StrategyMapper mapper) {</span>
+<span class="fc" id="L29">        this.mapper = mapper;</span>
+<span class="fc" id="L30">    }</span>
+
+    /** The order exists (placed now, or by an earlier attempt of the same run): count the run and link the order. */
+    @Transactional
+    public void ordered(RunnableStrategy strategy, StrategyQuote quote, long orderId, boolean duplicate) {
+        try {
+<span class="fc bfc" id="L36" title="All 2 branches covered.">            mapper.insertRun(run(strategy, quote, duplicate ? RunOutcome.DUPLICATE : RunOutcome.ORDERED, orderId,</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">                    duplicate ? &quot;The order had already been placed by an earlier attempt&quot; : &quot;Order placed&quot;));</span>
+<span class="fc" id="L38">        } catch (DuplicateKeyException ex) {</span>
+            // The same run's order was already written down by another delivery of the same trigger: nothing more to add.
+<span class="fc" id="L40">            LOGGER.info(&quot;Run {} of strategy {} was already recorded&quot;, strategy.runNumber(), strategy.strategyId());</span>
+<span class="fc" id="L41">        }</span>
+<span class="fc" id="L42">        mapper.recordSuccess(strategy.strategyId(), orderId);</span>
+
+        // The order may have been settled before this row existed (the fill is announced the moment it happens), in which
+        // case the notice that would have settled the run found nothing to settle. Settle it from the order itself.
+<span class="fc" id="L46">        Optional&lt;ExistingOrder&gt; order = mapper.selectOrderByKey(strategy.orderKey());</span>
+<span class="fc bfc" id="L47" title="All 4 branches covered.">        if (order.isPresent() &amp;&amp; order.get().isSettled()) {</span>
+<span class="fc" id="L48">            mapper.settleRun(strategy.strategyId(), strategy.runNumber(), order.get().status());</span>
+        }
+<span class="fc" id="L50">    }</span>
+
+    /**
+     * An attempt that placed nothing and counts against the strategy: a limit held it back, the route refused the order, or
+     * the route could not be reached. The strategy goes back to ACTIVE, or to FAILED at its limit.
+     *
+     * @return the strategy's new status, or empty if the customer had already switched it off
+     */
+    @Transactional
+    public Optional&lt;String&gt; failed(RunnableStrategy strategy, StrategyQuote quote, RunOutcome outcome, String detail) {
+<span class="fc" id="L60">        mapper.insertRun(run(strategy, quote, outcome, null, detail));</span>
+<span class="fc" id="L61">        Optional&lt;String&gt; status = mapper.recordFailure(strategy.strategyId(), detail);</span>
+<span class="fc bfc" id="L62" title="All 4 branches covered.">        if (status.isPresent() &amp;&amp; &quot;FAILED&quot;.equals(status.get())) {</span>
+<span class="fc" id="L63">            LOGGER.warn(&quot;Strategy {} stopped after {} failures in a row&quot;, strategy.strategyId(), strategy.maxFailures());</span>
+        }
+<span class="fc" id="L65">        return status;</span>
+    }
+
+    /** The customer switched the strategy off between the claim and the order, so no order was sent. Nothing else moves. */
+    @Transactional
+    public void disabledBeforeSend(RunnableStrategy strategy, StrategyQuote quote) {
+<span class="fc" id="L71">        mapper.insertRun(run(strategy, quote, RunOutcome.DISABLED, null, &quot;Switched off before the order was sent&quot;));</span>
+<span class="fc" id="L72">    }</span>
+
+    /** The trigger was met but the quote was too old to act on. Recorded at most once in a while per strategy. */
+    @Transactional
+    public void stale(RunnableStrategy strategy, StrategyQuote quote) {
+<span class="fc" id="L77">        mapper.insertStaleRunOnce(run(strategy, quote, RunOutcome.STALE, null, &quot;The quote was too old to act on&quot;));</span>
+<span class="fc" id="L78">    }</span>
+
+    private static NewRun run(
+            RunnableStrategy strategy, StrategyQuote quote, RunOutcome outcome, Long orderId, String detail) {
+<span class="fc" id="L82">        return new NewRun(strategy.strategyId(), strategy.runNumber(), quote.price(), quote.quotedAt(), outcome, orderId, detail);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

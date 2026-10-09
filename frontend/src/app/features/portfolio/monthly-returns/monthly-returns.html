@@ -1,0 +1,44 @@
+@if (rows().length) {
+  <div class="month-scroll">
+    <table class="month-grid" data-testid="monthly-returns">
+      <caption class="visually-hidden">Return of each month, from the account's unit price</caption>
+      <thead>
+        <tr>
+          <th scope="col"><span class="visually-hidden">Year</span></th>
+          @for (month of visibleMonths(); track month.index) {
+            <th scope="col">{{ month.name }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.year) {
+          <tr>
+            <th scope="row">{{ row.year }}</th>
+            @for (month of visibleMonths(); track month.index) {
+              @if (row.cells[month.index]; as cell) {
+                <td
+                  class="month-cell"
+                  [class]="'month-cell is-step-' + bucket(cell.returnPct)"
+                  [class.is-partial]="cell.partial"
+                  [attr.data-testid]="'month-' + row.year + '-' + (month.index + 1)"
+                >
+                  {{ format(cell.returnPct) }}
+                  @if (cell.partial) {
+                    <span class="visually-hidden">(part of a month)</span>
+                  }
+                </td>
+              } @else {
+                <td class="month-cell is-empty"><span class="visually-hidden">No data</span></td>
+              }
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (anyPartial()) {
+    <p class="form-hint" data-testid="monthly-returns-partial">A dashed cell covers only part of a month.</p>
+  }
+} @else {
+  <p class="form-hint" data-testid="monthly-returns-none">Monthly returns appear once a second month of history has closed.</p>
+}

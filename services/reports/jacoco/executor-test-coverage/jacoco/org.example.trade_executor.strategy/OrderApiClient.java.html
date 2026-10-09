@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderApiClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy</a> &gt; <span class="el_source">OrderApiClient.java</span></div><h1>OrderApiClient.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.example.trade_executor.strategy.model.RunnableStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Places a strategy's order the only way an order may be placed: {@code POST /api/v1/orders} on the order-service, with the
+ * token {@link ExecutorTokenMinter} made for it. Nothing here writes to the database or to Kafka.
+ *
+ * &lt;p&gt;One attempt, no retry. The order carries a key that stays the same for the run, so repeating the call is safe, but the
+ * decision to repeat belongs to the worker (it happens on the next quote, after the failure was counted), not to a loop here.
+ * The token is passed in the header of the one request and never kept, logged or put in an error message.
+ */
+@Component
+public class OrderApiClient {
+
+<span class="fc" id="L32">    private static final Logger LOGGER = LoggerFactory.getLogger(OrderApiClient.class);</span>
+    private static final String DUPLICATE_ORDER = &quot;ORD-409&quot;;
+
+    /** What the order route answered. */
+    public sealed interface Result permits Placed, Duplicate, Refused, Unavailable {
+    }
+
+    /** 200: the order exists now. */
+<span class="fc" id="L40">    public record Placed(long orderId) implements Result {</span>
+    }
+
+    /** 409 ORD-409: an earlier attempt of this run already placed it. */
+<span class="fc" id="L44">    public record Duplicate() implements Result {</span>
+    }
+
+    /** A 4xx: the route refused the order (funds, holdings, tradability, the strategy gate, ...). */
+<span class="fc" id="L48">    public record Refused(int status, String errorCode) implements Result {</span>
+    }
+
+    /** The route could not be reached, timed out, or answered with a 5xx or something unreadable. */
+<span class="fc" id="L52">    public record Unavailable(String detail) implements Result {</span>
+    }
+
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final URI ordersUri;
+    private final Duration requestTimeout;
+
+    @Autowired
+    public OrderApiClient(
+            ObjectMapper objectMapper,
+            @Value(&quot;${strategy.order-api.base-url}&quot;) String baseUrl,
+            @Value(&quot;${strategy.order-api.connect-timeout-millis:2000}&quot;) long connectTimeoutMillis,
+            @Value(&quot;${strategy.order-api.request-timeout-millis:5000}&quot;) long requestTimeoutMillis) {
+<span class="fc" id="L66">        this(HttpClient.newBuilder().connectTimeout(Duration.ofMillis(Math.max(100, connectTimeoutMillis))).build(),</span>
+<span class="fc" id="L67">                objectMapper, baseUrl, Duration.ofMillis(Math.max(500, requestTimeoutMillis)));</span>
+<span class="fc" id="L68">    }</span>
+
+<span class="fc" id="L70">    OrderApiClient(HttpClient httpClient, ObjectMapper objectMapper, String baseUrl, Duration requestTimeout) {</span>
+<span class="fc" id="L71">        this.httpClient = httpClient;</span>
+<span class="fc" id="L72">        this.objectMapper = objectMapper;</span>
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">        String trimmed = baseUrl == null ? &quot;&quot; : baseUrl.trim();</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        this.ordersUri = trimmed.isEmpty()</span>
+<span class="fc" id="L75">                ? null</span>
+<span class="fc bfc" id="L76" title="All 2 branches covered.">                : URI.create((trimmed.endsWith(&quot;/&quot;) ? trimmed : trimmed + &quot;/&quot;) + &quot;api/v1/orders&quot;);</span>
+<span class="fc" id="L77">        this.requestTimeout = requestTimeout;</span>
+<span class="fc" id="L78">    }</span>
+
+    public Result placeMarketOrder(RunnableStrategy strategy, String token) {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (ordersUri == null) {</span>
+<span class="fc" id="L82">            return new Unavailable(&quot;the order-service address is not configured&quot;);</span>
+        }
+
+<span class="fc" id="L85">        Map&lt;String, Object&gt; body = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L86">        body.put(&quot;accountId&quot;, strategy.accountId());</span>
+<span class="fc" id="L87">        body.put(&quot;symbol&quot;, strategy.tickerSymbol());</span>
+<span class="fc" id="L88">        body.put(&quot;side&quot;, strategy.side().name());</span>
+<span class="fc" id="L89">        body.put(&quot;orderPricingType&quot;, &quot;MARKET&quot;);</span>
+<span class="fc" id="L90">        body.put(&quot;quantity&quot;, strategy.quantity());</span>
+<span class="fc" id="L91">        body.put(&quot;idempotencyKey&quot;, strategy.orderKey());</span>
+
+        final String json;
+        try {
+<span class="fc" id="L95">            json = objectMapper.writeValueAsString(body);</span>
+<span class="nc" id="L96">        } catch (IOException ex) {</span>
+<span class="nc" id="L97">            return new Unavailable(&quot;the order could not be written&quot;);</span>
+<span class="fc" id="L98">        }</span>
+
+<span class="fc" id="L100">        HttpRequest request = HttpRequest.newBuilder(ordersUri)</span>
+<span class="fc" id="L101">                .timeout(requestTimeout)</span>
+<span class="fc" id="L102">                .header(&quot;Content-Type&quot;, &quot;application/json&quot;)</span>
+<span class="fc" id="L103">                .header(&quot;Authorization&quot;, &quot;Bearer &quot; + token)</span>
+<span class="fc" id="L104">                .POST(HttpRequest.BodyPublishers.ofString(json))</span>
+<span class="fc" id="L105">                .build();</span>
+
+        final HttpResponse&lt;String&gt; response;
+        try {
+<span class="fc" id="L109">            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());</span>
+<span class="fc" id="L110">        } catch (IOException ex) {</span>
+<span class="fc" id="L111">            LOGGER.warn(&quot;The order route could not be reached for strategy {}: {}&quot;,</span>
+<span class="fc" id="L112">                    strategy.strategyId(), ex.getClass().getSimpleName());</span>
+<span class="fc" id="L113">            return new Unavailable(&quot;the order service could not be reached&quot;);</span>
+<span class="nc" id="L114">        } catch (InterruptedException ex) {</span>
+<span class="nc" id="L115">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L116">            return new Unavailable(&quot;the call was interrupted&quot;);</span>
+<span class="fc" id="L117">        }</span>
+
+<span class="fc" id="L119">        return interpret(strategy, response.statusCode(), response.body());</span>
+    }
+
+    Result interpret(RunnableStrategy strategy, int status, String body) {
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (status == 200) {</span>
+<span class="fc" id="L124">            Long orderId = orderId(body);</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">            return orderId == null ? new Unavailable(&quot;the order route answered without an order id&quot;) : new Placed(orderId);</span>
+        }
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (status &gt;= 500) {</span>
+<span class="fc" id="L128">            return new Unavailable(&quot;the order service answered HTTP &quot; + status);</span>
+        }
+<span class="fc" id="L130">        String errorCode = errorCode(body);</span>
+<span class="fc bfc" id="L131" title="All 4 branches covered.">        if (status == 409 &amp;&amp; DUPLICATE_ORDER.equals(errorCode)) {</span>
+<span class="fc" id="L132">            return new Duplicate();</span>
+        }
+<span class="fc" id="L134">        LOGGER.info(&quot;The order route refused the order of strategy {}: HTTP {} {}&quot;, strategy.strategyId(), status, errorCode);</span>
+<span class="fc" id="L135">        return new Refused(status, errorCode);</span>
+    }
+
+    private Long orderId(String body) {
+        try {
+<span class="fc" id="L140">            JsonNode node = objectMapper.readTree(body);</span>
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">            JsonNode id = node == null ? null : node.get(&quot;orderId&quot;);</span>
+<span class="fc bfc" id="L142" title="All 4 branches covered.">            if (id == null || id.isNull()) {</span>
+<span class="fc" id="L143">                return null;</span>
+            }
+<span class="fc bfc" id="L145" title="All 2 branches covered.">            long value = id.isNumber() ? id.asLong() : Long.parseLong(id.asText().trim());</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">            return value &gt; 0 ? value : null;</span>
+<span class="fc" id="L147">        } catch (IOException | NumberFormatException ex) {</span>
+<span class="fc" id="L148">            return null;</span>
+        }
+    }
+
+    private String errorCode(String body) {
+        try {
+<span class="fc" id="L154">            JsonNode node = objectMapper.readTree(body);</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">            JsonNode code = node == null ? null : node.get(&quot;errorCode&quot;);</span>
+<span class="pc bpc" id="L156" title="2 of 4 branches missed.">            return code == null || code.isNull() ? null : code.asText();</span>
+<span class="fc" id="L157">        } catch (IOException ex) {</span>
+<span class="fc" id="L158">            return null;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

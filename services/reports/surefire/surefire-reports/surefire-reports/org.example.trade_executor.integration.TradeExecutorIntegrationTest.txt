@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: org.example.trade_executor.integration.TradeExecutorIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.579 s -- in org.example.trade_executor.integration.TradeExecutorIntegrationTest

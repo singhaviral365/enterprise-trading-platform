@@ -1,0 +1,48 @@
+<div class="marshmallow-container" [ngClass]="'marshmallow-color-' + catColor()">
+  <div class="marshmallow-wrapper">
+    <!-- Main marshmallow body -->
+    <div class="marshmallow-body">
+      <div class="marshmallow-cap" aria-hidden="true">
+        <div class="cap-crown"></div>
+        <div class="cap-brim"></div>
+        <div class="cap-pom"></div>
+      </div>
+
+      <div class="marshmallow-top-cap"></div>
+      <div class="marshmallow-highlight"></div>
+
+      <div class="face">
+        <div class="eye left-eye">
+          <div
+            class="eye-pupil"
+            [style.transform]="'translate(calc(-50% + ' + leftEyeX + 'px), calc(-50% + ' + leftEyeY + 'px))'"
+          >
+            <span class="eye-gloss major"></span>
+            <span class="eye-gloss minor"></span>
+          </div>
+        </div>
+
+        <div class="mouth">
+          <span class="mouth-dot"></span>
+          <span class="mouth-smile left"></span>
+          <span class="mouth-smile right"></span>
+        </div>
+
+        <div class="eye right-eye">
+          <div
+            class="eye-pupil"
+            [style.transform]="'translate(calc(-50% + ' + rightEyeX + 'px), calc(-50% + ' + rightEyeY + 'px))'"
+          >
+            <span class="eye-gloss major"></span>
+            <span class="eye-gloss minor"></span>
+          </div>
+        </div>
+
+        <div class="blush left-blush"></div>
+        <div class="blush right-blush"></div>
+      </div>
+    </div>
+
+    <div class="marshmallow-ground-shadow"></div>
+  </div>
+</div>

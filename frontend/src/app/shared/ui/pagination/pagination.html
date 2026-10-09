@@ -1,0 +1,55 @@
+@if (pageSizeOptions().length > 0 || totalPages() > 1) {
+  <div class="paginator">
+    @if (pageSizeOptions().length > 0 && !compact()) {
+      <div class="page-size" data-testid="pagination-page-size">
+        <label class="page-size-label" [for]="sizeId">Rows per page</label>
+        <app-dropdown
+          size="compact"
+          [inputId]="sizeId"
+          [options]="sizeChoices()"
+          [value]="'' + pageSize()"
+          (valueChange)="changePageSize($event)"
+        />
+        <span class="page-range" aria-live="polite" data-testid="pagination-range">
+          {{ range().from }}-{{ range().to }} of {{ range().total }}
+        </span>
+      </div>
+    }
+
+    @if (totalPages() > 1) {
+      <nav class="paginator-items" aria-label="Pagination">
+        <app-tooltip text="Go to previous page" [disabled]="currentPage() <= 1">
+          <button
+            type="button"
+            class="btn is-tertiary is-icon-only"
+            aria-label="Previous page"
+            [disabled]="currentPage() <= 1"
+            (click)="changePage(currentPage() - 1)"
+          >
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+          </button>
+        </app-tooltip>
+
+        @if (compact()) {
+          <span aria-live="polite" data-testid="pagination-compact">
+            <span class="visually-hidden">Page </span>{{ currentPage() }}/{{ totalPages() }}
+          </span>
+        } @else {
+          <span aria-live="polite">Page {{ currentPage() }} of {{ totalPages() }}</span>
+        }
+
+        <app-tooltip text="Go to next page" [disabled]="currentPage() >= totalPages()">
+          <button
+            type="button"
+            class="btn is-tertiary is-icon-only"
+            aria-label="Next page"
+            [disabled]="currentPage() >= totalPages()"
+            (click)="changePage(currentPage() + 1)"
+          >
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+          </button>
+        </app-tooltip>
+      </nav>
+    }
+  </div>
+}

@@ -1,0 +1,205 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.market-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.market-head .card-title {
+  margin-bottom: 0;
+}
+
+.market-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--surface-foreground-subtle);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.is-live {
+  color: var(--status-success-container-fg);
+  background: var(--status-success-container-bg);
+}
+
+.badge.is-delayed {
+  color: var(--status-warning-container-fg);
+  background: var(--status-warning-container-bg);
+}
+
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.refresh .spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Compact (a detail is open beside the list): the title and the Live chip and refresh stay, the updated time goes. */
+.board-card.is-compact .updated {
+  display: none;
+}
+
+/* The table itself is the global .row-table; this only trims it to sit inside the Market card. */
+.row-table-scroll {
+  margin: 0 -8px;
+}
+
+.ticker-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.ticker {
+  font-weight: 700;
+}
+
+.ticker-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--surface-foreground-subtle);
+}
+
+.price {
+  font-weight: 700;
+}
+
+.muted {
+  color: var(--surface-foreground-subtle);
+  font-weight: 400;
+}
+
+.pct-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--surface-foreground-subtle);
+  background: var(--surface-container-background);
+}
+
+.is-up .delta,
+.is-up .pct-chip {
+  color: var(--status-success-container-fg);
+}
+
+.is-up .pct-chip {
+  background: var(--status-success-container-bg);
+}
+
+.is-down .delta,
+.is-down .pct-chip {
+  color: var(--status-error-container-fg);
+}
+
+.is-down .pct-chip {
+  background: var(--status-error-container-bg);
+}
+
+.market-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 200px;
+  padding: 24px;
+  border: 1px dashed var(--surface-line-subtle);
+  border-radius: 12px;
+  color: var(--surface-foreground-subtle);
+  text-align: center;
+}
+
+.market-empty > i {
+  font-size: 26px;
+}
+
+.market-empty.is-error {
+  color: var(--status-error-container-fg);
+}
+
+.refresh-error {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot,
+  .refresh .spinning {
+    animation: none;
+  }
+
+}
+
+/* Rows-per-page selector and page navigation (the shared pagination component) under the table. */
+.table-footer {
+  margin-top: 12px;
+  border-top: 1px solid var(--surface-line-subtle);
+}
+
+/* On the selected row the text and chips switch to the on-primary colour (the cells themselves are in .row-table). */
+.market-row.is-selected .ticker-name,
+.market-row.is-selected .muted,
+.market-row.is-selected .delta,
+.market-row.is-selected .pct-chip {
+  color: var(--accent-primary-foreground);
+}
+
+.market-row.is-selected .pct-chip {
+  background: transparent;
+  border: 1px solid var(--accent-primary-foreground);
+}
+
+/* The aside wrapper is the one flex child of the split view's panel: it must take the panel's height (and be allowed to shrink), or a
+   growing conversation pushes the question box out of view instead of scrolling inside its own log. */
+div[aside] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}

@@ -1,0 +1,202 @@
+@if (liveOrder(); as order) {
+  <app-order-confirmation [order]="order" [currency]="accountCurrency()" (another)="placeAnother()" (done)="done.emit(order)" />
+} @else {
+  <form class="ticket" novalidate (submit)="onSubmit($event)" data-testid="order-ticket">
+    <app-side-toggle [(side)]="side" (sideChange)="serverError.set('')" />
+
+    <!-- Market / Limit -->
+    <fieldset class="type-cards">
+      <legend class="field-label">Order type</legend>
+      <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Market">
+        <input type="radio" name="order-type" value="MARKET" data-testid="order-type-market" [checked]="orderType() === OrderPricingType.Market" (change)="setOrderType(OrderPricingType.Market)" />
+        <button class="btn is-primary is-icon-only" aria-hidden="true"><i class="fas fa-bolt"></i></button>
+        <span class="type-text">
+          <span class="type-title">Market</span>
+          <span class="type-hint">Fill now at the live price</span>
+        </span>
+      </label>
+      <label class="type-card" [class.is-active]="orderType() === OrderPricingType.Limit">
+        <input type="radio" name="order-type" value="LIMIT" data-testid="order-type-limit" [checked]="orderType() === OrderPricingType.Limit" (change)="setOrderType(OrderPricingType.Limit)" />
+        <button class="btn is-primary is-icon-only" aria-hidden="true"><i class="fas fa-sliders"></i></button>
+        <span class="type-text">
+          <span class="type-title">Limit</span>
+          <span class="type-hint">Fill only at your price or better</span>
+        </span>
+      </label>
+    </fieldset>
+
+    <div class="ticket-fields" [class.has-limit]="orderType() === OrderPricingType.Limit">
+      <div class="ticket-field">
+        <label class="field-label" for="order-quantity">Quantity</label>
+        <div class="quantity-input">
+          <input
+            id="order-quantity"
+            class="ticket-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            data-testid="order-quantity"
+            [formField]="ticket.quantity"
+            [class.is-error]="ticket.quantity().touched() && ticket.quantity().invalid()"
+            [attr.aria-invalid]="ticket.quantity().touched() && ticket.quantity().invalid()"
+            [attr.aria-describedby]="ticket.quantity().touched() && ticket.quantity().invalid() ? 'order-quantity-error' : null"
+            (keydown.arrowup)="onQuantityArrow($event, 1)"
+            (keydown.arrowdown)="onQuantityArrow($event, -1)"
+          />
+          <div class="quantity-steppers">
+            <button
+              type="button"
+              class="btn is-secondary is-icon-only"
+              aria-label="Decrease quantity"
+              data-testid="order-quantity-decrease"
+              [disabled]="!canDecrease() || ticket().submitting()"
+              (click)="stepQuantity(-1)"
+            >
+              <i class="fas fa-minus" aria-hidden="true"></i>
+            </button>
+            <button
+              type="button"
+              class="btn is-secondary is-icon-only"
+              aria-label="Increase quantity"
+              data-testid="order-quantity-increase"
+              [disabled]="!canIncrease() || ticket().submitting()"
+              (click)="stepQuantity(1)"
+            >
+              <i class="fas fa-plus" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        @if (ticket.quantity().touched() && ticket.quantity().invalid()) {
+          <p id="order-quantity-error" class="form-error-text">{{ ticket.quantity().errors()[0].message }}</p>
+        }
+      </div>
+
+      @if (orderType() === OrderPricingType.Limit) {
+        <div class="ticket-field">
+          <label class="field-label" for="order-limit-price">Limit price</label>
+          <div class="price-input">
+            @if (row().currency; as currency) {
+              <span class="price-prefix" aria-hidden="true">{{ currency }}</span>
+            }
+            <input
+              id="order-limit-price"
+              class="ticket-input"
+              type="text"
+              inputmode="decimal"
+              autocomplete="off"
+              data-testid="order-limit-price"
+              [formField]="ticket.limitPrice"
+              [class.is-error]="ticket.limitPrice().touched() && ticket.limitPrice().invalid()"
+              [attr.aria-invalid]="ticket.limitPrice().touched() && ticket.limitPrice().invalid()"
+              [attr.aria-describedby]="ticket.limitPrice().touched() && ticket.limitPrice().invalid() ? 'order-limit-price-error' : 'order-limit-price-hint'"
+            />
+          </div>
+          @if (ticket.limitPrice().touched() && ticket.limitPrice().invalid()) {
+            <p id="order-limit-price-error" class="form-error-text">{{ ticket.limitPrice().errors()[0].message }}</p>
+          } @else {
+            <p id="order-limit-price-hint" class="form-hint">
+              {{ side() === OrderSide.Buy ? 'The most you will pay per share.' : 'The least you will accept per share.' }}
+            </p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Summary -->
+    <dl class="ticket-summary" data-testid="order-summary">
+      <div>
+        <dt>{{ orderType() === OrderPricingType.Limit ? 'Limit price' : 'Live price' }}</dt>
+        <dd>
+          @if (unitPrice(); as price) {
+            @if (row().currency; as currency) { {{ price | currency: currency }} } @else { {{ price | number: '1.2-4' }} }
+          } @else {
+            <span class="no-value" aria-hidden="true">-</span>
+            <span class="visually-hidden">Not available</span>
+          }
+        </dd>
+      </div>
+      <div class="is-total">
+        <dt>Estimated {{ side() === OrderSide.Buy ? 'cost' : 'proceeds' }}</dt>
+        <dd data-testid="order-estimate">
+          @if (estimate(); as total) {
+            @if (row().currency; as currency) { {{ total | currency: currency }} } @else { {{ total | number: '1.2-2' }} }
+          } @else {
+            <span class="no-value" aria-hidden="true">-</span>
+            <span class="visually-hidden">Not available</span>
+          }
+        </dd>
+      </div>
+      @if (estimateInAccountCurrency(); as converted) {
+        <div data-testid="order-estimate-converted">
+          <dt>≈ {{ side() === OrderSide.Buy ? 'Cost' : 'Proceeds' }} in {{ accountCurrency() }}</dt>
+          <dd>{{ converted | currency: accountCurrency() ?? 'USD' }}</dd>
+        </div>
+      } @else if (needsConversion()) {
+        <div data-testid="order-estimate-no-rate">
+          <dt>Settles in {{ accountCurrency() }}</dt>
+          <dd>at the live exchange rate</dd>
+        </div>
+      }
+      @if (side() === OrderSide.Buy && cash() !== null) {
+        <div>
+          <dt>Available cash</dt>
+          <dd>{{ cash() | currency: accountCurrency() ?? 'USD' }}</dd>
+        </div>
+      } @else if (side() === OrderSide.Sell && account()) {
+        <div>
+          <dt>You hold</dt>
+          <dd>{{ held() | number }}</dd>
+        </div>
+      }
+    </dl>
+
+    @if (warning()) {
+      <p class="ticket-note is-warning" role="status" data-testid="order-warning">
+        <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+        {{ warning() }}
+      </p>
+    }
+
+    @if (serverError()) {
+      <p class="ticket-note is-error" role="alert" data-testid="order-error">
+        <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+        {{ serverError() }}
+      </p>
+    }
+
+    @if (store.data.hasValue() && !account()) {
+      <p class="ticket-note is-info" role="status" data-testid="order-no-account">
+        <i class="fas fa-building-columns" aria-hidden="true"></i>
+        You need a trading account to place orders.
+        <button type="button" class="link-button" (click)="openAccountSetup()">Open my account</button>
+      </p>
+    } @else if (account(); as linked) {
+      @if (!accountActive()) {
+        <p class="ticket-note is-warning" role="status" data-testid="order-inactive">
+          <i class="fas fa-lock" aria-hidden="true"></i>
+          Your account is {{ linked.overview.account.status.toLowerCase() }}, so orders can't be placed.
+        </p>
+      }
+    }
+
+    <div class="ticket-buttons">
+      <button type="button" class="btn is-secondary is-large" data-testid="order-back" (click)="cancelled.emit()">
+        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        Back
+      </button>
+      <button
+        type="submit"
+        class="btn is-large submit-btn"
+        data-testid="order-submit"
+        [disabled]="!canSubmit()"
+      >
+        @if (ticket().submitting()) {
+          <app-spinner [inline]="true" label="Placing order" />
+          Placing order…
+        } @else {
+          Place {{ side() === OrderSide.Buy ? 'buy' : 'sell' }} order
+        }
+      </button>
+    </div>
+  </form>
+}

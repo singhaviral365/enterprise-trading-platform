@@ -1,0 +1,93 @@
+import './config/load-central-config';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import { AuthModule } from './auth/auth.module';
+import { configuration } from './config/configuration';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { assertMailSettings, mailSettings } from './mail/mail.config';
+import { assertEmailCanBeSent, otpSettings } from './otp/otp.config';
+import { encryptionMiddleware } from './encryption/encryption.middleware';
+import { Envelope, assertEncryptionSettings, encryptionSettings } from './encryption/envelope';
+
+async function bootstrap() {
+  // Load and validate configuration at startup
+  const config = configuration();
+
+  // Each email mode has safety rules (dev: local host only; prod: a real provider over TLS with credentials), and the registration
+  // check needs email: refuse to start with either set up wrongly, rather than let the first person to sign in find out.
+  assertMailSettings(mailSettings());
+  assertEmailCanBeSent(otpSettings(), mailSettings());
+
+  // Payload encryption (documentation/todo/02): off by default; when on it needs its private key, and refuses to start without it.
+  const enc = encryptionSettings();
+  assertEncryptionSettings(enc);
+  const envelope = enc.mode === 'off' ? null : await Envelope.create(enc);
+
+  const app = await NestFactory.create(AppModule);
+
+  app.enableCors({
+    origin: (process.env.AUTH_CORS_ORIGINS ?? '').split(',').filter((o) => o !== ''),
+    methods: 'GET, POST ,PUT, DELETE', 
+    allowedHeaders: 'Content-Type, Authorization, X-Requested-With, X-Envelope',
+    exposedHeaders: 'Date',
+    credentials: true
+  });
+
+  // After CORS (so its headers are on every answer, the key's included) and before the routes and the body parsers.
+  for (const handler of encryptionMiddleware(enc, envelope)) {
+    app.use(handler);
+  }
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Auth service')
+    .setDescription(
+      'Registration, login, token refresh and current-user lookup for the Enterprise Trading Platform.',
+    )
+    .setVersion('1.0.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'An access token issued by /auth/login or /auth/refresh.',
+      },
+      'bearer',
+    )
+    .build();
+
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {
+    include: [AuthModule],
+  });
+
+  SwaggerModule.setup('api-docs', app, swaggerDocument, {
+    jsonDocumentUrl: 'api-docs-json',
+  });
+
+  // Global exception filter (converts all exceptions to error envelope)
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // Global validation pipe with class-validator
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Reject properties not in the DTO
+      forbidNonWhitelisted: true, // Throw error if extra properties present
+      transform: true, // Transform input data to DTO class instances
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+      stopAtFirstError: false, // Report all validation errors
+      errorHttpStatusCode: 400, // Will be converted to 422 by exception filter
+    }),
+  );
+
+  await app.listen(config.port, '0.0.0.0');
+  console.log(`Auth service is running on http://0.0.0.0:${config.port}`);
+  console.log(`Swagger documentation is running on http://localhost:${config.port}/api-docs`);
+}
+
+bootstrap().catch((err) => {
+  console.error('Failed to start application:', err);
+  process.exit(1);
+});

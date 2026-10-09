@@ -1,0 +1,112 @@
+:host {
+  display: block;
+}
+
+/* Four to five cards per desktop row; one per row on a phone. */
+.position-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A detail is open beside the list: one narrow column of small cards. */
+.position-grid.is-compact {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.position-grid.is-compact .position-card {
+  gap: 0;
+  padding: 10px 12px;
+}
+
+@media (max-width: 600px) {
+  .position-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.position-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.position-card:focus-visible {
+  outline: 2px solid var(--surface-foreground-link);
+  outline-offset: 2px;
+}
+
+.position-card-top {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.position-card-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.position-card-figures dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.position-card-figures dd {
+  margin: 0;
+}
+
+.position-card-qty {
+  font-size: 13px;
+  color: var(--surface-foreground-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.position-card-head {
+  font-size: 16px;
+}
+
+.position-card-basis {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+
+.position-basis-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--surface-foreground-subtle);
+}
+
+.position-basis-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The selected card: primary border and a light primary shade (design-system tokens only). */
+.position-card.is-selected {
+  border-color: var(--accent-primary-background);
+  background: var(--accent-primary-container-background);
+}

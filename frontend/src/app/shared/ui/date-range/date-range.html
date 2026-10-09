@@ -1,0 +1,43 @@
+<div class="date-range" role="group" [attr.aria-label]="label()">
+  <div class="date-range-field">
+    <label class="form-label" [for]="fromId">From</label>
+    <input
+      type="date"
+      class="form-input"
+      [id]="fromId"
+      [value]="range().from"
+      [max]="range().to || null"
+      [class.is-error]="error() !== ''"
+      [attr.aria-invalid]="error() !== '' ? 'true' : null"
+      [attr.aria-describedby]="error() !== '' ? errorId : null"
+      data-testid="date-range-from"
+      (change)="setFrom($event)"
+    />
+  </div>
+  <div class="date-range-field">
+    <label class="form-label" [for]="toId">To</label>
+    <input
+      type="date"
+      class="form-input"
+      [id]="toId"
+      [value]="range().to"
+      [min]="range().from || null"
+      [class.is-error]="error() !== ''"
+      [attr.aria-invalid]="error() !== '' ? 'true' : null"
+      [attr.aria-describedby]="error() !== '' ? errorId : null"
+      data-testid="date-range-to"
+      (change)="setTo($event)"
+    />
+  </div>
+  <div class="date-range-presets" role="group" aria-label="Quick ranges">
+    <button type="button" class="btn is-secondary is-small" data-testid="date-range-today" (click)="lastDays(1)">Today</button>
+    <button type="button" class="btn is-secondary is-small" data-testid="date-range-7" (click)="lastDays(7)">Last 7 days</button>
+    <button type="button" class="btn is-secondary is-small" data-testid="date-range-30" (click)="lastDays(30)">Last 30 days</button>
+    <button type="button" class="btn is-tertiary is-small" data-testid="date-range-clear" [disabled]="isEmpty()" (click)="clear()">
+      Any date
+    </button>
+  </div>
+</div>
+@if (error()) {
+  <p class="form-error-text" role="alert" [id]="errorId" data-testid="date-range-error">{{ error() }}</p>
+}

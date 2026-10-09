@@ -1,0 +1,58 @@
+/* Looks like a sidebar link (same spacing, hover and radius) because it is one of the rail's links. */
+.bell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  padding: 10px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--surface-foreground);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.bell:hover {
+  color: var(--surface-foreground);
+  background: var(--surface-line-subtle);
+}
+
+/* The current page, the same treatment as the other sidebar links. */
+.bell.active,
+.bell.active:hover {
+  color: var(--accent-primary-foreground);
+  background: var(--accent-gradient);
+  box-shadow: var(--accent-glow);
+  font-weight: 700;
+}
+
+.bell-icon {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  width: 25px;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+/* The count is text on a solid error-colour pill, so it does not depend on colour alone. */
+.bell-badge {
+  position: absolute;
+  top: -9px;
+  right: -12px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--status-error-foreground);
+  background: var(--status-error-background);
+}

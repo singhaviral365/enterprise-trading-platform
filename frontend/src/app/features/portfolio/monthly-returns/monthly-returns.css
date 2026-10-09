@@ -1,0 +1,71 @@
+:host {
+  display: block;
+}
+
+.month-scroll {
+  overflow-x: auto;
+}
+
+.month-grid {
+  border-collapse: separate;
+  border-spacing: 4px;
+  width: 100%;
+  font-size: 13px;
+}
+
+.month-grid th {
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--surface-foreground-subtle);
+}
+
+.month-grid tbody th {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.month-cell {
+  min-width: 56px;
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--data-mono-neutral-5);
+}
+
+.month-cell.is-empty {
+  background: transparent;
+}
+
+/* Five steps, a strong fall to a strong rise; the strong ones take light text. */
+.month-cell.is-step-0 {
+  color: var(--data-mono-neutral-1);
+  background: var(--data-mono-red-4);
+}
+
+.month-cell.is-step-1 {
+  background: var(--data-mono-red-1);
+}
+
+.month-cell.is-step-2 {
+  background: var(--data-mono-neutral-1);
+}
+
+.month-cell.is-step-3 {
+  background: var(--data-mono-green-1);
+}
+
+.month-cell.is-step-4 {
+  color: var(--data-mono-neutral-1);
+  background: var(--data-mono-green-4);
+}
+
+/* Part of a month: a dashed edge, so the difference is not only a lighter number. */
+.month-cell.is-partial {
+  border-style: dashed;
+  border-color: var(--surface-foreground-subtle);
+}

@@ -1,0 +1,46 @@
+<div class="area-chart hc" data-testid="area-chart">
+  @if (legend()) {
+    <ul class="area-legend" aria-hidden="true" data-testid="area-chart-legend">
+      @for (item of legendItems(); track item.name) {
+        <li class="area-legend-item">
+          <span class="area-swatch" [class]="'area-swatch is-' + item.tone"></span>
+          {{ item.name }}
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="hc-frame" [style.--hc-height]="height() + 'px'">
+    <div #plot class="hc-plot" role="img" [attr.aria-label]="ariaLabel()"></div>
+  </div>
+
+  <details class="chart-table" data-testid="area-chart-table">
+    <summary>View as table</summary>
+    <div class="table-container">
+      <table class="data-table is-compact">
+        <caption class="visually-hidden">{{ ariaLabel() }}</caption>
+        <thead>
+          <tr>
+            <th scope="col">Day</th>
+            @for (item of series(); track item.name) {
+              <th scope="col" class="is-numeric">{{ item.name }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of tableRows(); track row.time) {
+            <tr>
+              <th scope="row">{{ formatTime(row.time) }}</th>
+              @for (value of row.values; track $index) {
+                <td class="is-numeric">{{ value === null ? '' : valueFormatter()(value) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (hiddenRows() > 0) {
+      <p class="form-hint">Showing the {{ tableRows().length }} most recent days.</p>
+    }
+  </details>
+</div>

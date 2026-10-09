@@ -1,0 +1,90 @@
+<section class="holdings" aria-labelledby="portfolio-holdings-title" data-testid="portfolio-holdings-section">
+  <div class="section-head">
+    <h2 id="portfolio-holdings-title" class="card-title">Holdings</h2>
+    <div class="section-tools">
+      @if (allRows().length) {
+        <div class="view-toggle" role="group" aria-label="Holdings view">
+          <app-tooltip text="Card view" position="bottom">
+            <button
+              type="button"
+              class="btn is-icon-only"
+              [class.is-primary]="view() === 'card'"
+              [class.is-tertiary]="view() !== 'card'"
+              aria-label="Card view"
+              data-testid="positions-view-card"
+              [attr.aria-pressed]="view() === 'card'"
+              (click)="setView('card')"
+            >
+              <i class="fas fa-table-cells-large" aria-hidden="true"></i>
+            </button>
+          </app-tooltip>
+          <app-tooltip text="Table view" position="bottom">
+            <button
+              type="button"
+              class="btn is-icon-only"
+              [class.is-primary]="view() === 'table'"
+              [class.is-tertiary]="view() !== 'table'"
+              aria-label="Table view"
+              data-testid="positions-view-table"
+              [attr.aria-pressed]="view() === 'table'"
+              (click)="setView('table')"
+            >
+              <i class="fas fa-list" aria-hidden="true"></i>
+            </button>
+          </app-tooltip>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (allRows().length === 0) {
+    <div class="card portfolio-state is-empty" data-testid="portfolio-empty">
+      <i class="fas fa-layer-group" aria-hidden="true"></i>
+      <p>You don't hold any investments yet.</p>
+      <a class="btn is-primary" routerLink="/market">Find an instrument to trade</a>
+    </div>
+  } @else {
+    <app-split-view
+      #split
+      [open]="!!detailRow()"
+      labelledBy="detail-title"
+      testId="position-dialog"
+      [layout]="view() === 'card' ? 'cards' : 'table'"
+      (closed)="selectedSymbol.set(null)"
+    >
+      <div list>
+        @if (view() === 'card') {
+          <app-positions-card
+            [rows]="pageRows()"
+            [currency]="currency()"
+            [selectedSymbol]="selectedSymbol()"
+            [compact]="split.compact()"
+            (selected)="open($event)"
+          />
+        } @else {
+          <app-positions-table
+            [rows]="pageRows()"
+            [selectedSymbol]="selectedSymbol()"
+            [currency]="currency()"
+            [compact]="split.compact()"
+            (selected)="open($event)"
+          />
+        }
+        <app-pagination
+          [pageSizeOptions]="pageSizes"
+          [(pageSize)]="pageSize"
+          [totalItems]="allRows().length"
+          [totalPages]="totalPages()"
+          [compact]="split.compact()"
+          [(currentPage)]="page"
+        />
+      </div>
+
+      <div detail>
+        @if (detailRow(); as current) {
+          <app-position-detail [position]="current" [currency]="currency()" (closed)="selectedSymbol.set(null)" />
+        }
+      </div>
+    </app-split-view>
+  }
+</section>

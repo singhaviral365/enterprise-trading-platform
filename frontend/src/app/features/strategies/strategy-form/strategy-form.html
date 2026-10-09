@@ -1,0 +1,214 @@
+<form class="card strategy-form" novalidate (submit)="onSubmit($event)" aria-labelledby="strategy-form-title" data-testid="strategy-form">
+  <h2 id="strategy-form-title" class="card-title">New strategy</h2>
+
+  <div class="rule-row">
+    <div class="form-group">
+      @if (board.isLoading() && !board.hasValue()) {
+        <p class="form-hint" aria-live="polite">
+          <app-spinner [inline]="true" label="Loading instruments" />
+          Loading instruments…
+        </p>
+      } @else {
+        <app-dropdown
+          label="Instrument"
+          placeholder="Choose an instrument"
+          inputId="strategy-symbol"
+          data-testid="strategy-symbol"
+          [block]="true"
+          [options]="instrumentOptions()"
+          [(value)]="symbol"
+        />
+      }
+      @if (board.error()) {
+        <p class="form-error-text" role="alert">The list of instruments could not be loaded. Close this form and try again.</p>
+      } @else if (nowPrice() !== null) {
+        <p class="form-hint" data-testid="strategy-now">
+          Now
+          @if (currency(); as code) {
+            {{ nowPrice() | currency: code }}
+          } @else {
+            {{ nowPrice() | number: '1.2-4' }}
+          }
+        </p>
+      }
+    </div>
+
+    <div class="form-group">
+      <span class="form-label">Do this</span>
+      <app-side-toggle [(side)]="tradeSide" [compact]="true" />
+    </div>
+
+    <div class="form-group">
+      <app-dropdown
+        label="When the price"
+        inputId="strategy-direction"
+        data-testid="strategy-direction"
+        [block]="true"
+        [options]="directionOptions"
+        [(value)]="direction"
+      />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="strategy-trigger">Price</label>
+      <div class="prefixed">
+        @if (currency(); as code) {
+          <span class="prefix" aria-hidden="true">{{ code }}</span>
+        }
+        <input
+          id="strategy-trigger"
+          class="form-input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          data-testid="strategy-trigger"
+          [formField]="strategy.trigger"
+          [class.is-error]="(strategy.trigger().touched() && strategy.trigger().invalid()) || alreadyReached()"
+          [attr.aria-invalid]="(strategy.trigger().touched() && strategy.trigger().invalid()) || alreadyReached()"
+          [attr.aria-describedby]="strategy.trigger().touched() && strategy.trigger().invalid() ? 'strategy-trigger-error' : null"
+        />
+      </div>
+      @if (strategy.trigger().touched() && strategy.trigger().invalid()) {
+        <p id="strategy-trigger-error" class="form-error-text">{{ strategy.trigger().errors()[0].message }}</p>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="strategy-quantity">Quantity</label>
+      <input
+        id="strategy-quantity"
+        class="form-input"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        data-testid="strategy-quantity"
+        [formField]="strategy.quantity"
+        [class.is-error]="strategy.quantity().touched() && strategy.quantity().invalid()"
+        [attr.aria-invalid]="strategy.quantity().touched() && strategy.quantity().invalid()"
+        [attr.aria-describedby]="strategy.quantity().touched() && strategy.quantity().invalid() ? 'strategy-quantity-error' : null"
+      />
+      @if (strategy.quantity().touched() && strategy.quantity().invalid()) {
+        <p id="strategy-quantity-error" class="form-error-text">{{ strategy.quantity().errors()[0].message }}</p>
+      }
+    </div>
+  </div>
+
+  <div class="summary" aria-live="polite" data-testid="strategy-summary">
+    @if (alreadyReached()) {
+      <p class="form-error-text" role="alert" data-testid="strategy-already-reached">
+        {{ symbol() }} is already {{ direction() === 'BELOW' ? 'below' : 'above' }} that level, so this would trade now. Pick a
+        {{ direction() === 'BELOW' ? 'lower' : 'higher' }} price.
+      </p>
+    } @else if (summary()) {
+      <p class="summary-text" data-testid="strategy-summary-text">
+        <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+        {{ summary() }}
+      </p>
+    } @else {
+      <p class="form-hint">Choose an instrument and a price to see what this will do.</p>
+    }
+  </div>
+
+  <details class="more-options" data-testid="strategy-more">
+    <summary>
+      <i class="fas fa-chevron-right chevron" aria-hidden="true"></i>
+      More options
+      <span class="more-hint">spending cap, largest holding, repeats, end date</span>
+    </summary>
+    <div class="options-grid">
+      <div class="form-group">
+        <label class="form-label" for="strategy-max-executions">Repeat up to (times)</label>
+        <input
+          id="strategy-max-executions"
+          class="form-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          data-testid="strategy-max-executions"
+          [formField]="strategy.maxExecutions"
+          [class.is-error]="strategy.maxExecutions().touched() && strategy.maxExecutions().invalid()"
+          [attr.aria-invalid]="strategy.maxExecutions().touched() && strategy.maxExecutions().invalid()"
+          [attr.aria-describedby]="strategy.maxExecutions().touched() && strategy.maxExecutions().invalid() ? 'strategy-max-executions-error' : null"
+        />
+        @if (strategy.maxExecutions().touched() && strategy.maxExecutions().invalid()) {
+          <p id="strategy-max-executions-error" class="form-error-text">{{ strategy.maxExecutions().errors()[0].message }}</p>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="strategy-valid-until">Ends on</label>
+        <input
+          id="strategy-valid-until"
+          class="form-input"
+          type="date"
+          data-testid="strategy-valid-until"
+          [formField]="strategy.validUntil"
+          [class.is-error]="strategy.validUntil().touched() && strategy.validUntil().invalid()"
+          [attr.aria-invalid]="strategy.validUntil().touched() && strategy.validUntil().invalid()"
+          [attr.aria-describedby]="strategy.validUntil().touched() && strategy.validUntil().invalid() ? 'strategy-valid-until-error' : null"
+        />
+        @if (strategy.validUntil().touched() && strategy.validUntil().invalid()) {
+          <p id="strategy-valid-until-error" class="form-error-text">{{ strategy.validUntil().errors()[0].message }}</p>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="strategy-max-order">Spending cap</label>
+        <input
+          id="strategy-max-order"
+          class="form-input"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          data-testid="strategy-max-order"
+          [placeholder]="autoSpendingCap() !== null ? 'auto: ' + (autoSpendingCap() | number: '1.0-0') : 'auto'"
+          [formField]="strategy.maxOrderValue"
+          [class.is-error]="strategy.maxOrderValue().touched() && strategy.maxOrderValue().invalid()"
+          [attr.aria-invalid]="strategy.maxOrderValue().touched() && strategy.maxOrderValue().invalid()"
+          [attr.aria-describedby]="strategy.maxOrderValue().touched() && strategy.maxOrderValue().invalid() ? 'strategy-max-order-error' : null"
+        />
+        @if (strategy.maxOrderValue().touched() && strategy.maxOrderValue().invalid()) {
+          <p id="strategy-max-order-error" class="form-error-text">{{ strategy.maxOrderValue().errors()[0].message }}</p>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="strategy-max-position">Largest holding</label>
+        <input
+          id="strategy-max-position"
+          class="form-input"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          data-testid="strategy-max-position"
+          placeholder="auto"
+          [formField]="strategy.maxPosition"
+          [class.is-error]="strategy.maxPosition().touched() && strategy.maxPosition().invalid()"
+          [attr.aria-invalid]="strategy.maxPosition().touched() && strategy.maxPosition().invalid()"
+          [attr.aria-describedby]="strategy.maxPosition().touched() && strategy.maxPosition().invalid() ? 'strategy-max-position-error' : null"
+        />
+        @if (strategy.maxPosition().touched() && strategy.maxPosition().invalid()) {
+          <p id="strategy-max-position-error" class="form-error-text">{{ strategy.maxPosition().errors()[0].message }}</p>
+        }
+      </div>
+    </div>
+  </details>
+
+  @if (serverError()) {
+    <p class="form-error-text" role="alert" data-testid="strategy-error">{{ serverError() }}</p>
+  }
+
+  <footer class="form-actions">
+    <button type="button" class="btn is-secondary" data-testid="strategy-cancel" [disabled]="strategy().submitting()" (click)="cancelled.emit()">
+      Cancel
+    </button>
+    <button type="submit" class="btn is-primary" data-testid="strategy-submit" [disabled]="!canSubmit()">
+      @if (strategy().submitting()) {
+        <app-spinner [inline]="true" label="Creating the strategy" />
+      } @else {
+        <i class="fas fa-robot" aria-hidden="true"></i>
+      }
+      Create strategy
+    </button>
+  </footer>
+</form>

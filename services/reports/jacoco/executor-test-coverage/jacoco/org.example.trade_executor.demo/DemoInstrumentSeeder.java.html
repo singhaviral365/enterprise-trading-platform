@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DemoInstrumentSeeder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.demo</a> &gt; <span class="el_source">DemoInstrumentSeeder.java</span></div><h1>DemoInstrumentSeeder.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.demo;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
+import java.util.Locale;
+
+/**
+ * DEMO ONLY. Makes sure the demo instrument has a row in the instrument table when the executor starts, so it shows on the market board and
+ * can be put on a watchlist, given a price alert, bought, or used in a strategy. It never changes an existing row.
+ * See {@link DemoInstrumentQuoteClient} for how to remove the demo.
+ */
+@Component
+@ConditionalOnProperty(name = &quot;demo.instrument.enabled&quot;, havingValue = &quot;true&quot;)
+public class DemoInstrumentSeeder implements ApplicationRunner {
+
+<span class="fc" id="L23">    private static final Logger LOGGER = LoggerFactory.getLogger(DemoInstrumentSeeder.class);</span>
+
+    private final JdbcTemplate jdbc;
+    private final String symbol;
+    private final String name;
+
+    public DemoInstrumentSeeder(
+            JdbcTemplate jdbc,
+            @Value(&quot;${demo.instrument.symbol}&quot;) String symbol,
+<span class="fc" id="L32">            @Value(&quot;${demo.instrument.name}&quot;) String name) {</span>
+<span class="fc" id="L33">        this.jdbc = jdbc;</span>
+<span class="fc" id="L34">        this.symbol = symbol.trim().toUpperCase(Locale.ROOT);</span>
+<span class="fc" id="L35">        this.name = name;</span>
+<span class="fc" id="L36">    }</span>
+
+    @Override
+    public void run(ApplicationArguments args) {
+<span class="fc" id="L40">        int added = jdbc.update(</span>
+                &quot;INSERT INTO instrument (instrument_ticker, instrument_name, asset_class, instrument_status, currency) &quot;
+                        + &quot;SELECT ?, ?, 'EQUITY', 'TRADING', 'USD' &quot;
+                        + &quot;WHERE NOT EXISTS (SELECT 1 FROM instrument WHERE instrument_ticker = ?)&quot;,
+                symbol, name, symbol);
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (added &gt; 0) {</span>
+<span class="nc" id="L46">            LOGGER.info(&quot;Demo instrument {} added to the instrument table (its price is made up; Fauxnance does not know it)&quot;, symbol);</span>
+        } else {
+<span class="fc" id="L48">            LOGGER.info(&quot;Demo instrument {} is on (its price is made up; Fauxnance does not know it)&quot;, symbol);</span>
+        }
+<span class="fc" id="L50">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

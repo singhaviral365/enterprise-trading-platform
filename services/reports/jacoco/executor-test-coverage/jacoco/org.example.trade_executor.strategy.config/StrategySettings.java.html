@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StrategySettings.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">executor-service</a> &gt; <a href="index.source.html" class="el_package">org.example.trade_executor.strategy.config</a> &gt; <span class="el_source">StrategySettings.java</span></div><h1>StrategySettings.java</h1><pre class="source lang-java linenums">package org.example.trade_executor.strategy.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.stereotype.Component;
+
+import java.time.Duration;
+
+/**
+ * What the strategy worker is configured with. Secrets and the order-service address come from the environment only.
+ *
+ * &lt;p&gt;&lt;b&gt;The kill switch.&lt;/b&gt; {@code strategy.execution.enabled=false} (environment variable {@code STRATEGY_EXECUTION_ENABLED})
+ * stops every strategy from being acted on: the worker still reads the market-data topic, so nothing piles up, but it claims
+ * nothing and places nothing. It is read on every quote, and it needs a restart of this service to change, which is the
+ * point: nothing a customer or a request can do flips it.
+ */
+@Component
+public class StrategySettings {
+
+    private final boolean enabled;
+    private final Duration maxQuoteAge;
+    private final Duration claimTimeout;
+    private final long demoDelayMillis;
+
+    public StrategySettings(
+            Environment environment,
+            @Value(&quot;${strategy.execution.enabled:true}&quot;) boolean enabled,
+            @Value(&quot;${strategy.execution.max-quote-age-seconds:180}&quot;) long maxQuoteAgeSeconds,
+            @Value(&quot;${strategy.execution.claim-timeout-seconds:120}&quot;) long claimTimeoutSeconds,
+<span class="fc" id="L31">            @Value(&quot;${strategy.demo.pre-order-delay-millis:0}&quot;) long demoDelayMillis) {</span>
+<span class="fc" id="L32">        this.enabled = enabled;</span>
+<span class="fc" id="L33">        this.maxQuoteAge = Duration.ofSeconds(Math.max(1, maxQuoteAgeSeconds));</span>
+<span class="fc" id="L34">        this.claimTimeout = Duration.ofSeconds(Math.max(30, claimTimeoutSeconds));</span>
+        // Honoured only on a development machine: the property can be set anywhere, but it does nothing anywhere else.
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        this.demoDelayMillis = environment.acceptsProfiles(Profiles.of(&quot;dev&quot;, &quot;local&quot;))</span>
+<span class="fc" id="L37">                ? Math.max(0, Math.min(demoDelayMillis, 60_000)) : 0;</span>
+<span class="fc" id="L38">    }</span>
+
+    public boolean enabled() {
+<span class="fc" id="L41">        return enabled;</span>
+    }
+
+    /** A quote older than this is never acted on. */
+    public Duration maxQuoteAge() {
+<span class="nc" id="L46">        return maxQuoteAge;</span>
+    }
+
+    /** A strategy claimed for longer than this is taken to have been abandoned by a crash. */
+    public Duration claimTimeout() {
+<span class="fc" id="L51">        return claimTimeout;</span>
+    }
+
+    /** How long to pause between claiming a strategy and sending its order. Zero except in the development profile. */
+    public long demoDelayMillis() {
+<span class="fc" id="L56">        return demoDelayMillis;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
