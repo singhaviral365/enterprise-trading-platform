@@ -12,7 +12,21 @@ Developed by:
 1. [App Overview](#1-app-overview)
 2. [Project Structure](#2-project-structure)
 3. [Running the Application Locally](#3-running-the-application-locally)
+   - [Prerequisites](#prerequisites)
+   - [Ports](#ports)
+   - [Configuration: one file](#configuration-one-file)
+   - [Step 1: Databases](#step-1-databases)
+   - [Step 2: Kafka (start it yourself)](#step-2-kafka-start-it-yourself)
+   - [Step 3: Run everything with one command](#step-3-run-everything-with-one-command)
+   - [Running the services by hand](#running-the-services-by-hand)
+   - [Running everything with Docker Compose](#running-everything-with-docker-compose)
 4. [Tests and Coverage Reports](#4-tests-and-coverage-reports)
+   - [Frontend (unit, Vitest)](#frontend-unit-vitest)
+   - [Frontend (end-to-end, Playwright)](#frontend-end-to-end-playwright)
+   - [auth-service (Jest)](#auth-service-jest)
+   - [order-service and executor-service (JUnit, Surefire, JaCoCo)](#order-service-and-executor-service-junit-surefire-jacoco)
+     - [Copy into `services/reports` and apply your styling](#copy-into-servicesreports-and-apply-your-styling)
+   - [SonarQube (whole platform, coverage included)](#sonarqube-whole-platform-coverage-included)
 
 ---
 
@@ -352,3 +366,34 @@ cd services\reports\surefire\executor-tests-report && inject.cmd
 ```
 
 Open `services/reports/surefire/<backend|executor>-tests-report/surefire.html` and `services/reports/jacoco/<backend-test-coverage/jacoco|executor-test-coverage>/index.html` in a browser.
+
+### SonarQube (whole platform, coverage included)
+
+One SonarQube project, `enterprise-trading-platform`, covers the frontend, auth-service, order-service and executor-service. The root [`sonar-project.properties`](sonar-project.properties) declares each part as a module and points at the coverage file its own tool writes:
+
+| Part | Tests with coverage | Coverage file |
+|---|---|---|
+| frontend | `npm run test:ci` | `frontend/coverage/frontend/lcov.info` |
+| auth-service | `npx jest --coverage` | `services/auth-service/coverage/lcov.info` |
+| order-service | `./mvnw clean verify` | `services/order-service/target/site/jacoco/jacoco.xml` |
+| executor-service | `./mvnw clean verify` | `services/executor-service/target/site/jacoco/jacoco.xml` |
+
+You need a running SonarQube server (setup: [`documentation/readme/SONARQUBE.md`](documentation/readme/SONARQUBE.md)) and a token generated in it. Put them in `config/application.yml` (`sonar.host-url`, `sonar.token`; never commit the token), then from the repository root:
+
+```powershell
+.\scripts\sonar-scan.ps1                # all tests with coverage, then the scan
+.\scripts\sonar-scan.ps1 -SkipTests     # scan only, reusing the last coverage files
+.\scripts\sonar-scan.ps1 -QualityGate   # also wait for the quality gate
+```
+
+The script carries on when a test fails, so the coverage of what did run is still sent, and it prints each part's exit code and any missing coverage file.
+
+**One coverage number for the whole platform** (no server needed; the scan script runs it too):
+
+```bash
+node scripts/coverage-summary.js
+```
+
+It prints each part and a **WHOLE PLATFORM** line, as plain line coverage and with SonarQube's formula, `(covered lines + covered branches) / (lines + branches)`, which should match the project's Coverage on the dashboard.
+
+Open the project at `<sonar.host-url>/dashboard?id=enterprise-trading-platform` and use the **Overall Code** tab; the default New Code tab only shows changed code and has no coverage on a first analysis. If a part shows no coverage, its report path did not match (the scan prints "No coverage information"). More in [`SONARQUBE.md`](documentation/readme/SONARQUBE.md).
