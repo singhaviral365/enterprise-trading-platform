@@ -1,9 +1,6 @@
-# Exclude everything by default, then allow only backend build inputs.
-**
-
-!backend/
-backend/**
-!backend/pom.xml
-!backend/src/
-!backend/src/**
-!backend/Dockerfile
+**/target
+**/node_modules
+**/.idea
+**/*.log
+**/.env
+.git

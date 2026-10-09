@@ -63,3 +63,6 @@ frontend/e2e/support/e2e-config.generated.json
 # Generated or local-only: logs, IDE settings
 *.log
 run-logs/
+
+# Local Maven repository for the one library that is not on Maven Central (see services/maven-repo)
+!services/maven-repo/**/*.jar
