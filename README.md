@@ -82,7 +82,7 @@ enterprise-trading-platform/
 ├── databases/PostgreSQL/      schema.sql and seed_data.sql (both databases), plus trading/ and auth/ for one database at a time
 ├── config/                    application.yml: the one place for every URL, port and secret (see config/README.md)
 ├── .env.example, .env         Every environment variable, generated from the config (.env is git-ignored)
-├── docker-compose.yml         The whole platform in containers: two databases, Kafka, the three services and the frontend
+├── docker-compose.yml         The whole platform in containers: the database (two schemas), Kafka, the three services and the frontend
 ├── contracts/                 OpenAPI contracts + change log
 ├── infra/kafka/               create-topics.sh (the three topics)
 ├── docker/nginx/              nginx template for the frontend container
@@ -226,53 +226,71 @@ On Windows PowerShell use `.\mvnw.cmd spring-boot:run`. The dev proxy means no C
 
 ### Running everything with Docker Compose
 
-One command starts the whole platform in containers: both databases (created from `databases/PostgreSQL/`, with the sample data), Kafka and its topics, the auth, order and executor services, and the frontend behind nginx. You need Docker with Compose v2 and nothing else (no Node, no JDK, no PostgreSQL).
+One script starts the whole platform in containers on a Linux machine: one PostgreSQL database (`trading_db`, with a `trading` and an `auth` schema, created from `databases/PostgreSQL/` with the sample data), Kafka and its topics, the auth, order and executor services, and the frontend behind nginx. You need Docker with Compose v2 and buildx, and `git`; no Node, no JDK, no PostgreSQL.
 
 ```bash
 git clone <this repository> && cd <it>
-cp .env.example .env              # then fill in the blanks below (or: node config/cli.js env-file, if you have config/application.yml)
-docker compose up --build
+cp .env.example .env              # then fill in the blanks (see below)
+bash scripts/run.sh               # asks before it deletes unused Docker images; add -y to skip the question
 ```
 
-**Compose reads `.env`, not `config/application.yml`** (`application.yml` is git-ignored and is never copied into an image). On a Linux server either copy `.env.example` to `.env` and fill it in, or bring your `config/application.yml` with you and let the helper write `.env` from it and start everything:
+`scripts/run.sh` is a clean run: it stops this project's containers, deletes **every** unused Docker image on the machine (also other projects' images), builds the four images one at a time (stopping at the first failure) and ends with `docker compose up -d`. Run it from the repository root. For a quicker restart that keeps your images, use `docker compose up -d --build`.
 
-```bash
-bash scripts/docker-up.sh -d      # .env exists: use it; else write it from config/application.yml (Node, or a throwaway node container); then docker compose up --build -d
-```
+**Compose reads `.env`, not `config/application.yml`** (`application.yml` is git-ignored and is never copied into an image). `.env.example` is committed with the secrets blank; `.env` is git-ignored. Never commit `.env`. Do not run `node config/cli.js env-file` for a Docker run: it writes a different `.env` (for running the services outside Docker) and overwrites yours.
 
-Fill in at least these in `.env` (everything else has a working default):
+Fill in at least these in `.env`; leave the rest of `.env.example` as it is:
 
 | Variable | Value |
 |---|---|
-| `JWT_SECRET` | a long random string (32+ characters) |
-| `POSTGRES_PASSWORD`, `DATABASE_TRADING_PASSWORD` | one password for the trading database |
-| `DATABASE_PASSWORD` | the same password, for the auth-service |
+| `JWT_SECRET` | a random string of **at least 32 bytes**: `openssl rand -hex 32` (all services share it) |
+| `AUTH_OTP_SECRET` | another random string: `openssl rand -hex 32` |
+| `DB_PASSWORD` | the database password (compose gives it to every service) |
+| `DATABASE_PASSWORD`, `DATABASE_TRADING_PASSWORD` | the same password (only used when you run a service outside Docker) |
 | `EXTERNAL_FAUXNANCE_BASE_URL`, `EXTERNAL_FAUXNANCE_API_KEY` | the programme's market data URL and key |
 | `EXTERNAL_EXCHANGE_RATE_API_KEY` | your ExchangeRate-API key |
 
 Optional: `EXTERNAL_GEMINI_API_KEY` (the assistant), the `AUTH_EMAIL_*` and `ORDER_EMAIL_*` mail account with the modes set to `prod` (see [email](documentation/readme/EMAIL.md)), and `ENC_MODE`, `ENC_KID`, `ENC_PRIVATE_KEY_PEM` (payload encryption; `node config/cli.js enc-key` makes a key).
+
+**On a server (not `localhost`).** Open port `4200` in the firewall or security group, then set the address people type in the browser (a server IP or DNS name) in three places in `.env`, replacing `localhost`:
+
+```bash
+PUBLIC_HOST=<server address>
+AUTH_CORS_ORIGINS=http://<server address>:4200,http://localhost:4200
+FRONTEND_URL_REWRITES='http://localhost:3000=http://<server address>:4200/_auth http://localhost:8081=http://<server address>:4200/_order http://localhost:8082=http://<server address>:4200'
+```
+
+The browser only talks to the frontend port: nginx forwards `/_auth`, `/_order`, `/api/v1/market` (executor-service) and every other `/api` call (order-service) to the services. The frontend picks the addresses up when it is built or started, so run `bash scripts/run.sh` (or `docker compose up -d --force-recreate frontend`) after changing them.
+
+**Using AWS RDS (or another PostgreSQL) instead of the bundled database.** In `.env` set `DB_HOST=<the endpoint>` and remove `localdb` from `COMPOSE_PROFILES`; the instance must accept connections from this machine on port 5432. The database is empty, so load the schemas and sample data once (this fails if the tables already exist, so use it on an empty server only):
+
+```bash
+docker compose --profile seed run --rm db-seed
+```
+
+The SSL settings in `.env.example` (`JDBC_PARAMS=&sslmode=require`, `PGSSLMODE=no-verify`) make the services connect over SSL without verifying the certificate, which RDS requires.
 
 When it is up (the first start takes a few minutes while the images build):
 
 | What | Where |
 |---|---|
 | The app | <http://localhost:4200> (`FRONTEND_PORT`) |
-| auth-service | <http://localhost:3000/api-docs> (`AUTH_PORT`) |
-| order-service | <http://localhost:8081/actuator/health> (`ORDER_PORT`) |
-| executor-service | `EXECUTOR_PORT` (8082) |
-| trading database | `localhost:5432` (`TRADING_DB_PORT`); the auth database is not published |
-| Kafka (from your machine) | `localhost:9092` (`KAFKA_PORT`, advertised as `KAFKA_EXTERNAL_HOST`) |
+| auth-service | <http://localhost:3000/api-docs> (`AUTH_SERVICE_PORT`) |
+| order-service | <http://localhost:8081/actuator/health> (`ORDER_SERVICE_PORT`) |
+| executor-service | not published; reached through the frontend as `/api/v1/market` (`EXECUTOR_SERVICE_PORT`, 8082) |
+| database | `127.0.0.1:5432` on this machine only (`DB_HOST_PORT`); schemas `trading` and `auth` |
+| Kafka (from this machine) | `127.0.0.1:9092` (`KAFKA_HOST_PORT`) |
 
 Sign in as a sample user (`alice.trader` with `Sample@12345`) or register. Useful commands:
 
 ```bash
 docker compose ps                         # state and health of each container
 docker compose logs -f order-service      # follow one service
-docker compose down                       # stop (the databases keep their data)
-docker compose down -v                    # stop and delete the data: the next start re-creates and re-seeds the databases
+docker compose up -d --force-recreate frontend   # apply a change in .env to one service
+docker compose down                       # stop (the database keeps its data)
+docker compose down -v                    # stop and delete the data: the next start re-creates and re-seeds the database
 ```
 
-The databases load `schema.sql` and `seed_data.sql` only on an empty volume. To change a port, edit `.env` (or `config/application.yml` and run `node config/cli.js env-file`) and run `docker compose up -d` again. If the app is served from somewhere other than `localhost` (a server), set `AUTH_CORS_ORIGINS` to the address people open it at and `PUBLIC_AUTH_URL` to the address of the auth-service as the browser sees it (default `http://localhost:<AUTH_PORT>`), then `docker compose build frontend`.
+The bundled database loads `schema.sql` and `seed_data.sql` only on an empty volume. If a container keeps restarting, read its log (`docker compose logs --tail=80 <service>`): the usual causes are a `JWT_SECRET` shorter than 32 bytes or a blank password.
 
 ---
 

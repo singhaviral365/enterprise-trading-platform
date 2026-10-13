@@ -180,7 +180,7 @@ x-java-env: &java-env
 
 # A shared config folder of the repo (e.g. ./Config with application.yml), mounted
 # read-only into every app container. Default = the DockerFile folder (harmless).
-x-config-volume: &config-volume ${APP_CONFIG_DIR:-./DockerFile}:${APP_CONFIG_MOUNT:-/config}:ro
+x-config-volume: &config-volume ${APP_CONFIG_DIR:-./docker/empty}:${APP_CONFIG_MOUNT:-/config}:ro
 
 # `required: false` = skip the wait when that profile is switched off
 # (database on RDS / no Kafka).
@@ -210,7 +210,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       # *.sql / *.sh in this folder run ONCE, on an empty volume, in name order.
       # Default = the DockerFile folder, which holds no .sql/.sh (the app migrates itself).
-      - ${DB_INIT_DIR:-./DockerFile}:/docker-entrypoint-initdb.d:ro
+      - ${DB_INIT_DIR:-./docker/empty}:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -235,7 +235,7 @@ services:
       DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
       SEED_COMMAND: ${DB_SEED_COMMAND:-for f in $$(ls *.sql | sort); do echo "== $$f"; psql -d postgres -v ON_ERROR_STOP=1 -q -f "$$f" || exit 1; done}   # CHANGED: -d postgres, works before trading_db exists
     volumes:
-      - ${DB_SEED_DIR:-./DockerFile}:/seed-src:ro
+      - ${DB_SEED_DIR:-./docker/empty}:/seed-src:ro
     depends_on: *wait-db
     entrypoint:
       - bash
@@ -350,7 +350,7 @@ services:
       context: ${AUTH_SERVICE_DIR:-./services/auth-service}
       dockerfile: ${AUTH_SERVICE_DOCKERFILE:-Dockerfile}
       additional_contexts:
-        extra: ${AUTH_SERVICE_EXTRA_DIR:-./DockerFile}
+        extra: ${AUTH_SERVICE_EXTRA_DIR:-./docker/empty}
       args:
         NODE_VERSION: ${AUTH_SERVICE_NODE_VERSION:-20}
         NEEDS_BUILD: ${AUTH_SERVICE_NEEDS_BUILD:-true}
@@ -391,7 +391,7 @@ services:
       context: ${ORDER_SERVICE_DIR:-./services/order-service}
       dockerfile: ${ORDER_SERVICE_DOCKERFILE:-Dockerfile}
       additional_contexts:
-        extra: ${ORDER_SERVICE_EXTRA_DIR:-./DockerFile}
+        extra: ${ORDER_SERVICE_EXTRA_DIR:-./docker/empty}
       args:
         JAVA_VERSION: ${ORDER_SERVICE_JAVA_VERSION:-21}
         MAVEN_VERSION: ${MAVEN_VERSION:-3.9.9}
@@ -428,7 +428,7 @@ services:
       context: ${EXECUTOR_SERVICE_DIR:-./services/executor-service}
       dockerfile: ${EXECUTOR_SERVICE_DOCKERFILE:-Dockerfile}
       additional_contexts:
-        extra: ${EXECUTOR_SERVICE_EXTRA_DIR:-./DockerFile}
+        extra: ${EXECUTOR_SERVICE_EXTRA_DIR:-./docker/empty}
       args:
         JAVA_VERSION: ${EXECUTOR_SERVICE_JAVA_VERSION:-21}
         MAVEN_VERSION: ${MAVEN_VERSION:-3.9.9}
@@ -466,7 +466,7 @@ services:
       context: ${FRONTEND_DIR:-./frontend}
       dockerfile: ${FRONTEND_DOCKERFILE:-Dockerfile}
       additional_contexts:
-        extra: ${FRONTEND_EXTRA_DIR:-./DockerFile}
+        extra: ${FRONTEND_EXTRA_DIR:-./docker/empty}
       args:
         NODE_VERSION: ${FRONTEND_NODE_VERSION:-22}
         BUILD_SCRIPT: ${FRONTEND_BUILD_SCRIPT:-build}
