@@ -32,11 +32,11 @@
     <dependencies>
         <!-- sprint-05-domain-engine: required by the story. It is not on Maven Central; its jar is committed in services/maven-repo
              (declared as a repository below) so a clean clone resolves it. -->
-        <dependency>
+        <!-- <dependency>
             <groupId>com.enterprise.trading</groupId>
             <artifactId>sprint-05-domain-engine</artifactId>
             <version>1.0-SNAPSHOT</version>
-        </dependency>
+        </dependency> -->
 
 
         <!-- REST controllers (MarketController) and the HTTP clients -->
