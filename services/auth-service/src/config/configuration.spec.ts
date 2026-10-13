@@ -5,7 +5,7 @@ const REQUIRED = {
   JWT_ISSUER: 'auth-service',
   DATABASE_HOST: 'db.local',
   DATABASE_PORT: '5433',
-  DATABASE_NAME: 'auth_db',
+  DATABASE_NAME: 'trading_db',
   DATABASE_USER: 'postgres',
   DATABASE_PASSWORD: 'pw',
   PORT: '3000',
@@ -31,7 +31,7 @@ describe('configuration', () => {
     expect(configuration()).toEqual({
       nodeEnv: '',
       port: 3000,
-      database: { host: 'db.local', port: 5433, name: 'auth_db', username: 'postgres', password: 'pw' },
+      database: { host: 'db.local', port: 5433, name: 'trading_db', username: 'postgres', password: 'pw' },
       jwt: { secret: 'secret', issuer: 'auth-service', accessTokenExpiresIn: 900, refreshTokenExpiresIn: 604800 },
       logging: { level: 'debug' },
     });

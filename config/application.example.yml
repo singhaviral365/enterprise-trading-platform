@@ -40,18 +40,21 @@ services:
     smtp-port: 1025
     web-port: 8025
 
-# PostgreSQL. The order and executor services share the trading database; the auth-service has its own.
+# PostgreSQL. The order and executor services and the auth-service share ONE database (trading_db), each in its own schema (trading, auth).
 database:
   trading:
     host: localhost
     port: 5432
     name: trading_db
+    schema: trading
     user: postgres
     password: ""
+  # The auth-service uses the SAME database as the trading services (one trading_db), in its own schema.
   auth:
     host: localhost
     port: 5432
-    name: auth_db
+    name: trading_db
+    schema: auth
     user: postgres
     password: ""
 

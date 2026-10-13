@@ -1,5 +1,5 @@
 -- ============================================================
--- AUTH DATABASE SEED DATA (auth_db): ten sample users
+-- AUTH SEED DATA (schema "auth" of trading_db): ten sample users
 -- ============================================================
 -- Run it after auth/schema.sql. The user_ids (1000-1009) and emails are the same ones the trading accounts in trading/seed_data.sql
 -- carry, so a seeded login and its account line up. The two databases cannot enforce that; SeedDataConsistencyTest checks it.
@@ -8,6 +8,9 @@
 -- off for them so they can sign in without an emailed code. Change or delete these users before a real deployment.
 
 BEGIN;
+
+-- One database (trading_db), one schema per service: this file works in the "auth" schema.
+SET search_path TO auth;
 
 INSERT INTO users (user_id, username, email, password_hash, roles, two_factor_enabled, created_on, updated_at) VALUES
   (1000, 'alice.trader', 'alice.trader@example.com',

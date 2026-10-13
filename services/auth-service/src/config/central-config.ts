@@ -22,6 +22,7 @@ export const KEY_TO_ENV: Readonly<Record<string, string>> = {
   'database.auth.host': 'DATABASE_HOST',
   'database.auth.port': 'DATABASE_PORT',
   'database.auth.name': 'DATABASE_NAME',
+  'database.auth.schema': 'DATABASE_SCHEMA',
   'database.auth.user': 'DATABASE_USER',
   'database.auth.password': 'DATABASE_PASSWORD',
   'jwt.secret': 'JWT_SECRET',

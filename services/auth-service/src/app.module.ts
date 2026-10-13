@@ -13,6 +13,12 @@ import { OtpChallenge } from './otp/otp-challenge.entity';
 import { RedactingLogger } from './common/logging/redacting.logger';
 import { DatabaseInitService } from './database/database-init.service';
 
+// The auth tables live in their own schema of the shared trading database (the trading tables are in the `trading` schema).
+const AUTH_SCHEMA = process.env.DATABASE_SCHEMA || 'auth';
+if (!/^[a-z_][a-z0-9_]*$/.test(AUTH_SCHEMA)) {
+  throw new Error(`DATABASE_SCHEMA must be a plain lower-case identifier, got '${AUTH_SCHEMA}'`);
+}
+
 @Module({
   imports: [
     // Configuration module - loads environment variables
@@ -31,6 +37,9 @@ import { DatabaseInitService } from './database/database-init.service';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
+      // `schema` qualifies the entities (and synchronize creates it); search_path covers the raw SQL of the init services.
+      schema: AUTH_SCHEMA,
+      extra: { options: `-c search_path=${AUTH_SCHEMA}` },
       entities: [User, RefreshToken, OtpChallenge],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',

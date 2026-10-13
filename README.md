@@ -48,7 +48,7 @@ A web trading platform: sign up, open an account, watch live prices, place buy a
 How the pieces talk to each other:
 
 ```
-Angular app (4200) ──► auth-service (3000)        sign-in, sessions        ──► auth_db
+Angular app (4200) ──► auth-service (3000)        sign-in, sessions        ──► trading_db (schema auth)
         │
         ├──────────► order-service (8081)         accounts, orders         ──► trading_db
         │                  │ publishes `orders`
@@ -118,7 +118,7 @@ All of them are set in `services:` and `database:` of `config/application.yml`; 
 | auth-service | 3000 |
 | order-service | 8081 |
 | executor-service | 8082 |
-| Postgres `trading_db` and `auth_db` | 5432 (the auth database may use another) |
+| Postgres `trading_db` (schemas `trading` and `auth`) | 5432 |
 | Kafka | 9092 |
 | MailHog (dev email only) | SMTP 1025, web 8025 |
 
@@ -135,7 +135,7 @@ Open `config/application.yml` and fill in at least:
 
 | Key | Value |
 |---|---|
-| `database.trading.password`, `database.auth.password` | your Postgres password (and `database.auth.port` if the auth database is on another port) |
+| `database.trading.password`, `database.auth.password` | your Postgres password (the same one: both schemas are in `trading_db`) |
 | `jwt.secret` | a long random string (32+ characters) |
 | `kafka.bootstrap-servers` | where Kafka is, for example `localhost:9092` |
 | `external.fauxnance.*`, `external.exchange-rate.api-key` | the programme's market data URL and key, your ExchangeRate-API key |
@@ -155,7 +155,7 @@ You can also skip `application.yml` entirely: `cp .env.example .env` and fill in
 
 ### Step 1: Databases
 
-Two databases are needed: `trading_db` (order and executor services) and `auth_db` (auth-service). Two files create them, with all tables, and load the sample data, whichever way PostgreSQL runs (installed, or in Docker):
+One database is needed, `trading_db`, with two schemas: `trading` (order and executor services) and `auth` (auth-service). Two files create it, with all tables, and load the sample data, whichever way PostgreSQL runs (installed, or in Docker):
 
 ```bash
 psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/schema.sql       # both databases and all their tables
@@ -164,7 +164,7 @@ psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/seed_data.sql    # 
 bash scripts/setup-db.sh
 ```
 
-In pgAdmin, which cannot run psql commands, create the two empty databases and run `trading/schema.sql` and `trading/seed_data.sql` on `trading_db`, then `auth/schema.sql` and `auth/seed_data.sql` on `auth_db` (all under `databases/PostgreSQL/`). The schema files are for empty databases; run them once. [More in `databases/README.md`](databases/README.md).
+In pgAdmin, which cannot run psql commands, create the empty database `trading_db` and run `migrations/trading/schema.sql`, `migrations/auth/schema.sql`, `migrations/trading/seed_data.sql` and `migrations/auth/seed_data.sql` on it, in that order (all under `databases/PostgreSQL/`). The schema files are for empty databases; run them once. [More in `databases/README.md`](databases/README.md).
 
 The sample users (`alice.trader`, `yuvaraj.k`, ... ten in all) sign in with the password `Sample@12345`; change or delete them before a real deployment.
 
@@ -246,7 +246,7 @@ Fill in at least these in `.env` (everything else has a working default):
 |---|---|
 | `JWT_SECRET` | a long random string (32+ characters) |
 | `POSTGRES_PASSWORD`, `DATABASE_TRADING_PASSWORD` | one password for the trading database |
-| `AUTH_POSTGRES_PASSWORD`, `DATABASE_PASSWORD` | one password for the auth database |
+| `DATABASE_PASSWORD` | the same password, for the auth-service |
 | `EXTERNAL_FAUXNANCE_BASE_URL`, `EXTERNAL_FAUXNANCE_API_KEY` | the programme's market data URL and key |
 | `EXTERNAL_EXCHANGE_RATE_API_KEY` | your ExchangeRate-API key |
 
@@ -291,7 +291,8 @@ Reports (git-ignored): `frontend/test-reports/html/index.html` (view with `npm r
 
 ### Frontend (end-to-end, Playwright)
 
-These drive a real browser against the **running stack** (`scriptsun-app.ps1` running). Fill in the `e2e:` block of `config/application.yml` first (a user with an active account, a user with a suspended one, and a symbol; the order test buys one share each run).
+These drive a real browser against the **running stack** (`scripts
+un-app.ps1` running). Fill in the `e2e:` block of `config/application.yml` first (a user with an active account, a user with a suspended one, and a symbol; the order test buys one share each run).
 
 ```bash
 cd frontend

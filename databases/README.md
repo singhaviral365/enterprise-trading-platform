@@ -6,10 +6,10 @@ Two databases, both created by these files under `databases/PostgreSQL/`:
 
 | File | What it does |
 |---|---|
-| `schema.sql` | Creates `trading_db` and `auth_db` if they do not exist, then all their tables. A psql script (it uses `\connect` and `\ir`). |
+| `schema.sql` | Creates `trading_db` if it does not exist, then all tables of its two schemas, `trading` and `auth`. A psql script (it uses `\connect` and `\ir`). |
 | `seed_data.sql` | Loads the sample data into both. A psql script. |
 | `trading/schema.sql`, `trading/seed_data.sql` | The same for `trading_db` alone, as plain SQL: run them in pgAdmin's Query Tool on that database. |
-| `auth/schema.sql`, `auth/seed_data.sql` | The same for `auth_db` alone. |
+| `migrations/auth/schema.sql`, `migrations/auth/seed_data.sql` | The same for the `auth` schema alone. |
 
 ```bash
 psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/schema.sql
@@ -17,15 +17,15 @@ psql -h <host> -U <user> -d postgres -f databases/PostgreSQL/seed_data.sql
 # or:  bash scripts/setup-db.sh        (reads the host, port, user and password from config/application.yml)
 ```
 
-In pgAdmin, which cannot run psql commands: create two empty databases (`CREATE DATABASE trading_db; CREATE DATABASE auth_db;`), then run
-`trading/schema.sql` and `trading/seed_data.sql` on `trading_db`, and `auth/schema.sql` and `auth/seed_data.sql` on `auth_db`.
+In pgAdmin, which cannot run psql commands: create the empty database (`CREATE DATABASE trading_db;`), then run
+`migrations/trading/schema.sql`, `migrations/auth/schema.sql`, `migrations/trading/seed_data.sql` and `migrations/auth/seed_data.sql` on it.
 
 The schema files are for **empty** databases (running one twice stops with "already exists"); the services also create anything missing when
 they start. `SchemaParityTest` fails the build if the order-service's own start-up scripts ever define a table or column that
 `trading/schema.sql` lacks. With docker compose none of this is typed: the two database containers load these files the first time they start.
 
 **Sample data.** Ten advisors, ten customers with their accounts, thirteen instruments, ten orders and holdings, ten preference rows and four
-strategies in `trading_db`; ten users (ids 1000 to 1009) in `auth_db`. Every sample user signs in with the password `Sample@12345`
+strategies in `trading_db`; ten users (ids 1000 to 1009) in the `auth` schema. Every sample user signs in with the password `Sample@12345`
 (stored only as an Argon2id hash) and has two-step sign-in off. This is sample data: change or delete those users before a real deployment.
 
 ---
@@ -306,12 +306,12 @@ Channels (`channel_sms`, `channel_email`, `channel_in_app`) and categories (`not
 The table comes from `trading/schema.sql` and its sample rows from `trading/seed_data.sql`. The order-service also runs
 `preferences-schema.sql` (the same idempotent statements) every time it starts. How to create the databases is in section 0.
 
-**The email in `auth_db.users` and `trading_db.account` must be the same for the same user.** The databases cannot enforce
+**The email in `auth.users` and `trading.account` must be the same for the same user.** The databases cannot enforce
 that, so both seeds come from one list (sample account `1001` is user `1000`, and so on) and `SeedDataConsistencyTest` fails
 the build if they drift. To check a running pair by eye, list the users and the accounts and compare:
 
 ```sql
--- in auth_db                                   -- in trading_db
+-- in schema auth                                   -- in schema trading
 SELECT user_id, email FROM users                SELECT user_id, email, phone_no FROM account
 WHERE user_id BETWEEN 1000 AND 1009             WHERE user_id BETWEEN 1000 AND 1009
 ORDER BY user_id;                               ORDER BY user_id;

@@ -1,4 +1,4 @@
-# The whole platform in containers: two PostgreSQL databases (created from databases/PostgreSQL/*), Kafka, the auth, order and executor services,
+# The whole platform in containers: one PostgreSQL database, trading_db, with a trading and an auth schema (created from databases/PostgreSQL/*), Kafka, the auth, order and executor services,
 # and the frontend behind nginx.
 #
 #   cp .env.example .env      # then fill in the blanks (or: node config/cli.js env-file, which writes .env from config/application.yml)
@@ -18,30 +18,15 @@ services:
     volumes:
       - trading-db-data:/var/lib/postgresql/data
       # Run once, on an empty volume: the schema, then the sample data.
-      - ./databases/PostgreSQL/trading/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./databases/PostgreSQL/trading/seed_data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
+      # trading_db holds two schemas: trading (order and executor services) and auth (auth-service).
+      - ./databases/PostgreSQL/migrations/trading/schema.sql:/docker-entrypoint-initdb.d/01-trading-schema.sql:ro
+      - ./databases/PostgreSQL/migrations/auth/schema.sql:/docker-entrypoint-initdb.d/02-auth-schema.sql:ro
+      - ./databases/PostgreSQL/migrations/trading/seed_data.sql:/docker-entrypoint-initdb.d/03-trading-seed-data.sql:ro
+      - ./databases/PostgreSQL/migrations/auth/seed_data.sql:/docker-entrypoint-initdb.d/04-auth-seed-data.sql:ro
     ports:
       - "${TRADING_DB_PORT}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
-    networks: [trading-net]
-
-  auth-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${AUTH_POSTGRES_DB}
-      POSTGRES_USER: ${AUTH_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
-    volumes:
-      - auth-db-data:/var/lib/postgresql/data
-      - ./databases/PostgreSQL/auth/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./databases/PostgreSQL/auth/seed_data.sql:/docker-entrypoint-initdb.d/02-seed-data.sql:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AUTH_POSTGRES_USER} -d ${AUTH_POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -95,12 +80,12 @@ services:
       context: ./services/auth-service
     env_file: .env
     environment:
-      DATABASE_HOST: auth-db
+      DATABASE_HOST: postgres
       DATABASE_PORT: 5432
     ports:
       - "${AUTH_PORT}:${AUTH_PORT}"
     depends_on:
-      auth-db:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:${AUTH_PORT}/health >/dev/null 2>&1 || exit 1"]
@@ -191,5 +176,4 @@ networks:
 
 volumes:
   trading-db-data:
-  auth-db-data:
   kafka-data:

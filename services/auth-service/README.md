@@ -7,13 +7,13 @@ NestJS authentication service for the Enterprise Trading Platform. Implements re
 - **Framework**: NestJS 10+
 - **Runtime**: Node.js 20+
 - **Language**: TypeScript
-- **Database**: PostgreSQL (separate auth_db)
+- **Database**: PostgreSQL (schema `auth` of the shared `trading_db`)
 - **Authentication**: JWT (HS256)
 - **Password Hashing**: Argon2id
 
 ## Architecture
 
-The Auth Service manages authentication users in a separate `auth_db` database:
+The Auth Service manages authentication users in the `auth` schema of the shared `trading_db` database:
 
 ```
 auth_db
@@ -88,7 +88,7 @@ docker build -t auth-service:latest .
 docker run -p 3000:3000 \
   -e DATABASE_HOST=postgres \
   -e DATABASE_PORT=5432 \
-  -e DATABASE_NAME=auth_db \
+  -e DATABASE_NAME=trading_db \n  -e DATABASE_SCHEMA=auth \
   -e DATABASE_USER=postgres \
   -e DATABASE_PASSWORD=postgres \
   -e JWT_SECRET=your-secret \
@@ -135,9 +135,9 @@ See [contracts/auth-api.yaml](../contracts/auth-api.yaml) for the complete API s
 
 The application uses TypeORM for database management. On first run:
 
-1. Ensure auth_db exists:
+1. Ensure trading_db exists:
 ```sql
-CREATE DATABASE auth_db;
+CREATE DATABASE trading_db;
 ```
 
 2. Run migrations (automatic on startup if `synchronize: true`):
@@ -160,7 +160,8 @@ All configuration comes from `config/application.yml`, which this service turns 
 | `PORT` | Service port | 3000 |
 | `DATABASE_HOST` | PostgreSQL host | localhost |
 | `DATABASE_PORT` | PostgreSQL port | 5432 |
-| `DATABASE_NAME` | Database name | auth_db |
+| `DATABASE_NAME` | Database name | trading_db |
+| `DATABASE_SCHEMA` | Schema of the auth tables | auth |
 | `DATABASE_USER` | Database user | postgres |
 | `DATABASE_PASSWORD` | Database password | _(required)_ |
 | `JWT_SECRET` | Secret for signing tokens | _(required)_ |

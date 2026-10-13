@@ -3,6 +3,9 @@
 
 BEGIN;
 
+-- One database (trading_db), one schema per service: this file works in the "trading" schema.
+SET search_path TO trading;
+
 -- ============================================================
 -- 1. ADVISOR - 10 rows
 -- ============================================================

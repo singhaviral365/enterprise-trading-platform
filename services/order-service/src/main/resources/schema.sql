@@ -3,6 +3,9 @@
 -- PostgreSQL
 -- ============================================================
 
+-- The trading tables live in the "trading" schema of trading_db (the JDBC url sets currentSchema=trading; the auth-service uses "auth").
+CREATE SCHEMA IF NOT EXISTS trading;
+
 BEGIN;
 
 -- ============================================================

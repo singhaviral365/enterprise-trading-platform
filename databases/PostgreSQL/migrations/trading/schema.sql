@@ -5,6 +5,10 @@
 
 BEGIN;
 
+-- One database (trading_db), one schema per service: this file works in the "trading" schema.
+CREATE SCHEMA IF NOT EXISTS trading;
+SET search_path TO trading;
+
 -- The whole trading schema, from an empty database. Run it against trading_db, then trading/seed_data.sql.
 -- (The order-service also runs its own idempotent copies of these scripts at start-up; SchemaParityTest fails the build if this file
 -- ever lacks a table or column they define.) Statements under "UPGRADING AN EXISTING DATABASE" at the end do nothing on a new database.

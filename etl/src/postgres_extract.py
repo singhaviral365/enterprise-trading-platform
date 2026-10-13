@@ -54,6 +54,7 @@ def extract_orders(
             database=db,
             user=user,
             password=password,
+            options="-c search_path=trading",  # the trading tables live in the trading schema of trading_db
         )
         logger.info(
             "Connected to Postgres: %s:%s/%s",
@@ -150,6 +151,7 @@ def extract_instruments(
             database=db,
             user=user,
             password=password,
+            options="-c search_path=trading",  # the trading tables live in the trading schema of trading_db
         )
     except psycopg2.Error as exc:
         raise PostgresExtractError(f"Failed to connect to Postgres: {exc}") from exc
@@ -209,6 +211,7 @@ def extract_accounts(
             database=db,
             user=user,
             password=password,
+            options="-c search_path=trading",  # the trading tables live in the trading schema of trading_db
         )
     except psycopg2.Error as exc:
         raise PostgresExtractError(f"Failed to connect to Postgres: {exc}") from exc

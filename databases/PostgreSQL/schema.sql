@@ -1,20 +1,18 @@
 -- ============================================================
--- schema.sql: creates BOTH databases and all their tables. Run with psql (it uses \connect and \ir, which are psql commands):
+-- schema.sql: creates trading_db with its two schemas, "trading" (order and executor services) and "auth" (auth-service), and their
+-- tables. Run with psql (it uses \connect and \ir, which are psql commands):
 --
 --   psql -h <host> -U <user> -f databases/PostgreSQL/schema.sql
 --
--- In pgAdmin, which cannot run psql commands, open a Query Tool on each database and run its own file instead:
---   trading_db  ->  databases/PostgreSQL/trading/schema.sql
---   auth_db     ->  databases/PostgreSQL/auth/schema.sql
--- (create the two empty databases first: CREATE DATABASE trading_db; CREATE DATABASE auth_db;)
--- The database names are the ones in config/application.yml (database.trading.name, database.auth.name).
+-- In pgAdmin, which cannot run psql commands, create trading_db (CREATE DATABASE trading_db;) and run, in this order, on it:
+--   databases/PostgreSQL/migrations/trading/schema.sql
+--   databases/PostgreSQL/migrations/auth/schema.sql
+-- The database name is the one in config/application.yml (database.trading.name); the schema names are database.trading.schema and
+-- database.auth.schema.
 -- ============================================================
 
 SELECT 'CREATE DATABASE trading_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'trading_db')\gexec
-SELECT 'CREATE DATABASE auth_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'auth_db')\gexec
 
 \connect trading_db
-\ir migration/trading/schema.sql
-
-\connect auth_db
-\ir migration/auth/schema.sql
+\ir migrations/trading/schema.sql
+\ir migrations/auth/schema.sql

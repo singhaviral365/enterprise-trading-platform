@@ -19,7 +19,7 @@ services:
   auth: { host: localhost, port: 3000 }
   frontend: { host: localhost, port: 4200 }
 database:
-  auth: { host: localhost, port: 5433, name: auth_db, user: postgres, password: "" }
+  auth: { host: localhost, port: 5433, name: trading_db, schema: auth, user: postgres, password: "" }
 jwt: { secret: "", issuer: auth-service }
 auth:
   verification-enabled: true
@@ -40,7 +40,8 @@ describe('central configuration', () => {
       PORT: '3000',
       DATABASE_HOST: 'localhost',
       DATABASE_PORT: '5433',
-      DATABASE_NAME: 'auth_db',
+      DATABASE_NAME: 'trading_db',
+      DATABASE_SCHEMA: 'auth',
       DATABASE_PASSWORD: 'pw',
       JWT_SECRET: 's3cret-s3cret-s3cret-s3cret-s3cret',
       JWT_ISSUER: 'auth-service',
