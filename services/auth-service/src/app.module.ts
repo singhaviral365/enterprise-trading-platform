@@ -38,8 +38,9 @@ if (!/^[a-z_][a-z0-9_]*$/.test(AUTH_SCHEMA)) {
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
       // `schema` qualifies the entities (and synchronize creates it); search_path covers the raw SQL of the init services.
-      schema: AUTH_SCHEMA,
-      extra: { options: `-c search_path=${AUTH_SCHEMA}` },
+      schema: AUTH_SCHEMA,      
+      // `max` keeps this service's pool small: the RDS instance is shared and has a low connection limit.
+      extra: { options: `-c search_path=${AUTH_SCHEMA}`, max: 5, idleTimeoutMillis: 30000 },
       entities: [User, RefreshToken, OtpChallenge],
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',

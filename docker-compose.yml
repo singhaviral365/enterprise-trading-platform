@@ -177,6 +177,9 @@ x-java-env: &java-env
   SPRING_DATASOURCE_USERNAME: ${DB_USER}
   SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
   SPRING_KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_INTERNAL:-kafka:29092}
+  # CHANGED: small connection pools (the default is 10 per service); the shared RDS allows only ~79 connections in total
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: ${DB_POOL_MAX:-3}
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: ${DB_POOL_MIN_IDLE:-1}
 
 # A shared config folder of the repo (e.g. ./Config with application.yml), mounted
 # read-only into every app container. Default = the DockerFile folder (harmless).
