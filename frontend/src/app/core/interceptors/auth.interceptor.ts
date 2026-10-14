@@ -20,10 +20,19 @@ export interface ProtectedApi {
 export function protectedApis(): readonly ProtectedApi[] {
   return [
     // Trade REST API, and the market endpoint that lives under the same prefix
-    { origin: new URL(TRADE_API_BASE_URL, window.location.origin).origin, pathPrefixes: ['/api/v1/'] },
+    { origin: originOf(TRADE_API_BASE_URL), pathPrefixes: [basePathOf(TRADE_API_BASE_URL) + '/api/v1/'] },
     // Auth API: only the protected route; the rest are in `sessionRoutes` below
-    { origin: new URL(AUTH_API_BASE_URL, window.location.origin).origin, pathPrefixes: ['/auth/me'] },
+    { origin: originOf(AUTH_API_BASE_URL), pathPrefixes: [basePathOf(AUTH_API_BASE_URL) + '/auth/me'] },
   ];
+}
+
+function originOf(baseUrl: string): string {
+  return new URL(baseUrl, window.location.origin).origin;
+}
+
+/** The path part of a base URL without a trailing slash: `/_auth` when the API sits behind a proxy prefix, empty otherwise. */
+function basePathOf(baseUrl: string): string {
+  return new URL(baseUrl, window.location.origin).pathname.replace(/\/+$/, '');
 }
 
 /**
@@ -65,8 +74,12 @@ function isProtected(rawUrl: string): boolean {
 
 function isSessionRoute(rawUrl: string): boolean {
   const url = parse(rawUrl);
-  const authOrigin = new URL(AUTH_API_BASE_URL, window.location.origin).origin;
-  return url !== null && url.origin === authOrigin && SESSION_ROUTES.includes(url.pathname);
+  const basePath = basePathOf(AUTH_API_BASE_URL);
+  return (
+    url !== null &&
+    url.origin === originOf(AUTH_API_BASE_URL) &&
+    SESSION_ROUTES.some((route) => url.pathname === basePath + route)
+  );
 }
 
 /** Refresh a little early so a request does not leave just as the access cookie expires. */
