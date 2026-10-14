@@ -167,7 +167,7 @@ x-common-env: &common-env
   KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_INTERNAL:-kafka:29092}
   KAFKA_BROKERS: ${KAFKA_INTERNAL:-kafka:29092}
   # --- browser origin allowed to call the APIs (CORS)
-  CORS_ORIGINS: &cors ${CORS_ORIGINS:-${PUBLIC_SCHEME:-http}://${PUBLIC_HOST:-localhost}:${FRONTEND_PORT:-4200}}
+  CORS_ORIGINS: &cors ${CORS_ORIGINS:-*}
   CORS_ALLOWED_ORIGINS: *cors
   FRONTEND_URL: *cors
 
