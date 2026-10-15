@@ -48,9 +48,9 @@ pipeline {
           set -euo pipefail
           command -v aws >/dev/null
           command -v docker >/dev/null
-          test -f services/auth_service/Dockerfile
-          test -f services/trade-api/Dockerfile
-          test -f services/executor/Dockerfile
+          test -f services/auth-service/Dockerfile
+          test -f services/order-service/Dockerfile
+          test -f services/executor-service/Dockerfile
           test -f frontend/Dockerfile
         '''
       }
