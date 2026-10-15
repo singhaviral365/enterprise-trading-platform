@@ -5,96 +5,196 @@ pipeline {
     timestamps()
     disableConcurrentBuilds()
     skipDefaultCheckout(true)
-    timeout(time: 45, unit: 'MINUTES')
-  }
-
-  triggers {
-    githubPush()
-    pollSCM('H */2 * * *')
+    timeout(time: 30, unit: 'MINUTES')
   }
 
   parameters {
     string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS region')
-    string(name: 'K8S_OVERLAY', defaultValue: 'k8s/overlays/four-lb', description: 'Overlay used for frontend build URLs')
+    string(name: 'RDS_HOST', defaultValue: 'database-1.cnkuqa422nq0.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
+    string(name: 'RDS_PORT', defaultValue: '5432', description: 'RDS PostgreSQL port')
+    string(name: 'RDS_DATABASE', defaultValue: 'trading_db', description: 'RDS database name')
+    string(name: 'RDS_USER', defaultValue: 'postgres', description: 'RDS database user')
+    string(name: 'IMAGE_TAG', defaultValue: '', description: 'Required ECR tag produced by JenkinsfileCI')
+    string(name: 'K8S_OVERLAY', defaultValue: 'k8s/overlays/four-lb', description: 'Kustomize overlay')
+    string(name: 'K8S_NAMESPACE', defaultValue: 'default', description: 'Namespace used by the current manifests')
+    booleanParam(name: 'AUTO_AUTHORIZE_RDS', defaultValue: true, description: 'Only after RDS connectivity fails, add the EKS node SG to RDS on TCP 5432')
   }
 
   environment {
-    AWS_REGION = 'ap-south-1'
+    EKS_CLUSTER_NAME = 'etp-cluster-1'
     AUTH_REPO = 'etp-auth-service'
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
-    AUTH_LOCAL_IMAGE = 'auth-service'
-    ORDER_LOCAL_IMAGE = 'order-service'
-    EXECUTOR_LOCAL_IMAGE = 'executor-service'
-    FRONTEND_LOCAL_IMAGE = 'frontend'
   }
 
   stages {
     stage('Checkout SCM') {
       steps {
+        deleteDir()
         checkout scm
+        sh 'git rev-parse HEAD; test -f k8s/base/generated/application.yml'
         script {
-          env.AWS_REGION = params.AWS_REGION?.trim() ?: 'ap-south-1'
-          env.K8S_OVERLAY = params.K8S_OVERLAY?.trim() ?: 'k8s/overlays/four-lb'
-          env.RELEASE_TAG = "1.${env.BUILD_NUMBER}"
+          if (!params.IMAGE_TAG?.trim()) {
+            error('IMAGE_TAG is required. Run JenkinsfileCI first and enter its pushed ECR tag.')
+          }
+          env.DB_HOST = params.RDS_HOST.trim()
+          env.DB_PORT = params.RDS_PORT.trim()
+          env.DB_NAME = params.RDS_DATABASE.trim()
+          env.DB_USER = params.RDS_USER.trim()
         }
       }
     }
 
-    stage('Validate build agent') {
+    stage('Validate existing EKS cluster') {
       steps {
         sh '''#!/usr/bin/env bash
-          set -euo pipefail
-          command -v aws >/dev/null
-          command -v docker >/dev/null
-          test -f services/auth_service/Dockerfile
-          test -f services/trade-api/Dockerfile
-          test -f services/executor/Dockerfile
-          test -f frontend/Dockerfile
+            set -euo pipefail
+            sed -i -E "s#^DB_HOST=.*#DB_HOST=$DB_HOST#; s#^DB_PORT=.*#DB_PORT=$DB_PORT#; s#^DB_NAME=.*#DB_NAME=$DB_NAME#; s#^DB_USER=.*#DB_USER=$DB_USER#" k8s/base/config.env
+            command -v aws >/dev/null
+            command -v kubectl >/dev/null
+            test -f "$K8S_OVERLAY/kustomization.yaml"
+            aws eks describe-cluster --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME" \
+              --query 'cluster.status' --output text | grep -qx ACTIVE
+            aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+            kubectl get nodes -o wide
+            kubectl get pods -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver --no-headers >/dev/null || {
+              echo 'aws-ebs-csi-driver is not installed on the existing cluster.' >&2
+              exit 1
+            }
         '''
       }
     }
 
-    stage('Build and push ECR') {
+    stage('Test RDS connectivity first') {
       steps {
         script {
-          env.AWS_ACCOUNT_ID = sh(script: 'aws sts get-caller-identity --query Account --output text', returnStdout: true).trim()
-          env.REGISTRY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
+            def result = sh(script: '''#!/usr/bin/env bash
+              set +e
+              DB_HOST=$(awk -F= '$1 == "DB_HOST" {print $2}' k8s/base/config.env)
+              DB_PORT=$(awk -F= '$1 == "DB_PORT" {print $2}' k8s/base/config.env)
+              DB_NAME=$(awk -F= '$1 == "DB_NAME" {print $2}' k8s/base/config.env)
+              DB_USER=$(awk -F= '$1 == "DB_USER" {print $2}' k8s/base/config.env)
+              kubectl run jenkins-rds-test --rm -i --restart=Never \\
+                --image=postgres:16 \\
+                --env="DB_HOST=$DB_HOST" --env="DB_PORT=$DB_PORT" \\
+                --env="DB_NAME=$DB_NAME" --env="DB_USER=$DB_USER" \\
+                --command -- sh -c 'pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"'
+              printf '%s' "$?"
+            ''', returnStdout: true).trim()
+            env.RDS_TEST_FAILED = result.endsWith('0') ? 'false' : 'true'
+            echo "RDS connectivity test failed: ${env.RDS_TEST_FAILED}"
+        }
+      }
+    }
+
+    stage('Authorize RDS only after failed test') {
+      when {
+        allOf {
+          expression { params.AUTO_AUTHORIZE_RDS }
+          environment name: 'RDS_TEST_FAILED', value: 'true'
+        }
+      }
+      steps {
+        sh '''#!/usr/bin/env bash
+            set -euo pipefail
+            DB_HOST=$(awk -F= '$1 == "DB_HOST" {print $2}' k8s/base/config.env)
+            NODEGROUP=$(aws eks list-nodegroups --region "$AWS_REGION" --cluster-name "$EKS_CLUSTER_NAME" --query 'nodegroups[0]' --output text)
+            RDS_INSTANCE_ID=$(aws rds describe-db-instances --region "$AWS_REGION" --query "DBInstances[?Endpoint.Address=='$DB_HOST'].DBInstanceIdentifier | [0]" --output text)
+            test -n "$RDS_INSTANCE_ID" -a "$RDS_INSTANCE_ID" != None
+            NODE_INSTANCE_ID=$(aws ec2 describe-instances --region "$AWS_REGION" \\
+              --filters "Name=tag:aws:eks:cluster-name,Values=$EKS_CLUSTER_NAME" \\
+                        "Name=tag:eks:nodegroup-name,Values=$NODEGROUP" \\
+                        "Name=instance-state-name,Values=running" \\
+              --query 'Reservations[].Instances[0].InstanceId | [0]' --output text)
+            test -n "$NODE_INSTANCE_ID" -a "$NODE_INSTANCE_ID" != None
+            RDS_SECURITY_GROUP_ID=$(aws rds describe-db-instances --region "$AWS_REGION" --db-instance-identifier "$RDS_INSTANCE_ID" --query 'DBInstances[0].VpcSecurityGroups[0].VpcSecurityGroupId' --output text)
+            EKS_NODE_SECURITY_GROUP_ID=$(aws ec2 describe-instances --region "$AWS_REGION" --instance-ids "$NODE_INSTANCE_ID" --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' --output text)
+            aws ec2 authorize-security-group-ingress --group-id "$RDS_SECURITY_GROUP_ID" --protocol tcp --port 5432 --source-group "$EKS_NODE_SECURITY_GROUP_ID" || echo 'RDS ingress rule already exists.'
+        '''
+      }
+    }
+
+    stage('Retry RDS test') {
+      when {
+        environment name: 'RDS_TEST_FAILED', value: 'true'
+      }
+      steps {
+        sh '''#!/usr/bin/env bash
+          set -euo pipefail
+          DB_HOST=$(awk -F= '$1 == "DB_HOST" {print $2}' k8s/base/config.env)
+          DB_PORT=$(awk -F= '$1 == "DB_PORT" {print $2}' k8s/base/config.env)
+          DB_NAME=$(awk -F= '$1 == "DB_NAME" {print $2}' k8s/base/config.env)
+          DB_USER=$(awk -F= '$1 == "DB_USER" {print $2}' k8s/base/config.env)
+          kubectl run jenkins-rds-test --rm -i --restart=Never \
+            --image=postgres:16 \
+            --env="DB_HOST=$DB_HOST" --env="DB_PORT=$DB_PORT" \
+            --env="DB_NAME=$DB_NAME" --env="DB_USER=$DB_USER" \
+            --command -- sh -c 'pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME"'
+        '''
+      }
+    }
+
+    stage('Verify selected ECR images') {
+      steps {
+        script {
+            env.AWS_ACCOUNT_ID = sh(script: 'aws sts get-caller-identity --query Account --output text', returnStdout: true).trim()
+            env.REGISTRY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
         }
         sh '''#!/usr/bin/env bash
             set -euo pipefail
-            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
-
             for repo in "$AUTH_REPO" "$ORDER_REPO" "$EXECUTOR_REPO" "$FRONTEND_REPO"; do
-              aws ecr describe-repositories --region "$AWS_REGION" --repository-names "$repo" >/dev/null 2>&1 || \
-              aws ecr create-repository --region "$AWS_REGION" --repository-name "$repo" \
-                --image-scanning-configuration scanOnPush=true \
-                --encryption-configuration encryptionType=AES256 >/dev/null
+              aws ecr describe-images --region "$AWS_REGION" --repository-name "$repo" --image-ids imageTag="$IMAGE_TAG" >/dev/null
             done
+        '''
+      }
+    }
 
-            AUTH_URL=$(awk -F= '$1 == "AUTH_SERVICE_URL" {print $2}' "${K8S_OVERLAY}/urls.env")
-            ORDER_URL=$(awk -F= '$1 == "ORDER_SERVICE_URL" {print $2}' "${K8S_OVERLAY}/urls.env")
-            FRONTEND_URL=$(awk -F= '$1 == "FRONTEND_URL" {print $2}' "${K8S_OVERLAY}/urls.env")
-            BUILD_ENV="AUTH_SERVICE_URL=$AUTH_URL AUTH_SERVICE_PORT=3000 ORDER_SERVICE_URL=$ORDER_URL ORDER_SERVICE_PORT=8081 FRONTEND_URL=$FRONTEND_URL FRONTEND_PORT=80"
+    stage('Inject secrets and deploy selected images') {
+      steps {
+        sh '''#!/usr/bin/env bash
+          set -euo pipefail
+          # Secrets are hardcoded here; no Jenkins credential is used.
+          cat > k8s/base/secrets.env <<'SECRETS_EOF'
+# SECRETS. Copy to secrets.env (git-ignored) and fill in. Copied to base/secrets.env and turned into the Secret etp-secrets (guide 7.2).
+# SECRETS ONLY. Never commit (git-ignored via *.local.env). Merged with .env.config into .env by:  ./scripts/build-env.sh
 
-            docker build -t "$AUTH_LOCAL_IMAGE:$RELEASE_TAG" ./services/auth_service
-            docker build -t "$ORDER_LOCAL_IMAGE:$RELEASE_TAG" ./services/trade-api
-            docker build -t "$EXECUTOR_LOCAL_IMAGE:$RELEASE_TAG" ./services/executor
-            docker build --build-arg "BUILD_ENV=$BUILD_ENV" -t "$FRONTEND_LOCAL_IMAGE:$RELEASE_TAG" ./frontend
+# ---- shared
+JWT_SECRET=5d5634fe6f76a4b6a9dd5e94502fbe2519958a10bae499a12a447871546a6ef5
 
-            declare -A IMAGE_MAP=(
-              ["$AUTH_REPO"]="$AUTH_LOCAL_IMAGE"
-              ["$ORDER_REPO"]="$ORDER_LOCAL_IMAGE"
-              ["$EXECUTOR_REPO"]="$EXECUTOR_LOCAL_IMAGE"
-              ["$FRONTEND_REPO"]="$FRONTEND_LOCAL_IMAGE"
-            )
-            for repo in "${!IMAGE_MAP[@]}"; do
-              docker tag "${IMAGE_MAP[$repo]}:$RELEASE_TAG" "$REGISTRY/$repo:$RELEASE_TAG"
-              docker push "$REGISTRY/$repo:$RELEASE_TAG"
-            done
-            echo "CI image tag: $RELEASE_TAG"
-            echo "IMAGE_TAG=$RELEASE_TAG"
+# ---- database (the same password under every name the services read)
+DATABASE_PASSWORD=n3u3d4!!
+DATABASE_TRADING_PASSWORD=n3u3d4!!
+DB_PASSWORD=n3u3d4!!
+
+# ---- auth-service
+AUTH_OTP_SECRET=
+AUTH_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
+ENC_PRIVATE_KEY_PEM=
+
+# ---- order-service
+EXTERNAL_FAUXNANCE_API_KEY=fnx_dev_AO9mF077q32hMWO6mYjlLwCYK2MGQORk
+EXTERNAL_EXCHANGE_RATE_API_KEY=a0f7484af9eb73db6fb5f9b2
+EXTERNAL_GEMINI_API_KEY=AQ.Ab8RN6JCcSo-CUyw2Icd2iqPZjk_322f0KlNLkl3D5LMEh_6bg
+ORDER_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
+ORDER_EMAIL_SMTP_USER=mit2022506079@gmail.com
+# ---- Playwright journeys
+E2E_PASSWORD=
+E2E_READONLY_PASSWORD=
+
+SECRETS_EOF
+          kubectl apply --dry-run=server -k "$K8S_OVERLAY"
+          kubectl apply -k "$K8S_OVERLAY"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/auth-service auth-service="$REGISTRY/$AUTH_REPO:$IMAGE_TAG"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/order-service order-service="$REGISTRY/$ORDER_REPO:$IMAGE_TAG"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/executor-service executor-service="$REGISTRY/$EXECUTOR_REPO:$IMAGE_TAG"
+          kubectl -n "$K8S_NAMESPACE" set image deployment/frontend frontend="$REGISTRY/$FRONTEND_REPO:$IMAGE_TAG"
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/auth-service --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/order-service --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/executor-service --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" rollout status deployment/frontend --timeout=180s
+          kubectl -n "$K8S_NAMESPACE" get pods -o wide
+          kubectl -n "$K8S_NAMESPACE" get svc
         '''
       }
     }
@@ -102,7 +202,7 @@ pipeline {
 
   post {
     always {
-      sh 'docker logout "${REGISTRY:-}" || true'
+      sh 'rm -f k8s/base/secrets.env'
     }
   }
 }
