@@ -1,0 +1,188 @@
+# Enterprise Trading Platform: the ONE place where every URL, port, credential and switch is NAMED. It holds no values of its own: every
+# setting is a ${VARIABLE} that comes from the .env file in the repository root (copy .env.example to .env and fill it in).
+#
+#   config/application.example.yml   this file, committed: the list of settings and the variable each one is read from.
+#   .env                             the values. Git-ignored. Create it with:   cp .env.example .env
+#
+# NOTE: the placeholders are not expanded by the auth-service's loader (src/config/central-config.ts) or by config/cli.js yet; the Spring
+# services resolve them from the environment.
+#
+#   auth-service      src/config/central-config.ts   maps the keys to its settings at start-up
+#   order-service     spring.config.import           the keys are properties; application*.properties refer to them as ${key}
+#   executor-service  spring.config.import           the same
+#   frontend          config/cli.js frontend         generates src/app/config/platform.config.ts and proxy.conf.json (npm start/build/test do it)
+#   contracts         config/cli.js contracts        writes each contract's `servers:` URLs
+# See config/README.md.
+
+# NODE_ENV of the auth-service: local | development | production. `development` makes TypeORM synchronise the schema and log SQL;
+# `production` makes cookies Secure by default (see auth.cookie.secure) and is the only value where real email may go to anyone
+# without auth.email.allowed-recipient-domains.
+environment: "${NODE_ENV}"
+
+# Where each part of the platform listens. `host` is where the others reach it; `port` is where it binds.
+services:
+  frontend:
+    host: "${SERVICES_FRONTEND_HOST}"
+    port: "${FRONTEND_PORT}"
+  auth:
+    host: "${SERVICES_AUTH_HOST}"
+    port: "${PORT}"
+  order:
+    host: "${SERVICES_ORDER_HOST}"
+    port: "${SERVICES_ORDER_PORT}"
+  executor:
+    host: "${SERVICES_EXECUTOR_HOST}"
+    port: "${SERVICES_EXECUTOR_PORT}"
+  # A local mail catcher for email mode "dev" (run MailHog on your machine). The e2e tests read codes from its web UI.
+  mailhog:
+    host: "${MAILHOG_HOST}"
+    smtp-port: "${MAILHOG_SMTP_PORT}"
+    web-port: "${MAILHOG_WEB_PORT}"
+
+# PostgreSQL. The order and executor services and the auth-service share ONE database (trading_db), each in its own schema (trading, auth).
+database:
+  trading:
+    host: "${DATABASE_TRADING_HOST}"
+    port: "${DATABASE_TRADING_PORT}"
+    name: "${DATABASE_TRADING_NAME}"
+    schema: "${DATABASE_TRADING_SCHEMA}"
+    user: "${DATABASE_TRADING_USER}"
+    password: "${DATABASE_TRADING_PASSWORD}"
+  # The auth-service uses the SAME database as the trading services (one trading_db), in its own schema.
+  auth:
+    host: "${DATABASE_HOST}"
+    port: "${DATABASE_PORT}"
+    name: "${DATABASE_NAME}"
+    schema: "${DATABASE_SCHEMA}"
+    user: "${DATABASE_USER}"
+    password: "${DATABASE_PASSWORD}"
+
+# Kafka. Start it yourself (Linux); the services only need the address.
+kafka:
+  # Where the services reach Kafka FROM THIS MACHINE: the host and port of its advertised listener (for example your Linux VM's IP:9092).
+  # Not kafka:29092: that name only exists inside the docker network.
+  bootstrap-servers: "${KAFKA_BOOTSTRAP_SERVERS}"
+  # The host and port Kafka advertises to clients outside docker (a VM's IP). Only docker compose uses them.
+  external-host: "${KAFKA_EXTERNAL_HOST}"
+  external-port: "${KAFKA_EXTERNAL_PORT}"
+
+# Shared HS256 signing secret: the auth-service signs, the order and executor services verify. 32 bytes or more.
+jwt:
+  secret: "${JWT_SECRET}"
+  issuer: "${JWT_ISSUER}"
+  access-token-expires-in: "${JWT_ACCESS_TOKEN_EXPIRES_IN}"
+  refresh-token-expires-in: "${JWT_REFRESH_TOKEN_EXPIRES_IN}"
+
+# Third-party APIs. The browser never calls them.
+external:
+  # Market data (candles, quotes) provided by the programme.
+  fauxnance:
+    base-url: "${EXTERNAL_FAUXNANCE_BASE_URL}"
+    api-key: "${EXTERNAL_FAUXNANCE_API_KEY}"
+  # Currency conversion for orders. https://www.exchangerate-api.com. base-url is WITHOUT the key.
+  exchange-rate:
+    base-url: "${EXTERNAL_EXCHANGE_RATE_BASE_URL}"
+    api-key: "${EXTERNAL_EXCHANGE_RATE_API_KEY}"
+  # The assistant explains a trade signal. Without a key the platform's own wording is used. https://aistudio.google.com/apikey
+  # model: a name can be retired for new keys (gemini-2.5-flash answers 404 now), so the -latest alias is used. rate-limit-rpm: set it to the
+  # requests per minute your key is allowed (AI Studio > usage); above it the chat answers "busy" instead of calling Google.
+  gemini:
+    base-url: "${EXTERNAL_GEMINI_BASE_URL}"
+    api-key: "${EXTERNAL_GEMINI_API_KEY}"
+    model: "${EXTERNAL_GEMINI_MODEL}"
+    rate-limit-rpm: "${EXTERNAL_GEMINI_RATE_LIMIT_RPM}"
+
+signals:
+  candle-cache-ttl-minutes: "${SIGNALS_CANDLE_CACHE_TTL_MINUTES}"
+  signal-cache-ttl-minutes: "${SIGNALS_SIGNAL_CACHE_TTL_MINUTES}"
+
+# Auth-service
+auth:
+  log-level: "${LOG_LEVEL}"
+  # Registering emails a code to the address typed first. Needs email mode other than off.
+  verification-enabled: "${AUTH_EMAIL_VERIFICATION_ENABLED}"
+  # Whether each user may switch on two-step sign-in in Settings.
+  two-factor-enabled: "${AUTH_TWO_FACTOR_ENABLED}"
+  otp:
+    # Key the stored code hashes are made with; empty means jwt.secret.
+    secret: "${AUTH_OTP_SECRET}"
+    ttl-seconds: "${AUTH_OTP_TTL_SECONDS}"
+    reset-ttl-seconds: "${AUTH_OTP_RESET_TTL_SECONDS}"
+    max-attempts: "${AUTH_OTP_MAX_ATTEMPTS}"
+    resend-cooldown-seconds: "${AUTH_OTP_RESEND_COOLDOWN_SECONDS}"
+    max-sends: "${AUTH_OTP_MAX_SENDS}"
+  cookie:
+    # true | false | "" (default: true in production, false in development)
+    secure: "${AUTH_COOKIE_SECURE}"
+    # strict | lax | none
+    samesite: "${AUTH_COOKIE_SAMESITE}"
+  cors:
+    # Origins besides the frontend (services.frontend) that may call the auth-service from a browser: a comma list.
+    extra-origins: "${AUTH_CORS_EXTRA_ORIGINS}"
+  # Email: off | dev | prod. dev = MailHog (services.mailhog), prod = a real SMTP account over TLS (docs: documentation/readme/EMAIL.md).
+  email:
+    mode: "${AUTH_EMAIL_MODE}"
+    smtp:
+      host: "${AUTH_EMAIL_SMTP_HOST}"
+      port: "${AUTH_EMAIL_SMTP_PORT}"
+      tls: "${AUTH_EMAIL_SMTP_TLS}"
+      user: "${AUTH_EMAIL_SMTP_USER}"
+      password: "${AUTH_EMAIL_SMTP_PASSWORD}"
+    from: "${AUTH_EMAIL_FROM}"
+    from-domains: "${AUTH_EMAIL_FROM_DOMAINS}"
+    # Outside production, real mail needs this: a comma list of domains, or * for anyone.
+    allowed-recipient-domains: "${AUTH_EMAIL_ALLOWED_RECIPIENT_DOMAINS}"
+    reply-to: "${AUTH_EMAIL_REPLY_TO}"
+
+# Payload encryption between the browser and the auth-service. off | optional | required.
+# optional: the browser always encrypts and the service also accepts plain bodies (Bruno, curl). required: plain bodies are refused.
+# Generate the key with:  node config/cli.js enc-key   (it prints the two lines; paste them into .env)
+encryption:
+  mode: "${ENC_MODE}"
+  kid: "${ENC_KID}"
+  private-key-pem: "${ENC_PRIVATE_KEY_PEM}"
+  max-age-seconds: "${ENC_MAX_AGE_SECONDS}"
+  # Development only: logs decrypted bodies. Refused when environment is production.
+  log-plaintext: "${ENC_LOG_PLAINTEXT}"
+
+# Order-service
+order:
+  # Notification email: off | dev | prod. run-app.ps1 turns this into the Spring profile of the same name.
+  email:
+    mode: "${ORDER_EMAIL_MODE}"
+    smtp:
+      host: "${ORDER_EMAIL_SMTP_HOST}"
+      port: "${ORDER_EMAIL_SMTP_PORT}"
+      tls: "${ORDER_EMAIL_SMTP_TLS}"
+      username: "${ORDER_EMAIL_SMTP_USERNAME}"
+      password: "${ORDER_EMAIL_SMTP_PASSWORD}"
+    from: "${ORDER_EMAIL_FROM}"
+    from-domains: "${ORDER_EMAIL_FROM_DOMAINS}"
+    allowed-recipient-domains: "${ORDER_EMAIL_ALLOWED_RECIPIENT_DOMAINS}"
+    reply-to: "${ORDER_EMAIL_REPLY_TO}"
+    max-per-minute: "${ORDER_EMAIL_MAX_PER_MINUTE}"
+
+# Executor-service
+executor:
+  poll-interval-seconds: "${EXECUTOR_POLL_INTERVAL_SECONDS}"
+  # Comma list of symbols to poll for market data; empty means the instruments people hold or watch.
+  watch-symbols: "${EXECUTOR_WATCH_SYMBOLS}"
+  strategy-execution-enabled: "${EXECUTOR_STRATEGY_EXECUTION_ENABLED}"
+  strategy-demo-delay-millis: "${EXECUTOR_STRATEGY_DEMO_DELAY_MILLIS}"
+
+# SonarQube (scripts/sonar-scan.ps1 and documentation/readme/SONARQUBE.md). The server runs on the Linux VM; the token is made in SonarQube
+# (My Account > Security).
+sonar:
+  host-url: "${SONAR_HOST_URL}"
+  token: "${SONAR_TOKEN}"
+
+# End-to-end tests (frontend/e2e, Playwright) run against the live stack. Real accounts, real credentials: keep them in .env.
+e2e:
+  # A user with a LINKED, ACTIVE trading account and enough cash to buy one share of `symbol`.
+  username: "${E2E_USERNAME}"
+  password: "${E2E_PASSWORD}"
+  # A user whose linked account is NOT active (SUSPENDED or CLOSED), so it cannot place orders.
+  readonly-username: "${E2E_READONLY_USERNAME}"
+  readonly-password: "${E2E_READONLY_PASSWORD}"
+  # A symbol that appears on the dashboard market board and has a live price.
+  symbol: "${E2E_SYMBOL}"
