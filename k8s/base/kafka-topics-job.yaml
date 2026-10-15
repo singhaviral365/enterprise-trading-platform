@@ -20,7 +20,7 @@ spec:
             - -c
             - |
               set -eu
-              BS=kafka:29092
+              BS=kafka:9092
               export PATH=/opt/kafka/bin:$PATH
               until kafka-topics.sh --bootstrap-server $BS --list >/dev/null 2>&1; do echo "waiting for Kafka"; sleep 5; done
               # name partitions retention.ms   (same as Infrastructure/Kafka/scripts/create-topics.sh)

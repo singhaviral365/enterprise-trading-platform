@@ -70,6 +70,12 @@ data:
       gzip_types text/css application/javascript application/json image/svg+xml;
       client_max_body_size 20m;
 
+      # Plain-http fix: browsers only expose crypto.randomUUID on https/localhost, and the order ticket calls it,
+      # so on http the Buy/Sell panel crashes (white box). Add it to the page from crypto.getRandomValues, which
+      # works on http. Remove once the site is served over https. (No dollar signs: nginx would expand them.)
+      sub_filter '</head>' '<script>if(window.crypto&&typeof crypto.randomUUID!=="function"){crypto.randomUUID=function(){var b=crypto.getRandomValues(new Uint8Array(16));b[6]=b[6]&15|64;b[8]=b[8]&63|128;var h=Array.from(b,function(x){return (x+256).toString(16).slice(1)}).join("");return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20)}}</script></head>';
+      sub_filter_once on;
+
       proxy_http_version 1.1;
       proxy_set_header Host $http_host;
       proxy_set_header X-Real-IP $remote_addr;
