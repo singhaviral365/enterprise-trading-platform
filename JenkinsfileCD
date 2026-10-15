@@ -10,9 +10,9 @@ pipeline {
 
   parameters {
     string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS region')
-    string(name: 'RDS_HOST', defaultValue: 'database-1.c52m040i8bb8.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
+    string(name: 'RDS_HOST', defaultValue: 'database-1.cbo04g6kafop.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
     string(name: 'RDS_PORT', defaultValue: '5432', description: 'RDS PostgreSQL port')
-    string(name: 'RDS_DATABASE', defaultValue: 'trading_system_db', description: 'RDS database name')
+    string(name: 'RDS_DATABASE', defaultValue: 'trading_db', description: 'RDS database name')
     string(name: 'RDS_USER', defaultValue: 'postgres', description: 'RDS database user')
     string(name: 'IMAGE_TAG', defaultValue: '', description: 'Required ECR tag produced by JenkinsfileCI')
     string(name: 'K8S_OVERLAY', defaultValue: 'k8s/overlays/four-lb', description: 'Kustomize overlay')
@@ -21,7 +21,7 @@ pipeline {
   }
 
   environment {
-    EKS_CLUSTER_NAME = 'eks-cluster-1'
+    EKS_CLUSTER_NAME = 'etp-cluster-1'
     AUTH_REPO = 'etp-auth-service'
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
@@ -156,13 +156,30 @@ pipeline {
           set -euo pipefail
           # Secrets are hardcoded here; no Jenkins credential is used.
           cat > k8s/base/secrets.env <<'SECRETS_EOF'
-# SECRETS. Copy to secrets.env (git-ignored) and fill in. Copied to base/secrets.env and turned into the Secret etp-secrets (guide 7.2).
-DB_PASSWORD=iykykykyk
+# SECRETS ONLY. Never commit (git-ignored via *.local.env). Merged with .env.config into .env by:  ./scripts/build-env.sh
 
-# at least 32 bytes:  node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-JWT_SECRET=whatthehell
-FAUXNANCE_API_KEY=dont_steal
-SMTP_PASS=lolllololo
+# ---- shared
+JWT_SECRET=5d5634fe6f76a4b6a9dd5e94502fbe2519958a10bae499a12a447871546a6ef5
+
+# ---- database (the same password under every name the services read)
+DATABASE_PASSWORD=n3u3d4!!
+DATABASE_TRADING_PASSWORD=n3u3d4!!
+DB_PASSWORD=n3u3d4!!
+
+# ---- auth-service
+AUTH_OTP_SECRET=
+AUTH_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
+ENC_PRIVATE_KEY_PEM=
+
+# ---- order-service
+EXTERNAL_FAUXNANCE_API_KEY=fnx_dev_AO9mF077q32hMWO6mYjlLwCYK2MGQORk
+EXTERNAL_EXCHANGE_RATE_API_KEY=a0f7484af9eb73db6fb5f9b2
+EXTERNAL_GEMINI_API_KEY=AQ.Ab8RN6JCcSo-CUyw2Icd2iqPZjk_322f0KlNLkl3D5LMEh_6bg
+ORDER_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
+ORDER_EMAIL_SMTP_USER=mit2022506079@gmail.com
+# ---- Playwright journeys
+E2E_PASSWORD=
+E2E_READONLY_PASSWORD=
 SECRETS_EOF
           kubectl apply --dry-run=server -k "$K8S_OVERLAY"
           kubectl apply -k "$K8S_OVERLAY"
