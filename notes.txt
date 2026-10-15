@@ -1,0 +1,87 @@
+export PGHOST=database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com
+export PGPORT=5432
+export PGUSER=postgres
+export PGDATABASE=trading_db
+export PGSSLMODE=require
+export PGPASSWORD='n3u3d4!!'
+
+psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('trading_db','auth_db') AND pid <> pg_backend_pid();"
+psql -d postgres -c "DROP DATABASE IF EXISTS trading_db;"
+psql -d postgres -c "DROP DATABASE IF EXISTS auth_db;"
+
+psql -d postgres -v ON_ERROR_STOP=1 -f databases/PostgreSQL/schema.sql
+psql -d postgres -v ON_ERROR_STOP=1 -f databases/PostgreSQL/seed_data.sql
+
+psql -d trading_db -c "\dt trading.*"
+psql -d trading_db -c "\dt auth.*"
+
+DEBUGGING
+docker compose logs --tail=80 auth-service
+
+GENERATE RANDOM JWT KEY
+openssl rand -hex 32
+
+chmod +x scripts/run.sh
+./scripts/run.sh
+
+docker build -t etp-auth-service ./services/auth-service
+docker build -t etp-order-service ./services/order-service
+docker build -t etp-executor-service ./services/executor-service
+docker build -t etp-frontend \
+  --build-context extra=./config \
+  --build-arg EXTRA_DEST=/config \
+  --build-arg PRE_BUILD_CMD='npm --prefix /config ci && mkdir -p /app/src/app/config && ln -sfn /app /frontend' \
+  ./frontend
+
+docker build -t etp-frontend \
+  --build-context extra=./config \
+  --build-arg EXTRA_DEST=/config \
+  --build-arg PRE_BUILD_CMD='npm --prefix /config ci && mkdir -p /app/src/app/config && ln -sfn /app /frontend' \
+  --build-arg BUILD_ENV='SERVICES_FRONTEND_HOST=localhost FRONTEND_PORT=4200 SERVICES_AUTH_HOST=localhost PORT=3000 SERVICES_ORDER_HOST=localhost SERVICES_ORDER_PORT=8081 SERVICES_EXECUTOR_HOST=localhost SERVICES_EXECUTOR_PORT=8082 MAILHOG_HOST=localhost MAILHOG_WEB_PORT=8025' \
+  ./frontend
+
+  psql -h database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com -U postgres -d postgres -c "SHOW max_connections;" -c "SELECT usename, datname, application_name, client_addr, state, count(*) FROM pg_stat_activity GROUP BY 1,2,3,4,5 ORDER BY count DESC;"
+
+
+  cd /home/ubuntu/Documents/CD/chennai-capstone-SE5-team2
+
+export AWS_REGION=ap-south-1
+export CLUSTER_NAME=etp-cluster-1
+export NODEGROUP_NAME=workers
+export DB_HOST=database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com
+export DB_PORT=5432
+export DB_NAME=trading_db
+export DB_USER=postgres
+export AUTH_PORT=3000
+export ORDER_PORT=8081
+export EXECUTOR_PORT=8082
+export FRONTEND_PORT=80
+export AUTH_IMAGE=etp-auth-service
+export ORDER_IMAGE=etp-order-service
+export EXECUTOR_IMAGE=etp-executor-service
+export FRONTEND_IMAGE=etp-frontend
+
+aws configure set region "$AWS_REGION"
+aws sts get-caller-identity
+
+
+kubectl get svc
+NAME               TYPE           CLUSTER-IP       EXTERNAL-IP             PORT(S)              AGE
+auth-service       LoadBalancer   10.100.133.238   a9e50e427449f44d0bf4b3df1eeb1142-612669814.ap-south-1.elb.amazonaws.com    3000:32758/TCP       5m16s
+executor-service   LoadBalancer   10.100.28.80     aaf48d40da8564aec802fbc1308561c3-1976675559.ap-south-1.elb.amazonaws.com   8082:31599/TCP       5m16s
+frontend           LoadBalancer   10.100.106.41    a9c27794d76634931934d17fa293c3fe-444812992.ap-south-1.elb.amazonaws.com    80:30628/TCP         5m16s
+kafka              ClusterIP      None             <none>             29092/TCP,9093/TCP   5m16s
+kubernetes         ClusterIP      10.100.0.1       <none>             443/TCP              72m
+order-service      LoadBalancer   10.100.31.73     a0b590218efd64443bfe7efe2383caf8-1839243432.ap-south-1.elb.amazonaws.com   8081:30346/TCP       5m16s
+
+kubectl kustomize k8s/overlays/four-lb >/tmp/etp-rendered.yaml
+kubectl apply --dry-run=server -k k8s/overlays/four-lb
+kubectl apply -k k8s/overlays/four-lb
+
+kubectl get svc
+
+kubectl apply -k k8s/overlays/four-lb
+kubectl rollout status deployment/auth-service --timeout=180s
+kubectl rollout status deployment/order-service --timeout=180s
+kubectl rollout status deployment/executor-service --timeout=180s
+kubectl rollout status deployment/frontend --timeout=180s
