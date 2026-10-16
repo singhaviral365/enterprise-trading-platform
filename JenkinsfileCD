@@ -10,7 +10,7 @@ pipeline {
 
   parameters {
     string(name: 'AWS_REGION', defaultValue: 'ap-south-1', description: 'AWS region')
-    string(name: 'RDS_HOST', defaultValue: 'database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
+    string(name: 'RDS_HOST', defaultValue: 'database-1.cbo04g6kafop.ap-south-1.rds.amazonaws.com', description: 'RDS endpoint')
     string(name: 'RDS_PORT', defaultValue: '5432', description: 'RDS PostgreSQL port')
     string(name: 'RDS_DATABASE', defaultValue: 'trading_db', description: 'RDS database name')
     string(name: 'RDS_USER', defaultValue: 'postgres', description: 'RDS database user')
@@ -26,7 +26,7 @@ pipeline {
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
-    SECRET_CREDENTIALS_ID='etp-cd-secrets'
+    SECRETS_CREDENTIAL_ID = 'etp-cd-secrets'
   }
 
   stages {
@@ -151,13 +151,15 @@ pipeline {
       }
     }
 
-        stage('Inject secrets and deploy selected images') {
+    stage('Inject secrets and deploy selected images') {
       steps {
         withCredentials([file(credentialsId: env.SECRETS_CREDENTIAL_ID, variable: 'SECRETS_FILE')]) {
           sh '''#!/usr/bin/env bash
             set -euo pipefail
             install -m 600 "$SECRETS_FILE" k8s/base/secrets.env
-            for key in JWT_SECRET DATABASE_PASSWORD DATABASE_TRADING_PASSWORD DB_PASSWORD AUTH_EMAIL_SMTP_PASSWORD EXTERNAL_FAUXNANCE_API_KEY EXTERNAL_EXCHANGE_RATE_API_KEY EXTERNAL_GEMINI_API_KEY ORDER_EMAIL_SMTP_PASSWORD; do
+            for key in JWT_SECRET DATABASE_PASSWORD DATABASE_TRADING_PASSWORD DB_PASSWORD \\
+                       AUTH_EMAIL_SMTP_PASSWORD ORDER_EMAIL_SMTP_USER ORDER_EMAIL_SMTP_PASSWORD \\
+                       EXTERNAL_FAUXNANCE_API_KEY EXTERNAL_EXCHANGE_RATE_API_KEY EXTERNAL_GEMINI_API_KEY; do
               grep -q "^$key=." k8s/base/secrets.env || { echo "secrets.env is missing a value for $key" >&2; exit 1; }
             done
           '''
