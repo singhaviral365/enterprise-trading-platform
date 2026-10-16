@@ -3,8 +3,8 @@ export function newIdempotencyKey(): string {
   return `ord-${randomId()}`;
 }
 
-/** crypto.randomUUID exists only on https or localhost; getRandomValues also works on plain http. */
-function randomId(): string {
+/** A random UUID. crypto.randomUUID exists only on https or localhost; getRandomValues also works on plain http. */
+export function randomId(): string {
   if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
