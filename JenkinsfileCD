@@ -26,6 +26,7 @@ pipeline {
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
+    SECRETS_CREDENTIAL_ID = 'secrets'
   }
 
   stages {
@@ -152,35 +153,19 @@ pipeline {
 
     stage('Inject secrets and deploy selected images') {
       steps {
+        withCredentials([file(credentialsId: env.SECRETS_CREDENTIAL_ID, variable: 'SECRETS_FILE')]) {
+          sh '''#!/usr/bin/env bash
+            set -euo pipefail
+            install -m 600 "$SECRETS_FILE" k8s/base/secrets.env
+            for key in JWT_SECRET DATABASE_PASSWORD DATABASE_TRADING_PASSWORD DB_PASSWORD \\
+                       AUTH_EMAIL_SMTP_PASSWORD ORDER_EMAIL_SMTP_USER ORDER_EMAIL_SMTP_PASSWORD \\
+                       EXTERNAL_FAUXNANCE_API_KEY EXTERNAL_EXCHANGE_RATE_API_KEY EXTERNAL_GEMINI_API_KEY; do
+              grep -q "^$key=." k8s/base/secrets.env || { echo "secrets.env is missing a value for $key" >&2; exit 1; }
+            done
+          '''
+        }
         sh '''#!/usr/bin/env bash
           set -euo pipefail
-          # Secrets are hardcoded here; no Jenkins credential is used.
-          cat > k8s/base/secrets.env <<'SECRETS_EOF'
-# SECRETS ONLY. Never commit (git-ignored via *.local.env). Merged with .env.config into .env by:  ./scripts/build-env.sh
-
-# ---- shared
-JWT_SECRET=5d5634fe6f76a4b6a9dd5e94502fbe2519958a10bae499a12a447871546a6ef5
-
-# ---- database (the same password under every name the services read)
-DATABASE_PASSWORD=n3u3d4!!
-DATABASE_TRADING_PASSWORD=n3u3d4!!
-DB_PASSWORD=n3u3d4!!
-
-# ---- auth-service
-AUTH_OTP_SECRET=
-AUTH_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
-ENC_PRIVATE_KEY_PEM=
-
-# ---- order-service
-EXTERNAL_FAUXNANCE_API_KEY=fnx_dev_AO9mF077q32hMWO6mYjlLwCYK2MGQORk
-EXTERNAL_EXCHANGE_RATE_API_KEY=a0f7484af9eb73db6fb5f9b2
-EXTERNAL_GEMINI_API_KEY=AQ.Ab8RN6JCcSo-CUyw2Icd2iqPZjk_322f0KlNLkl3D5LMEh_6bg
-ORDER_EMAIL_SMTP_PASSWORD=jdxnlwioqvqlkqez
-ORDER_EMAIL_SMTP_USER=mit2022506079@gmail.com
-# ---- Playwright journeys
-E2E_PASSWORD=
-E2E_READONLY_PASSWORD=
-SECRETS_EOF
           kubectl apply --dry-run=server -k "$K8S_OVERLAY"
           kubectl apply -k "$K8S_OVERLAY"
           kubectl -n "$K8S_NAMESPACE" set image deployment/auth-service auth-service="$REGISTRY/$AUTH_REPO:$IMAGE_TAG"
