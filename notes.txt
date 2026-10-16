@@ -85,3 +85,14 @@ kubectl rollout status deployment/auth-service --timeout=180s
 kubectl rollout status deployment/order-service --timeout=180s
 kubectl rollout status deployment/executor-service --timeout=180s
 kubectl rollout status deployment/frontend --timeout=180s
+
+kubectl delete service auth-service
+kubectl delete service order-service
+kubectl delete service frontend
+kubectl apply -k k8s/overlays/four-lb
+kubectl get svc auth-service
+kubectl get svc order-service
+kubectl get svc frontend
+
+d3gihh6zay0ft7.cloudfront.net
+
