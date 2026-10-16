@@ -1,0 +1,127 @@
+RDS_INSTANCE_ID=$(aws rds describe-db-instances \
+  --region "$AWS_REGION" \
+  --query "DBInstances[?Endpoint.Address=='$DB_HOST'].DBInstanceIdentifier | [0]" \
+  --output text)
+
+NODE_INSTANCE_ID=$(aws ec2 describe-instances \
+  --region "$AWS_REGION" \
+  --filters "Name=tag:eks:nodegroup-name,Values=$NODEGROUP_NAME" \
+            "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[0].InstanceId | [0]' \
+  --output text)
+
+RDS_SECURITY_GROUP_ID=$(aws rds describe-db-instances \
+  --region "$AWS_REGION" \
+  --db-instance-identifier "$RDS_INSTANCE_ID" \
+  --query 'DBInstances[0].VpcSecurityGroups[0].VpcSecurityGroupId' \
+  --output text)
+
+EKS_NODE_SECURITY_GROUP_ID=$(aws ec2 describe-instances \
+  --region "$AWS_REGION" \
+  --instance-ids "$NODE_INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+  --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id "$RDS_SECURITY_GROUP_ID" \
+  --protocol tcp \
+  --port 5432 \
+  --source-group "$EKS_NODE_SECURITY_GROUP_ID" || \
+  echo 'The rule may already exist.'
+
+An error occurred (InvalidGroup.NotFound) when calling the AuthorizeSecurityGroupIngress operation: You have specified two resources that belong to different networks.
+The rule may already exist.
+ubuntu@ip-172-31-15-173:~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3$ # CIDR of the VPC the EKS nodes live in
+EKS_VPC_ID=$(aws ec2 describe-instances --region "$AWS_REGION" \
+  --instance-ids "$NODE_INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].VpcId' --output text)
+
+EKS_VPC_CIDR=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --vpc-ids "$EKS_VPC_ID" \
+  --query 'Vpcs[0].CidrBlock' --output text)
+
+echo "EKS VPC: $EKS_VPC_ID  CIDR: $EKS_VPC_CIDR"
+
+# Allow that CIDR to reach RDS on 5432
+aws ec2 authorize-security-group-ingress --region "$AWS_REGION" \
+  --group-id "$RDS_SECURITY_GROUP_ID" \
+  --protocol tcp --port 5432 \
+  --cidr "$EKS_VPC_CIDR"
+EKS VPC: vpc-05b8fd17f3068ccc7  CIDR: 192.168.0.0/16
+{
+    "Return": true,
+    "SecurityGroupRules": [
+        {
+            "SecurityGroupRuleId": "sgr-011a548121640eaf3",
+            "GroupId": "sg-06a7e88628aa4e5d1",
+            "GroupOwnerId": "631237958288",
+            "IsEgress": false,
+            "IpProtocol": "tcp",
+            "FromPort": 5432,
+            "ToPort": 5432,
+            "CidrIpv4": "192.168.0.0/16",
+            "SecurityGroupRuleArn": "arn:aws:ec2:ap-south-1:631237958288:security-group-rule/sgr-011a548121640eaf3"
+        }
+    ]
+}
+ubuntu@ip-172-31-15-173:~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3$ pg_isready -h "$DB_HOST" -p "$DB_PORT"
+database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com:5432 - accepting connections
+ubuntu@ip-172-31-15-173:~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3$ 
+ubuntu@ip-172-31-15-173:~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3$ RDS_INSTANCE_ID=$(aws rds describe-db-instances \
+  --region "$AWS_REGION" \
+  --query "DBInstances[?Endpoint.Address=='$DB_HOST'].DBInstanceIdentifier | [0]" \
+  --output text)
+
+NODE_INSTANCE_ID=$(aws ec2 describe-instances \
+  --region "$AWS_REGION" \
+  --filters "Name=tag:eks:nodegroup-name,Values=$NODEGROUP_NAME" \
+            "Name=instance-state-name,Values=running" \
+  --query 'Reservations[].Instances[0].InstanceId | [0]' \
+  --output text)
+
+RDS_SECURITY_GROUP_ID=$(aws rds describe-db-instances \
+  --region "$AWS_REGION" \
+  --db-instance-identifier "$RDS_INSTANCE_ID" \
+  --query 'DBInstances[0].VpcSecurityGroups[0].VpcSecurityGroupId' \
+  --output text)
+
+EKS_NODE_SECURITY_GROUP_ID=$(aws ec2 describe-instances \
+  --region "$AWS_REGION" \
+  --instance-ids "$NODE_INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+  --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id "$RDS_SECURITY_GROUP_ID" \
+  --protocol tcp \
+  --port 5432 \
+  --source-group "$EKS_NODE_SECURITY_GROUP_ID" || \
+  echo 'The rule may already exist.'
+
+An error occurred (InvalidGroup.NotFound) when calling the AuthorizeSecurityGroupIngress operation: You have specified two resources that belong to different networks.
+The rule may already exist.
+ubuntu@ip-172-31-15-173:~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3$ # CIDR of the VPC the EKS nodes live in
+EKS_VPC_ID=$(aws ec2 describe-instances --region "$AWS_REGION" \
+  --instance-ids "$NODE_INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].VpcId' --output text)
+
+EKS_VPC_CIDR=$(aws ec2 describe-vpcs --region "$AWS_REGION" \
+  --vpc-ids "$EKS_VPC_ID" \
+  --query 'Vpcs[0].CidrBlock' --output text)
+
+echo "EKS VPC: $EKS_VPC_ID  CIDR: $EKS_VPC_CIDR"
+
+# Allow that CIDR to reach RDS on 5432
+aws ec2 authorize-security-group-ingress --region "$AWS_REGION" \
+  --group-id "$RDS_SECURITY_GROUP_ID" \
+  --protocol tcp --port 5432 \
+  --cidr "$EKS_VPC_CIDR"
+
+
+# 2nd command
+
+pg_isready -h "$DB_HOST" -p "$DB_PORT"
+EKS VPC: vpc-05b8fd17f3068ccc7  CIDR: 192.168.0.0/16
+
+An error occurred (InvalidPermission.Duplicate) when calling the AuthorizeSecurityGroupIngress operation: the specified rule "peer: 192.168.0.0/16, TCP, from port: 5432, to port: 5432, ALLOW" already exists
+database-1.c3ee4e26iqls.ap-south-1.rds.amazonaws.com:5432 - accepting connections

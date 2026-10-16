@@ -97,7 +97,7 @@ count as the **same site** (cookies are not port-scoped), the auth service alrea
   the cost of stateless verification; the refresh token, the part that lasts, *is* revoked.
 - The tokens are still returned in the JSON body for API clients. If no non-browser client needs them, the body could
   be reduced to `{ tokenType, expiresIn }` in a later contract change.
-- The executor's `/api/v1/market` endpoints have no authentication at all (unchanged).
+- `/api/v1/market` is now served by the order-service (it relays from the executor), so it goes through the same authentication as every other `/api/v1/` route. The executor's own endpoints still have no authentication, which is safe only because it is not reachable from outside the cluster or compose network.
 - Behind a real gateway on one origin, nothing needs to change. If the SPA and the API end up on different *sites*,
   set `AUTH_COOKIE_SAMESITE=none` (with HTTPS) and list the SPA origin in the CORS allow-list.
 

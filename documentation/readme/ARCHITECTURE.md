@@ -28,7 +28,7 @@ Two rules shape everything else:
 
 ### How the browser reaches the services
 
-The dev server proxies `/api/v1/market` to the executor and the rest of `/api` to the order-service, so those two see same-origin calls and need no
+The dev server proxies `/api` (market data included, which the order-service relays from the executor) to the order-service, so it sees same-origin calls and needs no
 CORS. The auth-service is called directly (its CORS allows the frontend origin from `application.yml`, with credentials). The proxy, the base URLs
 and the contracts' `servers:` are generated from the same file.
 
