@@ -26,7 +26,7 @@ pipeline {
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
-    SECRETS_CREDENTIAL_ID = 'Aviral'
+    SECRETS_CREDENTIAL_ID = 'etp-cd-secrets'
   }
 
   stages {
@@ -158,7 +158,7 @@ pipeline {
             set -euo pipefail
             install -m 600 "$SECRETS_FILE" k8s/base/secrets.env
             for key in JWT_SECRET DATABASE_PASSWORD DATABASE_TRADING_PASSWORD DB_PASSWORD \\
-                       AUTH_EMAIL_SMTP_PASSWORD ORDER_EMAIL_SMTP_USER ORDER_EMAIL_SMTP_PASSWORD \\
+                       AUTH_EMAIL_SMTP_PASSWORD ORDER_EMAIL_SMTP_PASSWORD \\
                        EXTERNAL_FAUXNANCE_API_KEY EXTERNAL_EXCHANGE_RATE_API_KEY EXTERNAL_GEMINI_API_KEY; do
               grep -q "^$key=." k8s/base/secrets.env || { echo "secrets.env is missing a value for $key" >&2; exit 1; }
             done

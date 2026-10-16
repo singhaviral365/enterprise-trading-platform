@@ -1,0 +1,39 @@
+Rebuild the frontend image cleanly
+
+The newer bundle (main-ZR3NHT4Y.js) was the problem, and the source diff says the build differs, not the code. So the proper fix is a clean, reproducible build from committed source. This also matches your scripts/run.sh, which uses docker compose build.
+
+cd ~/Documents/chennai-capstone-SE3-team3/chennai-capstone-SE3-team3
+git pull
+git status --short                  # must print nothing (stash or commit local changes first)
+TAG=$(git rev-parse --short HEAD)
+
+./scripts/build-env.sh              # regenerates .env from config.env + secrets (the build reads it)
+docker compose build --no-cache frontend
+
+ECR=631237958288.dkr.ecr.ap-south-1.amazonaws.com
+docker tag frontend:latest $ECR/etp-frontend:$TAG
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $ECR
+docker push $ECR/etp-frontend:$TAG
+
+Check the exact local image name first with docker images | grep -E "^frontend". Then in k8s/base/kustomization.yaml set etp-frontend to newTag: <TAG> and apply.
+
+Before trusting it, confirm the new bundle behaves like the good one:
+
+kubectl apply -k k8s/overlays/four-lb
+kubectl rollout status deploy/frontend --timeout=180s
+
+Then test login in an Incognito window and click Buy. The polyfill in the ConfigMap can stay while testing, since it’s harmless.
+
+If login fails again with a clean build, compare the two images directly and tell me what differs:
+
+for t in 7b37af4 $TAG; do
+  docker create --name cmp-$t $ECR/etp-frontend:$t >/dev/null
+  mkdir -p /tmp/cmp/$t && docker cp cmp-$t:/opt/site-pristine/. /tmp/cmp/$t/ && docker rm cmp-$t >/dev/null
+done
+diff <(ls /tmp/cmp/7b37af4) <(ls /tmp/cmp/$TAG)
+
+The usual suspects are .env/FRONTEND_BUILD_ENV values at build time, and the Docker layer cache (hence --no-cache).
+
+3. Cleanup once the new image works
+
+Remove the sub_filter polyfill lines from the ConfigMap, apply, and restart. Keep the Cache-Control: no-cache header.

@@ -1,4 +1,3 @@
-
 # Enterprise Trading Platform: the ONE place where every URL, port, credential and switch is NAMED. It holds no values of its own: every
 # setting is a ${VARIABLE} that comes from the .env file in the repository root (copy .env.example to .env and fill it in).
 #

@@ -413,6 +413,7 @@ services:
       PORT: ${ORDER_SERVICE_PORT:-8081}
       HC_PORT: ${ORDER_SERVICE_PORT:-8081}
       HC_PATH: ${ORDER_SERVICE_HEALTH_PATH:-}
+      SERVICES_EXECUTOR_HOST: executor-service   # relays /api/v1/market; .env says localhost, wrong inside the network
       JAVA_OPTS: "${JAVA_OPTS:--XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError}"
     volumes:
       - *config-volume

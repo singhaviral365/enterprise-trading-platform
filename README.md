@@ -214,7 +214,7 @@ cd services/order-service && ./mvnw spring-boot:run
 # executor-service: consumes `orders`, settles fills, serves the market board at /api/v1/market/quotes
 cd services/executor-service && ./mvnw spring-boot:run
 
-# frontend: npm start generates its config from application.yml, proxies /api to the order-service and /api/v1/market to the executor
+# frontend: npm start generates its config from application.yml, proxies /api to the order-service (which relays /api/v1/market from the executor)
 cd frontend && npm install && npm start
 ```
 
@@ -259,7 +259,7 @@ AUTH_CORS_ORIGINS=http://<server address>:4200,http://localhost:4200
 FRONTEND_URL_REWRITES='http://localhost:3000=http://<server address>:4200/_auth http://localhost:8081=http://<server address>:4200/_order http://localhost:8082=http://<server address>:4200'
 ```
 
-The browser only talks to the frontend port: nginx forwards `/_auth`, `/_order`, `/api/v1/market` (executor-service) and every other `/api` call (order-service) to the services. The frontend picks the addresses up when it is built or started, so run `bash scripts/run.sh` (or `docker compose up -d --force-recreate frontend`) after changing them.
+The browser only talks to the frontend port: nginx forwards `/_auth`, `/_order` and every `/api` call to the services. Market data (`/api/v1/market`) is served by the order-service, which relays it from the executor-service. The frontend picks the addresses up when it is built or started, so run `bash scripts/run.sh` (or `docker compose up -d --force-recreate frontend`) after changing them.
 
 **Using AWS RDS (or another PostgreSQL) instead of the bundled database.** In `.env` set `DB_HOST=<the endpoint>` and remove `localdb` from `COMPOSE_PROFILES`; the instance must accept connections from this machine on port 5432. The database is empty, so load the schemas and sample data once (this fails if the tables already exist, so use it on an empty server only):
 
@@ -276,7 +276,7 @@ When it is up (the first start takes a few minutes while the images build):
 | The app | <http://localhost:4200> (`FRONTEND_PORT`) |
 | auth-service | <http://localhost:3000/api-docs> (`AUTH_SERVICE_PORT`) |
 | order-service | <http://localhost:8081/actuator/health> (`ORDER_SERVICE_PORT`) |
-| executor-service | not published; reached through the frontend as `/api/v1/market` (`EXECUTOR_SERVICE_PORT`, 8082) |
+| executor-service | not published and not reached by the browser; the order-service relays `/api/v1/market` to it (`EXECUTOR_SERVICE_PORT`, 8082) |
 | database | `127.0.0.1:5432` on this machine only (`DB_HOST_PORT`); schemas `trading` and `auth` |
 | Kafka (from this machine) | `127.0.0.1:9092` (`KAFKA_HOST_PORT`) |
 
