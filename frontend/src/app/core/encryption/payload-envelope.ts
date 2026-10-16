@@ -4,6 +4,17 @@ import { CompactEncrypt, JWK, KeyLike, compactDecrypt, exportJWK, importJWK } fr
 import { firstValueFrom } from 'rxjs';
 
 import { AUTH_API_BASE_URL } from '../../api/api.config';
+import { PLATFORM } from '../../config/platform.config';
+import { randomId } from '../idempotency-key';
+
+/**
+ * Whether this page seals its calls at all. Off unless the build says so (encryption.mode optional or required, see config/cli.js),
+ * and off on a page the browser denies Web Crypto, which it gives only to https and localhost, never to plain http. When off, no key
+ * is requested and every call goes out as it is.
+ */
+export const ENCRYPTION_ENABLED = new InjectionToken<boolean>('ENCRYPTION_ENABLED', {
+  factory: () => (PLATFORM.encryption as boolean) && typeof crypto !== 'undefined' && crypto.subtle !== undefined,
+});
 
 /**
  * Which services get their payloads wrapped in an envelope (documentation/todo/02-payload-encryption.md). Phase 1 is the Auth
@@ -113,7 +124,7 @@ export class PayloadEnvelope {
         enc: 'A256GCM',
         kid: server.kid,
         iat: Math.floor((Date.now() + server.skewMs) / 1000),
-        jti: crypto.randomUUID(),
+        jti: randomId(),
         htm: method.toUpperCase(),
         htu: path,
         epk_resp: response.publicJwk,
