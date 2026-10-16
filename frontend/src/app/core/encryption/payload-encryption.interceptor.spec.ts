@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { AUTH_API_BASE_URL } from '../../api/api.config';
 import { payloadEncryptionInterceptor } from './payload-encryption.interceptor';
-import { ENCRYPTED_ORIGINS } from './payload-envelope';
+import { ENCRYPTED_ORIGINS, ENCRYPTION_ENABLED } from './payload-envelope';
 
 const KEYS = `${AUTH_API_BASE_URL}/.well-known/jwks.json`;
 const LOGIN = `${AUTH_API_BASE_URL}/auth/login`;
@@ -33,7 +33,12 @@ describe('payloadEncryptionInterceptor', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(withInterceptors([payloadEncryptionInterceptor])), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(withInterceptors([payloadEncryptionInterceptor])),
+        provideHttpClientTesting(),
+        // The feature is off in a default build and on a page without Web Crypto; these tests are about it being on.
+        { provide: ENCRYPTION_ENABLED, useValue: true },
+      ],
     });
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
@@ -191,6 +196,7 @@ describe('payloadEncryptionInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([payloadEncryptionInterceptor])),
         provideHttpClientTesting(),
+        { provide: ENCRYPTION_ENABLED, useValue: true },
         { provide: ENCRYPTED_ORIGINS, useValue: ['https://other.example'] },
       ],
     });
@@ -200,6 +206,28 @@ describe('payloadEncryptionInterceptor', () => {
     client.post(LOGIN, { a: 1 }).subscribe();
 
     mock.expectOne(LOGIN).flush({});
+    mock.verify();
+  });
+
+  it('asks for no key and sends the call as it is when encryption is off (not built in, or no Web Crypto on this page)', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([payloadEncryptionInterceptor])),
+        provideHttpClientTesting(),
+        { provide: ENCRYPTION_ENABLED, useValue: false },
+      ],
+    });
+    const client = TestBed.inject(HttpClient);
+    const mock = TestBed.inject(HttpTestingController);
+
+    client.post(LOGIN, { a: 1 }).subscribe();
+
+    const req = mock.expectOne(LOGIN);
+    expect(req.request.body).toEqual({ a: 1 });
+    expect(req.request.headers.has('X-Envelope')).toBe(false);
+    req.flush({});
+    mock.expectNone(KEYS);
     mock.verify();
   });
 });

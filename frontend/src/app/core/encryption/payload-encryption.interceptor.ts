@@ -4,6 +4,7 @@ import { Observable, catchError, from, mergeMap, of, switchMap, throwError } fro
 
 import {
   ENCRYPTED_ORIGINS,
+  ENCRYPTION_ENABLED,
   ENCRYPTION_EXCLUDED_PATHS,
   ENVELOPE_CONTENT_TYPE,
   ENVELOPE_HEADER,
@@ -63,7 +64,8 @@ function parseText(text: string | null): unknown {
 export const payloadEncryptionInterceptor: HttpInterceptorFn = (req, next) => {
   const url = parseUrl(req.url);
   const origins = inject(ENCRYPTED_ORIGINS);
-  if (url === null || !origins.includes(url.origin) || isExcluded(url.pathname) || !isJsonBody(req.body)) {
+  const enabled = inject(ENCRYPTION_ENABLED);
+  if (!enabled || url === null || !origins.includes(url.origin) || isExcluded(url.pathname) || !isJsonBody(req.body)) {
     return next(req);
   }
   const envelope = inject(PayloadEnvelope);
