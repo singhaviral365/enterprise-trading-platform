@@ -95,9 +95,8 @@ function frontend(config) {
     '\n} as const;\n';
   writeIfChanged(path.join(ROOT, 'frontend/src/app/config/platform.config.ts'), ts);
 
-  // ng serve proxies same-origin calls to the services that have no CORS: market data to the executor, the rest of /api to the order-service.
+  // ng serve proxies same-origin /api calls (market data included, which the order-service relays) to the order-service, which has no CORS.
   const proxy = {
-    '/api/v1/market': { target: urls.executorUrl, secure: false, changeOrigin: true },
     '/api': { target: urls.orderUrl, secure: false, changeOrigin: true },
   };
   writeIfChanged(path.join(ROOT, 'frontend/proxy.conf.json'), JSON.stringify(proxy, null, 2) + '\n');
