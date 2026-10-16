@@ -26,7 +26,7 @@ pipeline {
     ORDER_REPO = 'etp-order-service'
     EXECUTOR_REPO = 'etp-executor-service'
     FRONTEND_REPO = 'etp-frontend'
-    SECRETS_CREDENTIAL_ID = 'etp-cd-secrets'
+    SECRETS_CREDENTIAL_ID = 'Aviral'
   }
 
   stages {
