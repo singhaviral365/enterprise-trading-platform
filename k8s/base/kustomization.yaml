@@ -20,14 +20,14 @@ secretGenerator:
 images:
   - name: etp-auth-service
     newName: 933018172144.dkr.ecr.ap-south-1.amazonaws.com/etp-auth-service
-    newTag: 052769d
+    newTag: '1.8'
   - name: etp-order-service
     newName: 933018172144.dkr.ecr.ap-south-1.amazonaws.com/etp-order-service
-    newTag: 052769d
+    newTag: '1.8'
   - name: etp-executor-service
     newName: 933018172144.dkr.ecr.ap-south-1.amazonaws.com/etp-executor-service
-    newTag: 052769d
+    newTag: '1.8'
   - name: etp-frontend
     newName: 933018172144.dkr.ecr.ap-south-1.amazonaws.com/etp-frontend
-    newTag: 7b37af4
+    newTag: '1.8'
     # newTag: 052769d
