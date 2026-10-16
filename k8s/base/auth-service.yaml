@@ -50,6 +50,7 @@ kind: Service
 metadata:
   name: auth-service
   annotations:
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
     alb.ingress.kubernetes.io/healthcheck-path: /health      # ALB checks "/" otherwise
 spec:
   type: ClusterIP
